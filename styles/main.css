@@ -924,6 +924,12 @@ footer {
         display: flex;
     }
     
+    /* Logo sizing for mobile */
+    .logo-img {
+        height: 35px;
+        width: auto;
+    }
+    
     /* Main header (index.html) mobile styles */
     .main-header .navbar {
         flex-direction: row;
