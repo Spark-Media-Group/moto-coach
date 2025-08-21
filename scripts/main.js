@@ -32,6 +32,43 @@ function startSlideshow() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Welcome to Moto Coach.');
     
+    // Mobile menu toggle functionality
+    const mobileMenuToggle = document.querySelector('.mobile-menu-toggle');
+    const navLinksContainer = document.querySelector('.nav-links');
+    
+    if (mobileMenuToggle && navLinksContainer) {
+        mobileMenuToggle.addEventListener('click', function() {
+            this.classList.toggle('active');
+            navLinksContainer.classList.toggle('active');
+            
+            // Prevent body scroll when menu is open
+            if (navLinksContainer.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+            } else {
+                document.body.style.overflow = '';
+            }
+        });
+        
+        // Close mobile menu when clicking on a navigation link
+        const navLinkItems = navLinksContainer.querySelectorAll('a');
+        navLinkItems.forEach(link => {
+            link.addEventListener('click', function() {
+                mobileMenuToggle.classList.remove('active');
+                navLinksContainer.classList.remove('active');
+                document.body.style.overflow = '';
+            });
+        });
+        
+        // Close mobile menu when window is resized to desktop
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                mobileMenuToggle.classList.remove('active');
+                navLinksContainer.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+    
     // Initialize slideshow if slides exist
     if (slides.length > 0) {
         showSlide(0); // Show first slide
