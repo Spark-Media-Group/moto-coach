@@ -16,6 +16,16 @@ let currentSlideIndex = 0;
 const slides = document.querySelectorAll('.slide');
 let slideInterval;
 
+// Coaching slideshow variables
+let currentCoachingSlideIndex = 0;
+const coachingSlides = document.querySelectorAll('.coaching-slide');
+let coachingSlideInterval;
+
+// US Travel slideshow variables
+let currentUSSlideIndex = 0;
+const usSlides = document.querySelectorAll('.us-travel-slide');
+let usSlideInterval;
+
 // Slideshow functions
 function showSlide(index) {
     // Hide all slides
@@ -38,6 +48,54 @@ function startSlideshow() {
     slideInterval = setInterval(() => {
         nextSlide();
     }, 7000); // Change slide every 7 seconds for smoother experience
+}
+
+// Coaching slideshow functions
+function showCoachingSlide(index) {
+    // Hide all coaching slides
+    coachingSlides.forEach(slide => {
+        slide.classList.remove('active');
+    });
+    
+    // Show current coaching slide
+    if (coachingSlides[index]) {
+        coachingSlides[index].classList.add('active');
+    }
+}
+
+function nextCoachingSlide() {
+    currentCoachingSlideIndex = (currentCoachingSlideIndex + 1) % coachingSlides.length;
+    showCoachingSlide(currentCoachingSlideIndex);
+}
+
+function startCoachingSlideshow() {
+    coachingSlideInterval = setInterval(() => {
+        nextCoachingSlide();
+    }, 4000); // Change coaching slide every 4 seconds
+}
+
+// US Travel slideshow functions
+function showUSSlide(index) {
+    // Hide all US travel slides
+    usSlides.forEach(slide => {
+        slide.classList.remove('active');
+    });
+    
+    // Show current US travel slide
+    if (usSlides[index]) {
+        usSlides[index].classList.add('active');
+    }
+}
+
+function nextUSSlide() {
+    currentUSSlideIndex = (currentUSSlideIndex + 1) % usSlides.length;
+    showUSSlide(currentUSSlideIndex);
+}
+
+function startUSSlideshow() {
+    usSlideInterval = setInterval(() => {
+        nextUSSlide();
+    }, 5000); // Change US travel slide every 5 seconds
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -86,6 +144,18 @@ document.addEventListener('DOMContentLoaded', function() {
         startSlideshow(); // Start auto-advance
     }
     
+    // Initialize coaching slideshow if coaching slides exist
+    if (coachingSlides.length > 0) {
+        showCoachingSlide(0); // Show first coaching slide
+        startCoachingSlideshow(); // Start auto-advance
+    }
+    
+    // Initialize US Travel slideshow if US travel slides exist
+    if (usSlides.length > 0) {
+        showUSSlide(0); // Show first US travel slide
+        startUSSlideshow(); // Start auto-advance
+    }
+    
     // Dropdown menu functionality
     const dropdowns = document.querySelectorAll('.dropdown');
     
@@ -96,16 +166,20 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle clicks for mobile/touch devices
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
+            e.stopPropagation();
             
-            // Close other dropdowns
+            // Check if this dropdown is currently active
+            const isCurrentlyActive = dropdown.classList.contains('active');
+            
+            // Close all dropdowns first
             dropdowns.forEach(otherDropdown => {
-                if (otherDropdown !== dropdown) {
-                    otherDropdown.classList.remove('active');
-                }
+                otherDropdown.classList.remove('active');
             });
             
-            // Toggle current dropdown
-            dropdown.classList.toggle('active');
+            // If this dropdown wasn't active before, open it
+            if (!isCurrentlyActive) {
+                dropdown.classList.add('active');
+            }
         });
         
         // Close dropdown when clicking outside
@@ -152,8 +226,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 80); // Slightly slower for team page
     }
     
-    // Smooth scrolling for navigation links and CTA button
-    const navLinks = document.querySelectorAll('.nav-links a[href^="#"], .cta-btn[href^="#"]');
+    // Homepage-specific smooth scrolling for the "Start Now" CTA button
+    const isHomepage = document.querySelector('.hero'); // Check if we're on the homepage
+    const ctaButton = document.querySelector('.cta-btn[href^="#"]');
+    
+    if (isHomepage && ctaButton) {
+        ctaButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const targetId = this.getAttribute('href');
+            const targetSection = document.querySelector(targetId);
+            
+            if (targetSection) {
+                // For homepage, scroll directly to the section with no offset
+                const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset;
+                
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        });
+    }
+    
+    // Smooth scrolling for other navigation links (non-homepage or other pages)
+    const navLinks = document.querySelectorAll('.nav-links a[href^="#"], .pricing-details-btn[href^="#"]');
     
     navLinks.forEach(link => {
         link.addEventListener('click', function(e) {
@@ -163,7 +260,15 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetSection = document.querySelector(targetId);
             
             if (targetSection) {
-                targetSection.scrollIntoView({
+                // Calculate offset for fixed navbar (navbar height + some padding)
+                const navbar = document.querySelector('.navbar');
+                const navbarHeight = navbar ? navbar.offsetHeight : 0;
+                const offset = navbarHeight + 20; // Add 20px extra padding
+                
+                const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - offset;
+                
+                window.scrollTo({
+                    top: targetPosition,
                     behavior: 'smooth'
                 });
             }

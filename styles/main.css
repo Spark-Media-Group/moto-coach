@@ -26,26 +26,28 @@ body {
 }
 
 .section-padding {
-    padding: 80px 2rem;
+    padding: clamp(40px, 8vw, 80px) clamp(1rem, 4vw, 2rem);
 }
 
 .container {
     max-width: 1200px;
     margin: 0 auto;
+    padding: 0 clamp(0.8rem, 3vw, 1.5rem);
 }
 
 .btn-primary {
     display: inline-block;
-    padding: 15px 40px;
+    padding: clamp(10px, 2.5vw, 15px) clamp(20px, 5vw, 40px);
     background: #ff6b35;
     color: white;
     text-decoration: none;
-    border-radius: 5px;
+    border-radius: clamp(3px, 1vw, 5px);
     font-weight: bold;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: clamp(0.5px, 0.2vw, 1px);
     transition: all 0.3s ease;
     box-shadow: 0 4px 15px rgba(255, 107, 53, 0.4);
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
 }
 
 .btn-primary:hover {
@@ -98,22 +100,23 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 2rem;
+    padding: clamp(0.8rem, 2vw, 1rem) clamp(1rem, 4vw, 2rem);
     background: rgba(0, 0, 0, 0.3);
     backdrop-filter: blur(10px);
     transition: background 0.3s ease;
+    min-height: clamp(60px, 10vw, 80px);
 }
 
 .navbar > div:last-child {
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: clamp(1rem, 3vw, 2rem);
 }
 
 .nav-right {
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: clamp(1rem, 3vw, 2rem);
 }
 
 .navbar.scrolled {
@@ -131,17 +134,17 @@ body {
 }
 
 .logo {
-    font-size: 1.5rem;
+    font-size: clamp(1rem, 2.5vw, 1.5rem);
     font-weight: bold;
     color: white;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: clamp(1px, 0.3vw, 2px);
     display: flex;
     align-items: center;
 }
 
 .logo-img {
-    height: 50px;
+    height: clamp(30px, 6vw, 50px);
     width: auto;
     object-fit: contain;
 }
@@ -149,7 +152,7 @@ body {
 .nav-links {
     display: flex;
     list-style: none;
-    gap: 2rem;
+    gap: clamp(1rem, 3vw, 2rem);
     position: relative;
 }
 
@@ -158,8 +161,9 @@ body {
     text-decoration: none;
     font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: clamp(0.5px, 0.2vw, 1px);
     transition: color 0.3s ease;
+    font-size: clamp(0.8rem, 1.5vw, 1rem);
 }
 
 .nav-links a:hover {
@@ -393,7 +397,8 @@ body {
 }
 
 .cta-btn {
-    /* Uses .btn-primary base styles */
+    /* Extends .btn-primary base styles */
+    display: inline-block;
 }
 
 /* Main Content */
@@ -419,11 +424,12 @@ main {
 
 .about-image-side {
     position: relative;
-    height: clamp(300px, 40vw, 500px);
-    min-height: 250px;
-    border-radius: 20px;
+    width: 100%;
+    height: 650px;
+    border-radius: 15px;
     overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
     margin-top: 2rem;
 }
 
@@ -431,7 +437,14 @@ main {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    object-position: center;
     transition: transform 0.3s ease;
+    filter: brightness(0.85) contrast(1.1);
+}
+
+.about-image-side:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
 }
 
 .about-image-side:hover img {
@@ -443,23 +456,29 @@ main {
     bottom: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(transparent, rgba(54, 37, 18, 0.9));
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
     color: white;
-    padding: clamp(1rem, 3vw, 2rem);
+    padding: 40px 25px 25px;
     text-align: center;
+    z-index: 2;
 }
 
 .about-image-overlay h3 {
-    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
-    font-weight: 600;
+    font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+    font-weight: 700;
     margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 1px;
+    color: #ffffff;
 }
 
 .about-image-overlay p {
-    font-size: clamp(0.9rem, 1.5vw, 1rem);
-    opacity: 0.9;
+    font-size: clamp(1rem, 1.5vw, 1.1rem);
+    color: #ff6b35;
+    font-weight: 500;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .about-content-side {
@@ -774,25 +793,25 @@ footer {
 
 .team-title-section {
     background: #f8f9fa;
-    padding: 120px 2rem 60px 2rem;
+    padding: clamp(80px, 15vw, 120px) clamp(1rem, 4vw, 2rem) clamp(30px, 8vw, 60px) clamp(1rem, 4vw, 2rem);
     text-align: center;
 }
 
 .team-title-content h1 {
-    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-size: clamp(1.8rem, 4vw, 4rem);
     color: #333;
-    margin-bottom: 1rem;
+    margin-bottom: clamp(0.5rem, 2vw, 1rem);
     text-transform: uppercase;
-    letter-spacing: 3px;
+    letter-spacing: clamp(1px, 0.5vw, 3px);
     font-weight: 300;
 }
 
 .team-title-content p {
-    font-size: clamp(1rem, 2vw, 1.3rem);
+    font-size: clamp(0.9rem, 1.8vw, 1.3rem);
     color: #666;
     max-width: 600px;
     margin: 0 auto;
-    line-height: 1.6;
+    line-height: clamp(1.4, 0.3vw, 1.6);
 }
 
 .team-hero {
@@ -926,8 +945,13 @@ footer {
     
     /* Logo sizing for mobile */
     .logo-img {
-        height: 35px;
+        height: clamp(25px, 5vw, 35px);
         width: auto;
+    }
+    
+    .navbar {
+        padding: clamp(0.6rem, 2vw, 0.8rem) clamp(0.8rem, 3vw, 1.5rem);
+        min-height: clamp(50px, 8vw, 70px);
     }
     
     /* Main header (index.html) mobile styles */
@@ -935,13 +959,11 @@ footer {
         flex-direction: row;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 2rem;
-        min-height: 70px;
     }
     
     .main-header .nav-links {
         position: fixed;
-        top: 70px;
+        top: clamp(50px, 8vw, 70px);
         left: 0;
         right: 0;
         background: rgba(0, 0, 0, 0.98);
@@ -952,20 +974,20 @@ footer {
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-        padding: 0 2rem;
+        padding: 0 clamp(1rem, 3vw, 2rem);
         z-index: 999;
     }
     
     .main-header .nav-links.active {
         max-height: 500px;
-        padding: 2rem;
+        padding: clamp(1rem, 3vw, 2rem);
     }
     
     .main-header .nav-links li {
         width: 100%;
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 1rem 0;
+        padding: clamp(0.6rem, 2vw, 1rem) 0;
     }
     
     .main-header .nav-links li:last-child {
@@ -974,16 +996,16 @@ footer {
     
     .main-header .nav-links a {
         display: block;
-        padding: 0.5rem 0;
-        font-size: 1.1rem;
+        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
+        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
         width: 100%;
         text-align: center;
     }
     
     .main-header .dropdown-toggle {
         display: block;
-        padding: 0.5rem 0;
-        font-size: 1.1rem;
+        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
+        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
         width: 100%;
         text-align: center;
         color: white;
@@ -997,11 +1019,11 @@ footer {
         transform: none;
         box-shadow: none;
         background: rgba(255, 107, 53, 0.1);
-        margin: 0.5rem 0;
+        margin: clamp(0.3rem, 1vw, 0.5rem) 0;
         border-radius: 4px;
         display: none;
         border-left: 3px solid #ff6b35;
-        padding: 0.5rem 0;
+        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
         text-align: center;
     }
     
@@ -1011,9 +1033,9 @@ footer {
     }
     
     .main-header .dropdown-menu a {
-        font-size: 1rem;
+        font-size: clamp(0.8rem, 2vw, 1rem);
         color: #ccc;
-        padding: 0.75rem 0;
+        padding: clamp(0.5rem, 1.5vw, 0.75rem) 0;
         text-align: center;
         width: 100%;
         display: block;
@@ -1030,13 +1052,11 @@ footer {
         flex-direction: row;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 2rem;
-        min-height: 70px;
     }
     
     .universal-header .nav-links {
         position: fixed;
-        top: 70px;
+        top: clamp(50px, 8vw, 70px);
         left: 0;
         right: 0;
         background: rgba(0, 0, 0, 0.98);
@@ -1047,20 +1067,20 @@ footer {
         max-height: 0;
         overflow: hidden;
         transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-        padding: 0 2rem;
+        padding: 0 clamp(1rem, 3vw, 2rem);
         z-index: 999;
     }
     
     .universal-header .nav-links.active {
         max-height: 500px;
-        padding: 2rem;
+        padding: clamp(1rem, 3vw, 2rem);
     }
     
     .universal-header .nav-links li {
         width: 100%;
         text-align: center;
         border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 1rem 0;
+        padding: clamp(0.6rem, 2vw, 1rem) 0;
     }
     
     .universal-header .nav-links li:last-child {
@@ -1069,16 +1089,16 @@ footer {
     
     .universal-header .nav-links a {
         display: block;
-        padding: 0.5rem 0;
-        font-size: 1.1rem;
+        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
+        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
         width: 100%;
         text-align: center;
     }
     
     .universal-header .dropdown-toggle {
         display: block;
-        padding: 0.5rem 0;
-        font-size: 1.1rem;
+        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
+        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
         width: 100%;
         text-align: center;
         color: white;
@@ -1092,11 +1112,11 @@ footer {
         transform: none;
         box-shadow: none;
         background: rgba(255, 107, 53, 0.1);
-        margin: 0.5rem 0;
+        margin: clamp(0.3rem, 1vw, 0.5rem) 0;
         border-radius: 4px;
         display: none;
         border-left: 3px solid #ff6b35;
-        padding: 0.5rem 0;
+        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
         text-align: center;
     }
     
@@ -1106,9 +1126,9 @@ footer {
     }
     
     .universal-header .dropdown-menu a {
-        font-size: 1rem;
+        font-size: clamp(0.8rem, 2vw, 1rem);
         color: #ccc;
-        padding: 0.75rem 0;
+        padding: clamp(0.5rem, 1.5vw, 0.75rem) 0;
         text-align: center;
         width: 100%;
         display: block;
@@ -1122,7 +1142,7 @@ footer {
     
     
     .hero-content h1 {
-        font-size: 3rem;
+        font-size: clamp(1.8rem, 6vw, 3rem);
     }
     
     .slide img {
@@ -1136,24 +1156,24 @@ footer {
     
     .gallery-section h2,
     .contact-section h2 {
-        font-size: 2rem;
+        font-size: clamp(1.5rem, 4vw, 2rem);
     }
     
     /* Case study grid mobile adjustment */
     .case-study-grid {
         grid-template-columns: 1fr;
-        gap: 2rem;
+        gap: clamp(1rem, 3vw, 2rem);
     }
     
     /* Sponsors section mobile styles */
     .sponsors-grid {
         flex-direction: column;
-        gap: 2rem;
+        gap: clamp(1rem, 3vw, 2rem);
     }
     
     .sponsor-image {
-        max-width: 150px;
-        max-height: 90px;
+        max-width: clamp(100px, 25vw, 150px);
+        max-height: clamp(60px, 15vw, 90px);
     }
     
     /* About section mobile styles */
@@ -1163,27 +1183,28 @@ footer {
     
     .about-image-side {
         order: 1;
+        height: clamp(200px, 35vw, 250px);
     }
     
     .about-content-side {
         order: 2;
-        padding: 1rem 0;
+        padding: clamp(0.5rem, 2vw, 1rem) 0;
     }
     
     .about-stats {
         grid-template-columns: 1fr;
-        gap: 1.5rem;
+        gap: clamp(0.8rem, 2vw, 1.5rem);
     }
     
     .about-highlight {
-        margin-bottom: 1.5rem;
+        margin-bottom: clamp(0.8rem, 2vw, 1.5rem);
     }
     
     /* Team page mobile styles */
     .team-member {
         grid-template-columns: 1fr;
-        gap: 2rem;
-        margin-bottom: 4rem;
+        gap: clamp(1rem, 3vw, 2rem);
+        margin-bottom: clamp(2rem, 5vw, 4rem);
         text-align: center;
     }
     
@@ -1201,7 +1222,7 @@ footer {
     }
     
     .team-image img {
-        height: 300px;
+        height: clamp(250px, 40vw, 300px);
     }
 }
 
@@ -1322,12 +1343,12 @@ footer {
 
 /* US Travel Program Page Styles */
 .us-travel-hero-combined {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+    background: #000;
     color: white;
     padding: 80px 2rem 60px;
     position: relative;
     overflow: hidden;
-    min-height: 90vh;
+    height: 100vh;
     display: flex;
     align-items: center;
 }
@@ -1339,19 +1360,69 @@ footer {
     left: 0;
     right: 0;
     bottom: 0;
-    background: url('../images/travel 1.jpg') center/cover;
-    opacity: 0.3;
+    background: none;
+    opacity: 1;
     z-index: -1;
+}
+
+/* US Travel Hero Slideshow */
+.us-travel-slideshow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.us-travel-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 2s ease-in-out;
+    z-index: 1;
+}
+
+.us-travel-slide.active {
+    opacity: 1;
+    z-index: 2;
+}
+
+.us-travel-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    filter: brightness(0.6) contrast(1.1);
+}
+
+.us-travel-slide::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+    z-index: 1;
 }
 
 .us-travel-hero-combined .container {
     max-width: 1200px;
     margin: 0 auto;
+    position: relative;
+    z-index: 3;
     width: 100%;
     text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    height: 100%;
 }
 
 .us-travel-hero-combined .hero-content {
@@ -1376,6 +1447,223 @@ footer {
     max-width: 600px;
     margin: 0 auto;
     opacity: 0.9;
+}
+
+.us-travel-hero-combined .overview-cta {
+    margin-top: auto;
+    margin-bottom: 60px;
+    padding-top: 80px;
+    z-index: 4;
+    position: relative;
+}
+
+.us-travel-hero-combined .pricing-details-btn {
+    padding: 15px 30px;
+    background: linear-gradient(135deg, #ff6b35, #ff8c42);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: bold;
+    font-size: 1.1em;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+    border: none;
+    cursor: pointer;
+    display: inline-block;
+}
+
+.us-travel-hero-combined .pricing-details-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+    background: linear-gradient(135deg, #ff5722, #ff7043);
+    color: white;
+    text-decoration: none;
+}
+
+/* Partnership Section Styles */
+.partnership-section {
+    margin-top: 3rem;
+    text-align: center;
+}
+
+.partnership-text {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 2rem;
+}
+
+.partner-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.clubmx-logo {
+    max-height: 180px;
+    max-width: 450px;
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 2s ease-out .75s forwards;
+    filter: brightness(1.1) contrast(1.1);
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Training Overview Section Styles */
+.training-overview {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    margin-top: 4rem;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.overview-image {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.training-image {
+    width: 600px;
+    height: 400px;
+    object-fit: cover;
+    border-radius: 15px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInCenter 2s ease-out 1.5s forwards;
+}
+
+.overview-cta {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInCenter 2s ease-out .75s forwards;
+}
+
+.pricing-details-btn {
+    font-size: 1.1rem;
+    padding: 18px 45px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.pricing-details-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.6);
+}
+
+.overview-content {
+    flex: 1;
+    opacity: 0;
+    transform: translateX(30px);
+    animation: slideInRight 2s ease-out 2s forwards;
+}
+
+.overview-content p {
+    color: #e8e8e8;
+    font-size: clamp(1rem, 1.5vw, 1.1rem);
+    line-height: 1.7;
+    margin: 0;
+    letter-spacing: 0.5px;
+    text-align: left;
+}
+
+@keyframes fadeInCenter {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Responsive adjustments for partnership section */
+@media (max-width: 768px) {
+    .partnership-section {
+        margin-top: 2rem;
+    }
+    
+    .partnership-text {
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .clubmx-logo {
+        max-height: 120px;
+        max-width: 300px;
+    }
+    
+    .training-overview {
+        flex-direction: column;
+        gap: 1.5rem;
+        margin-top: 3rem;
+        text-align: center;
+    }
+    
+    .overview-image {
+        flex: none;
+        max-width: 450px;
+        margin: 0 auto;
+    }
+    
+    .training-image {
+        width: 100%;
+        height: 280px;
+    }
+    
+    .pricing-details-btn {
+        font-size: 1rem;
+        padding: 15px 35px;
+    }
+    
+    .overview-content p {
+        font-size: 1rem;
+        text-align: left;
+    }
 }
 
 .path-selection {
@@ -2751,6 +3039,804 @@ footer {
     
     .info-card {
         padding: 1.5rem;
+    }
+}
+
+/* Professional Coaching Page Styles */
+.coaching-hero-section {
+    background: #0a0a0af6;
+    padding: clamp(40px, 8vw, 120px) clamp(1rem, 4vw, 2rem);
+    position: relative;
+    overflow: hidden;
+}
+
+.coaching-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(1.5rem, 4vw, 6rem);
+    align-items: center;
+}
+
+.coaching-content-side {
+    padding: clamp(1rem, 3vw, 2rem) 0;
+}
+
+.coaching-content-side h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.5rem, 4vw, 4rem);
+    margin-bottom: clamp(0.5rem, 2vw, 1rem);
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: clamp(1px, 0.5vw, 3px);
+    font-weight: 600;
+}
+
+.coaching-subtitle {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(0.8rem, 1.8vw, 1.3rem);
+    color: #ff6b35;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: clamp(1px, 0.3vw, 2px);
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+}
+
+.coaching-description {
+    margin-bottom: clamp(1.5rem, 4vw, 3rem);
+}
+
+.coaching-description p {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: clamp(0.8rem, 1.6vw, 1.2rem);
+    line-height: clamp(1.4, 0.3vw, 1.7);
+    color: #e8e8e8;
+    margin-bottom: clamp(0.8rem, 2vw, 1.5rem);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+}
+
+.coaching-credentials {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: clamp(0.8rem, 2vw, 1.5rem);
+    margin-top: clamp(1rem, 3vw, 2rem);
+}
+
+.coaching-credentials .credential-badge {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: clamp(8px, 2vw, 15px);
+    padding: clamp(0.8rem, 2.5vw, 1.5rem);
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.coaching-credentials .credential-badge:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 107, 53, 0.4);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(0, 0, 0, 0.3);
+}
+
+.coaching-credentials .badge-text {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+.coaching-credentials .badge-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(0.8rem, 1.8vw, 1.2rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: clamp(0.5px, 0.2vw, 1px);
+    line-height: 1.1;
+    margin-bottom: clamp(0.1rem, 0.5vw, 0.25rem);
+    color: #ffffff;
+}
+
+.coaching-credentials .badge-desc {
+    font-size: clamp(0.6rem, 1.4vw, 0.9rem);
+    opacity: 0.9;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: clamp(0.3px, 0.1vw, 0.5px);
+    color: #ff6b35;
+}
+
+.coaching-images-side {
+    position: relative;
+}
+
+.coaching-image-main {
+    position: relative;
+    width: 100%;
+    height: clamp(350px, 50vw, 750px);
+    border-radius: clamp(8px, 2vw, 15px);
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.coaching-slideshow {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+.coaching-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 2.5s ease-in-out;
+}
+
+.coaching-slide.active {
+    opacity: 1;
+}
+
+.coaching-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    filter: brightness(0.85) contrast(1.1);
+}
+
+.coaching-image-main:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+}
+
+.coaching-image-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    color: white;
+    padding: 40px 25px 25px;
+    text-align: center;
+    z-index: 2;
+}
+
+.coaching-image-overlay h3 {
+    font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ffffff;
+}
+
+.coaching-image-overlay p {
+    font-size: clamp(1rem, 1.5vw, 1.1rem);
+    color: #ff6b35;
+    font-weight: 500;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* How It Works Section */
+.how-it-works-section {
+    background: #f8f9fa;
+    padding: clamp(30px, 8vw, 100px) clamp(1rem, 4vw, 2rem);
+}
+
+.works-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: clamp(1.5rem, 4vw, 6rem);
+    align-items: center;
+}
+
+.works-content-side h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.2rem, 3.5vw, 3rem);
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+    color: #333;
+    text-transform: uppercase;
+    letter-spacing: clamp(1px, 0.3vw, 2px);
+    font-weight: 600;
+}
+
+.works-process {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 3vw, 2rem);
+}
+
+.process-step {
+    display: flex;
+    align-items: flex-start;
+    gap: clamp(0.8rem, 2vw, 1.5rem);
+}
+
+.step-number {
+    background: #ff6b35;
+    color: white;
+    width: clamp(35px, 6vw, 50px);
+    height: clamp(35px, 6vw, 50px);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(0.9rem, 2vw, 1.5rem);
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.step-content h4 {
+    font-size: clamp(0.9rem, 2vw, 1.3rem);
+    color: #333;
+    margin-bottom: clamp(0.3rem, 1vw, 0.5rem);
+    text-transform: uppercase;
+    letter-spacing: clamp(0.5px, 0.2vw, 1px);
+}
+
+.step-content p {
+    color: #666;
+    line-height: clamp(1.4, 0.3vw, 1.6);
+    font-size: clamp(0.8rem, 1.5vw, 1rem);
+}
+
+.works-images-side {
+    position: relative;
+}
+
+.works-image-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.works-image {
+    position: relative;
+    height: clamp(300px, 40vw, 600px);
+    border-radius: clamp(8px, 2vw, 15px);
+    overflow: hidden;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.works-image:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3);
+}
+
+.works-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+    filter: brightness(0.85) contrast(1.1);
+}
+
+.works-image:hover img {
+    transform: scale(1.05);
+}
+
+.works-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    color: white;
+    padding: 40px 25px 25px;
+    text-align: center;
+    z-index: 2;
+}
+
+.works-overlay h4 {
+    font-size: clamp(1.3rem, 2.5vw, 1.6rem);
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #ffffff;
+}
+
+.works-overlay p {
+    font-size: clamp(1rem, 1.5vw, 1.1rem);
+    color: #ff6b35;
+    font-weight: 500;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Certification Section */
+.certification-section {
+    background: #333;
+    color: white;
+    padding: clamp(30px, 8vw, 100px) clamp(1rem, 4vw, 2rem);
+}
+
+.cert-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.cert-content h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.2rem, 3.5vw, 3rem);
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: clamp(1px, 0.3vw, 2px);
+    font-weight: 600;
+}
+
+.cert-content > p {
+    font-size: clamp(0.8rem, 1.8vw, 1.2rem);
+    line-height: clamp(1.4, 0.3vw, 1.7);
+    color: #e8e8e8;
+    margin-bottom: clamp(1.5rem, 4vw, 3rem);
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.cert-benefits {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: clamp(1rem, 3vw, 2rem);
+    margin-top: clamp(1.5rem, 4vw, 3rem);
+}
+
+.benefit-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: clamp(1rem, 3vw, 2rem);
+    border-radius: clamp(8px, 2vw, 15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease, border-color 0.3s ease;
+}
+
+.benefit-item:hover {
+    transform: translateY(-5px);
+    border-color: rgba(255, 107, 53, 0.3);
+}
+
+.benefit-item h4 {
+    font-size: clamp(0.9rem, 2vw, 1.3rem);
+    color: #ff6b35;
+    margin-bottom: clamp(0.5rem, 1.5vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: clamp(0.5px, 0.2vw, 1px);
+    font-weight: 600;
+}
+
+.benefit-item p {
+    color: #e8e8e8;
+    line-height: clamp(1.4, 0.3vw, 1.6);
+    font-size: clamp(0.8rem, 1.5vw, 1rem);
+}
+
+/* Coaching CTA Section */
+.coaching-cta-section {
+    background: linear-gradient(135deg, #ff6b35 0%, #e55a2b 100%);
+    color: white;
+    padding: clamp(30px, 8vw, 100px) clamp(1rem, 4vw, 2rem);
+    text-align: center;
+}
+
+.cta-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.cta-container h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.2rem, 3.5vw, 3rem);
+    margin-bottom: clamp(0.5rem, 2vw, 1rem);
+    text-transform: uppercase;
+    letter-spacing: clamp(1px, 0.3vw, 2px);
+    font-weight: 600;
+}
+
+.cta-container p {
+    font-size: clamp(0.8rem, 1.8vw, 1.3rem);
+    margin-bottom: clamp(1rem, 3vw, 2rem);
+    line-height: clamp(1.4, 0.3vw, 1.6);
+    opacity: 0.95;
+}
+
+.btn-large {
+    padding: clamp(12px, 3vw, 20px) clamp(25px, 6vw, 50px);
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    background: white;
+    color: #ff6b35;
+    border: none;
+    text-decoration: none;
+    display: inline-block;
+    border-radius: clamp(3px, 1vw, 5px);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: clamp(0.5px, 0.2vw, 1px);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-large:hover {
+    background: #f0f0f0;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* Smaller Desktop/Laptop Responsive for Professional Coaching */
+@media (max-width: 1366px) and (min-width: 1025px) {
+    .coaching-hero-section {
+        padding: clamp(40px, 8vw, 80px) 1.5rem;
+    }
+    
+    .coaching-container {
+        gap: clamp(2rem, 4vw, 4rem);
+        max-width: 1100px;
+    }
+    
+    .coaching-content-side h1 {
+        font-size: clamp(1.8rem, 4vw, 3rem);
+    }
+    
+    .coaching-subtitle {
+        font-size: clamp(0.95rem, 1.8vw, 1.2rem);
+    }
+    
+    .coaching-description p {
+        font-size: clamp(0.85rem, 1.6vw, 1.1rem);
+        margin-bottom: 1.2rem;
+    }
+    
+    .coaching-credentials {
+        gap: 1.2rem;
+        margin-top: 1.5rem;
+    }
+    
+    .coaching-credentials .credential-badge {
+        padding: 1.2rem;
+    }
+    
+    .coaching-credentials .badge-title {
+        font-size: 1.1rem;
+    }
+    
+    .coaching-credentials .badge-desc {
+        font-size: 0.85rem;
+    }
+    
+    .works-content-side h2,
+    .cert-content h2,
+    .cta-container h2 {
+        font-size: clamp(1.4rem, 3.5vw, 2.5rem);
+    }
+    
+    .how-it-works-section,
+    .certification-section,
+    .coaching-cta-section {
+        padding: clamp(40px, 8vw, 80px) 1.5rem;
+    }
+    
+    .works-image {
+        height: 650px;
+    }
+}
+
+/* Mobile Responsive for Professional Coaching */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .coaching-credentials {
+        gap: 0.8rem;
+    }
+    
+    .coaching-credentials .credential-badge {
+        padding: 1rem;
+    }
+    
+    .coaching-credentials .badge-title {
+        font-size: 0.9rem;
+    }
+    
+    .coaching-credentials .badge-desc {
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .coaching-hero-section {
+        padding: clamp(20px, 6vw, 40px) clamp(0.8rem, 3vw, 1.5rem);
+    }
+    
+    .coaching-container {
+        grid-template-columns: 1fr;
+        gap: clamp(1rem, 4vw, 2rem);
+    }
+    
+    .coaching-content-side {
+        text-align: center;
+        order: 2;
+        padding: clamp(0.5rem, 2vw, 1rem) 0;
+    }
+    
+    .coaching-images-side {
+        order: 1;
+        margin-top: 0;
+    }
+    
+    .coaching-image-main {
+        height: clamp(200px, 35vw, 300px);
+    }
+    
+    .coaching-credentials {
+        grid-template-columns: 1fr;
+        gap: clamp(0.6rem, 2vw, 1rem);
+        margin-top: clamp(0.8rem, 2vw, 1.5rem);
+    }
+    
+    .coaching-credentials .credential-badge {
+        padding: clamp(0.6rem, 2vw, 1rem);
+    }
+    
+    .works-container {
+        grid-template-columns: 1fr;
+        gap: clamp(1rem, 4vw, 2rem);
+    }
+    
+    .works-content-side {
+        order: 2;
+        text-align: center;
+    }
+    
+    .works-images-side {
+        order: 1;
+    }
+    
+    .works-image-grid {
+        grid-template-columns: 1fr;
+        gap: clamp(0.8rem, 2vw, 1rem);
+    }
+    
+    .works-image {
+        height: clamp(200px, 30vw, 300px);
+    }
+    
+    .cert-benefits {
+        grid-template-columns: 1fr;
+        gap: clamp(0.8rem, 2vw, 1.5rem);
+    }
+    
+    .benefit-item {
+        padding: clamp(0.8rem, 2.5vw, 1.5rem);
+    }
+    
+    .process-step {
+        flex-direction: column;
+        text-align: center;
+        gap: clamp(0.5rem, 2vw, 1rem);
+    }
+    
+    .step-number {
+        margin: 0 auto;
+    }
+    
+    .how-it-works-section,
+    .certification-section,
+    .coaching-cta-section {
+        padding: clamp(20px, 6vw, 40px) clamp(0.8rem, 3vw, 1.5rem);
+    }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+    .coaching-hero-section {
+        padding: clamp(15px, 5vw, 30px) clamp(0.6rem, 2.5vw, 1rem);
+    }
+    
+    .coaching-content-side h1 {
+        font-size: clamp(1.2rem, 6vw, 2rem);
+        margin-bottom: clamp(0.3rem, 1.5vw, 0.8rem);
+        letter-spacing: clamp(0.5px, 0.3vw, 2px);
+    }
+    
+    .coaching-subtitle {
+        font-size: clamp(0.7rem, 3vw, 1rem);
+        margin-bottom: clamp(0.8rem, 2vw, 1.5rem);
+    }
+    
+    .coaching-description p {
+        font-size: clamp(0.7rem, 3.5vw, 0.95rem);
+        margin-bottom: clamp(0.6rem, 1.5vw, 1rem);
+        line-height: 1.4;
+    }
+    
+    .coaching-image-main {
+        height: clamp(160px, 40vw, 220px);
+        border-radius: 8px;
+    }
+    
+    .coaching-credentials .credential-badge {
+        padding: clamp(0.5rem, 2vw, 0.8rem);
+        border-radius: 8px;
+    }
+    
+    .coaching-credentials .badge-title {
+        font-size: clamp(0.65rem, 3vw, 0.9rem);
+    }
+    
+    .coaching-credentials .badge-desc {
+        font-size: clamp(0.5rem, 2.5vw, 0.7rem);
+    }
+    
+    .works-content-side h2,
+    .cert-content h2,
+    .cta-container h2 {
+        font-size: clamp(1rem, 5vw, 1.8rem);
+        margin-bottom: clamp(0.6rem, 2vw, 1.2rem);
+    }
+    
+    .step-content h4 {
+        font-size: clamp(0.75rem, 3.5vw, 1rem);
+    }
+    
+    .step-content p {
+        font-size: clamp(0.65rem, 3vw, 0.85rem);
+    }
+    
+    .works-image {
+        height: clamp(150px, 35vw, 200px);
+    }
+    
+    .benefit-item h4 {
+        font-size: clamp(0.75rem, 3.5vw, 1rem);
+        margin-bottom: clamp(0.3rem, 1vw, 0.6rem);
+    }
+    
+    .benefit-item p {
+        font-size: clamp(0.65rem, 3vw, 0.85rem);
+    }
+    
+    .cta-container p {
+        font-size: clamp(0.7rem, 3.5vw, 1rem);
+        margin-bottom: clamp(0.8rem, 2vw, 1.5rem);
+    }
+    
+    .btn-large {
+        padding: clamp(8px, 2.5vw, 15px) clamp(15px, 4vw, 30px);
+        font-size: clamp(0.7rem, 3vw, 0.9rem);
+        border-radius: 3px;
+    }
+}
+
+/* Extra small screens and older mobile devices */
+@media (max-width: 360px) {
+    .navbar {
+        padding: clamp(0.4rem, 1.5vw, 0.6rem) clamp(0.6rem, 2vw, 1rem);
+        min-height: clamp(45px, 7vw, 60px);
+    }
+    
+    .logo-img {
+        height: clamp(20px, 4vw, 30px);
+    }
+    
+    .main-header .nav-links,
+    .universal-header .nav-links {
+        top: clamp(45px, 7vw, 60px);
+        padding: 0 clamp(0.6rem, 2vw, 1rem);
+    }
+    
+    .main-header .nav-links.active,
+    .universal-header .nav-links.active {
+        padding: clamp(0.8rem, 2vw, 1.5rem);
+    }
+    
+    .main-header .nav-links a,
+    .universal-header .nav-links a {
+        font-size: clamp(0.8rem, 2vw, 1rem);
+        padding: clamp(0.2rem, 0.8vw, 0.4rem) 0;
+    }
+    
+    .main-header .dropdown-toggle,
+    .universal-header .dropdown-toggle {
+        font-size: clamp(0.8rem, 2vw, 1rem);
+        padding: clamp(0.2rem, 0.8vw, 0.4rem) 0;
+    }
+    
+    .main-header .dropdown-menu a,
+    .universal-header .dropdown-menu a {
+        font-size: clamp(0.7rem, 1.8vw, 0.9rem);
+        padding: clamp(0.4rem, 1vw, 0.6rem) 0;
+    }
+    
+    .hero-content h1 {
+        font-size: clamp(1.4rem, 5vw, 2.5rem);
+        letter-spacing: clamp(0.5px, 0.2vw, 1px);
+    }
+    
+    .hero-content p {
+        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+    }
+    
+    .btn-primary,
+    .btn-large {
+        padding: clamp(6px, 2vw, 12px) clamp(12px, 3vw, 20px);
+        font-size: clamp(0.65rem, 2.5vw, 0.85rem);
+        letter-spacing: clamp(0.3px, 0.1vw, 0.5px);
+    }
+    
+    .section-padding {
+        padding: clamp(20px, 6vw, 40px) clamp(0.6rem, 2.5vw, 1rem);
+    }
+    
+    .container {
+        padding: 0 clamp(0.6rem, 2vw, 1rem);
+    }
+    
+    .coaching-hero-section {
+        padding: clamp(10px, 4vw, 20px) clamp(0.5rem, 2vw, 0.8rem);
+    }
+    
+    .coaching-content-side h1 {
+        font-size: clamp(1rem, 5vw, 1.8rem);
+        margin-bottom: clamp(0.2rem, 1vw, 0.6rem);
+        letter-spacing: clamp(0.3px, 0.2vw, 1px);
+    }
+    
+    .coaching-subtitle {
+        font-size: clamp(0.6rem, 2.5vw, 0.9rem);
+        margin-bottom: clamp(0.6rem, 1.5vw, 1.2rem);
+    }
+    
+    .coaching-description p {
+        font-size: clamp(0.6rem, 3vw, 0.85rem);
+        margin-bottom: clamp(0.4rem, 1vw, 0.8rem);
+        line-height: 1.3;
+    }
+    
+    .coaching-image-main {
+        height: clamp(120px, 30vw, 180px);
+        border-radius: 6px;
+    }
+    
+    .works-content-side h2,
+    .cert-content h2,
+    .cta-container h2 {
+        font-size: clamp(0.9rem, 4vw, 1.5rem);
+        margin-bottom: clamp(0.4rem, 1.5vw, 1rem);
+    }
+    
+    .works-image {
+        height: clamp(120px, 30vw, 160px);
+    }
+    
+    .step-content h4 {
+        font-size: clamp(0.6rem, 3vw, 0.85rem);
+    }
+    
+    .step-content p {
+        font-size: clamp(0.55rem, 2.5vw, 0.75rem);
+    }
+    
+    .benefit-item h4 {
+        font-size: clamp(0.6rem, 3vw, 0.85rem);
+        margin-bottom: clamp(0.2rem, 0.8vw, 0.4rem);
+    }
+    
+    .benefit-item p {
+        font-size: clamp(0.55rem, 2.5vw, 0.75rem);
+    }
+    
+    .cta-container p {
+        font-size: clamp(0.6rem, 3vw, 0.9rem);
+        margin-bottom: clamp(0.6rem, 1.5vw, 1.2rem);
     }
 }
 
