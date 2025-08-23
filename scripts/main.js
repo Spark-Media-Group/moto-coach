@@ -31,6 +31,11 @@ let currentMobileHeroSlideIndex = 0;
 const mobileHeroSlides = document.querySelectorAll('.mobile-hero-slide');
 let mobileHeroSlideInterval;
 
+// Mobile homepage slideshow variables
+let currentMobileSlideIndex = 0;
+const mobileSlides = document.querySelectorAll('.mobile-slide');
+let mobileSlideInterval;
+
 // Slideshow functions
 function showSlide(index) {
     // Hide all slides
@@ -127,6 +132,30 @@ function startMobileHeroSlideshow() {
     }, 4000); // Change mobile hero slide every 4 seconds
 }
 
+// Mobile homepage slideshow functions
+function showMobileSlide(index) {
+    // Hide all mobile slides
+    mobileSlides.forEach(slide => {
+        slide.classList.remove('active');
+    });
+    
+    // Show current mobile slide
+    if (mobileSlides[index]) {
+        mobileSlides[index].classList.add('active');
+    }
+}
+
+function nextMobileSlide() {
+    currentMobileSlideIndex = (currentMobileSlideIndex + 1) % mobileSlides.length;
+    showMobileSlide(currentMobileSlideIndex);
+}
+
+function startMobileSlideshow() {
+    mobileSlideInterval = setInterval(() => {
+        nextMobileSlide();
+    }, 4000); // Change mobile homepage slide every 4 seconds
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Welcome to Moto Coach.');
     
@@ -189,6 +218,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (mobileHeroSlides.length > 0) {
         showMobileHeroSlide(0); // Show first mobile hero slide
         startMobileHeroSlideshow(); // Start auto-advance
+    }
+    
+    // Initialize mobile homepage slideshow if mobile slides exist
+    if (mobileSlides.length > 0) {
+        showMobileSlide(0); // Show first mobile slide
+        startMobileSlideshow(); // Start auto-advance
     }
     
     // Mobile coaching hero scroll down button functionality - dedicated function
