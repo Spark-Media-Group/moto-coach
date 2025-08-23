@@ -335,17 +335,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const targetSection = document.querySelector(targetId);
             
             if (targetSection) {
-                // Calculate offset for fixed navbar (navbar height + some padding)
-                const navbar = document.querySelector('.navbar');
-                const navbarHeight = navbar ? navbar.offsetHeight : 0;
-                const offset = navbarHeight + 20; // Add 20px extra padding
-                
-                const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - offset;
-                
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
+                // On homepage, handle About link the same as CTA button (no offset)
+                if (isHomepage && targetId === '#about') {
+                    const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset;
+                    
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                } else {
+                    // Calculate offset for fixed navbar (navbar height + some padding)
+                    const navbar = document.querySelector('.navbar');
+                    const navbarHeight = navbar ? navbar.offsetHeight : 0;
+                    const offset = navbarHeight + 20; // Add 20px extra padding
+                    
+                    const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - offset;
+                    
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
             }
         });
     });

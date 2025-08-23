@@ -906,6 +906,23 @@ footer {
 }
 
 /* Responsive Design */
+/* Desktop hover functionality - disabled on mobile to prevent conflicts */
+@media (min-width: 769px) {
+    .dropdown:hover .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    
+    .main-header .dropdown:hover .dropdown-menu {
+        display: block;
+    }
+    
+    .universal-header .dropdown:hover .dropdown-menu {
+        display: block;
+    }
+}
+
 /* Mobile Menu Toggle */
 .mobile-menu-toggle {
     display: none;
@@ -1059,7 +1076,6 @@ footer {
         backdrop-filter: blur(5px);
     }
     
-    .main-header .dropdown:hover .dropdown-menu,
     .main-header .dropdown.active .dropdown-menu {
         display: block;
     }
@@ -1186,7 +1202,6 @@ footer {
         backdrop-filter: blur(5px);
     }
     
-    .universal-header .dropdown:hover .dropdown-menu,
     .universal-header .dropdown.active .dropdown-menu {
         display: block;
     }
