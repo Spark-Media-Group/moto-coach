@@ -1064,7 +1064,8 @@ footer {
         transition: transform 0.3s ease;
         padding: 2rem;
         z-index: 999;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     
     .main-header .nav-links.active {
@@ -1193,7 +1194,8 @@ footer {
         transition: transform 0.3s ease;
         padding: 2rem;
         z-index: 999;
-        overflow: hidden;
+        overflow-y: auto;
+        overflow-x: hidden;
     }
     
     .universal-header .nav-links.active {

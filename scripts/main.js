@@ -395,6 +395,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Special handling for "Home" link - scroll to top
+    const homeLinks = document.querySelectorAll('.nav-links a[href="#home"]');
+    
+    homeLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Scroll to the very top of the page
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    });
+    
     // Navbar background on scroll with About Us detection
     const navbar = document.querySelector('.navbar');
     const aboutSection = document.querySelector('#about');
