@@ -972,12 +972,12 @@ footer {
         background: rgba(0, 0, 0, 0.98);
         backdrop-filter: blur(15px);
         flex-direction: column;
-        justify-content: center;
-        align-items: center;
+        justify-content: flex-start;
+        align-items: flex-start;
         gap: 2rem;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
-        padding: 0;
+        padding: 2rem;
         z-index: 999;
         overflow: hidden;
     }
@@ -988,7 +988,7 @@ footer {
     
     .main-header .nav-links li {
         width: auto;
-        text-align: center;
+        text-align: left;
         border-bottom: none;
         padding: 0;
         margin: 0;
@@ -1003,7 +1003,7 @@ footer {
         padding: 1rem 2rem;
         font-size: clamp(1.2rem, 4vw, 1.8rem);
         font-weight: 600;
-        text-align: center;
+        text-align: left; /* Left align menu items */
         color: white;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -1018,22 +1018,29 @@ footer {
     }
     
     .main-header .dropdown-toggle {
-        display: block;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         padding: 1rem 2rem;
         font-size: clamp(1.2rem, 4vw, 1.8rem);
         font-weight: 600;
-        text-align: center;
         color: white;
         cursor: pointer;
         border-radius: 8px;
         margin: 0.5rem 0;
         transition: all 0.3s ease;
+        width: 100%;
     }
     
-    .main-header .dropdown-toggle:hover {
-        background: rgba(255, 107, 53, 0.2);
-        color: #ff6b35;
-        transform: scale(1.05);
+    .main-header .dropdown-arrow {
+        transition: transform 0.3s ease;
+        display: flex;
+        align-items: center;
+        margin-left: auto;
+    }
+    
+    .main-header .dropdown.active .dropdown-arrow {
+        transform: rotate(180deg);
     }
     
     .main-header .dropdown-menu {
@@ -1061,7 +1068,7 @@ footer {
         font-size: clamp(1rem, 3vw, 1.4rem);
         color: #e0e0e0;
         padding: 0.75rem 1rem;
-        text-align: center;
+        text-align: left; /* Left align dropdown menu items */
         display: block;
         border-radius: 6px;
         margin: 0.25rem 1rem;
@@ -1092,12 +1099,12 @@ footer {
         background: rgba(0, 0, 0, 0.98);
         backdrop-filter: blur(15px);
         flex-direction: column;
-        justify-content: center;
-        align-items: center;
+        justify-content: flex-start;
+        align-items: flex-start;
         gap: 2rem;
         transform: translateX(-100%);
         transition: transform 0.3s ease;
-        padding: 0;
+        padding: 2rem;
         z-index: 999;
         overflow: hidden;
     }
@@ -1108,7 +1115,7 @@ footer {
     
     .universal-header .nav-links li {
         width: auto;
-        text-align: center;
+        text-align: left;
         border-bottom: none;
         padding: 0;
         margin: 0;
@@ -1123,7 +1130,7 @@ footer {
         padding: 1rem 2rem;
         font-size: clamp(1.2rem, 4vw, 1.8rem);
         font-weight: 600;
-        text-align: center;
+        text-align: left; /* Left align menu items */
         color: white;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -1138,22 +1145,29 @@ footer {
     }
     
     .universal-header .dropdown-toggle {
-        display: block;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         padding: 1rem 2rem;
         font-size: clamp(1.2rem, 4vw, 1.8rem);
         font-weight: 600;
-        text-align: center;
         color: white;
         cursor: pointer;
         border-radius: 8px;
         margin: 0.5rem 0;
         transition: all 0.3s ease;
+        width: 100%;
     }
     
-    .universal-header .dropdown-toggle:hover {
-        background: rgba(255, 107, 53, 0.2);
-        color: #ff6b35;
-        transform: scale(1.05);
+    .universal-header .dropdown-arrow {
+        transition: transform 0.3s ease;
+        display: flex;
+        align-items: center;
+        margin-left: auto;
+    }
+    
+    .universal-header .dropdown.active .dropdown-arrow {
+        transform: rotate(180deg);
     }
     
     .universal-header .dropdown-menu {
@@ -3194,11 +3208,127 @@ footer {
 }
 
 /* Professional Coaching Page Styles */
+
+/* Mobile coaching content section - hidden on desktop */
+.mobile-coaching-content {
+    display: none; /* Hidden by default on all screen sizes */
+}
+
 .coaching-hero-section {
     background: #0a0a0af6;
     padding: clamp(40px, 8vw, 120px) clamp(1rem, 4vw, 2rem);
     position: relative;
     overflow: hidden;
+}
+
+/* Mobile-only Full Screen Hero Slideshow */
+.mobile-hero-slideshow {
+    display: none; /* Hidden by default on desktop */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+.mobile-hero-slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 2s ease-in-out;
+}
+
+.mobile-hero-slide.active {
+    opacity: 1;
+}
+
+.mobile-hero-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    filter: brightness(0.7) contrast(1.1);
+}
+
+.mobile-hero-slide::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.4));
+    z-index: 1;
+}
+
+.mobile-hero-content {
+    display: none; /* Hidden by default on desktop */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    z-index: 10; /* Higher z-index to ensure it's above everything */
+    width: 90%;
+}
+
+.mobile-hero-content h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(2rem, 8vw, 3rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.mobile-hero-content p {
+    font-size: clamp(1rem, 4vw, 1.3rem);
+    font-weight: 400;
+    color: #ff6b35;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 3rem;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.scroll-down-btn {
+    background: rgba(255, 107, 53, 0.9);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    animation: bounce 2s infinite;
+    margin: 0 auto; /* Center the button horizontally */
+}
+
+.scroll-down-btn:hover {
+    background: rgba(255, 107, 53, 1);
+    border-color: rgba(255, 255, 255, 0.6);
+    transform: scale(1.1);
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
 }
 
 .coaching-container {
@@ -3711,67 +3841,124 @@ footer {
 }
 
 @media (max-width: 768px) {
+    /* Show mobile slideshow and content on mobile */
+    .mobile-hero-slideshow {
+        display: block;
+    }
+    
+    .mobile-hero-content {
+        display: block;
+    }
+    
+    /* Make coaching hero section full height on mobile and position it as first viewport */
     .coaching-hero-section {
-        padding: clamp(20px, 6vw, 40px) clamp(0.8rem, 3vw, 1.5rem);
-    }
-    
-    .coaching-container {
-        grid-template-columns: 1fr;
-        gap: clamp(1rem, 4vw, 2rem);
-    }
-    
-    .coaching-content-side {
-        text-align: center;
-        order: 2;
-        padding: clamp(0.5rem, 2vw, 1rem) 0;
-    }
-    
-    .coaching-images-side {
-        order: 1;
+        height: 100vh;
+        padding: 0;
         margin-top: 0;
-    }
-    
-    .coaching-image-main {
-        height: clamp(300px, 50vw, 400px);
-    }
-    
-    .coaching-image-overlay {
-        background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
-        padding: clamp(20px, 5vw, 30px) clamp(15px, 4vw, 25px) clamp(15px, 4vw, 20px);
-    }
-    
-    .coaching-slide img {
-        filter: brightness(1.05) contrast(1.15);
-    }
-    
-    .coaching-credentials {
-        grid-template-columns: repeat(3, 1fr);
-        gap: clamp(0.6rem, 2vw, 1rem);
-        margin-top: clamp(0.8rem, 2vw, 1.5rem);
-    }
-    
-    .coaching-credentials .credential-badge {
-        padding: clamp(0.6rem, 2vw, 1rem);
-        aspect-ratio: 1.4;
+        position: relative;
+        background: transparent;
         display: flex;
         align-items: center;
         justify-content: center;
     }
     
-    .coaching-credentials .badge-text {
+    /* Hide desktop coaching content on mobile */
+    .coaching-container {
+        display: none;
+    }
+    
+    /* Mobile coaching content section - shown only on mobile */
+    .mobile-coaching-content {
+        display: block !important; /* Force display on mobile */
+        background: #1a1a1a; /* Dark background */
+        padding: clamp(30px, 8vw, 60px) clamp(1rem, 4vw, 2rem);
+    }
+    
+    .mobile-content-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .mobile-coaching-info {
         text-align: center;
-        width: 100%;
     }
     
-    .coaching-credentials .badge-title {
-        font-size: clamp(0.7rem, 2.5vw, 1rem);
-        line-height: 1.1;
-        margin-bottom: clamp(0.1rem, 0.5vw, 0.2rem);
+    .mobile-coaching-info h2 {
+        font-family: 'Oswald', sans-serif;
+        font-size: clamp(2rem, 6vw, 3rem);
+        color: #ffffff; /* White text for dark background */
+        margin-bottom: clamp(1rem, 3vw, 2rem);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: 600;
     }
     
-    .coaching-credentials .badge-desc {
-        font-size: clamp(0.5rem, 2vw, 0.8rem);
-        line-height: 1.1;
+    .mobile-coaching-subtitle p {
+        font-size: clamp(1rem, 3vw, 1.3rem);
+        color: #ff6b35;
+        font-weight: 600;
+        margin-bottom: clamp(1.5rem, 4vw, 2.5rem);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .mobile-coaching-description p {
+        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+        line-height: 1.7;
+        color: #e8e8e8; /* Light gray text for readability */
+        margin-bottom: clamp(1rem, 3vw, 1.5rem);
+        text-align: left;
+    }
+    
+    .mobile-coaching-credentials {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: clamp(0.8rem, 3vw, 1.5rem);
+        margin-top: clamp(2rem, 5vw, 3rem);
+    }
+    
+    .mobile-credential-badge {
+        background: rgba(255, 107, 53, 0.15); /* Darker orange background */
+        border: 2px solid rgba(255, 107, 53, 0.3);
+        border-radius: 15px;
+        padding: clamp(1rem, 3vw, 1.5rem);
+        text-align: center;
+        transition: transform 0.3s ease, border-color 0.3s ease, background 0.3s ease;
+    }
+    
+    .mobile-credential-badge:hover {
+        transform: translateY(-5px);
+        border-color: rgba(255, 107, 53, 0.6);
+        background: rgba(255, 107, 53, 0.25);
+    }
+    
+    .mobile-badge-title {
+        display: block;
+        font-size: clamp(0.9rem, 3vw, 1.2rem);
+        color: #ffffff; /* White text */
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: clamp(0.2rem, 1vw, 0.5rem);
+    }
+    
+    .mobile-badge-desc {
+        display: block;
+        font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+        color: #ff6b35;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .coaching-content-side {
+        text-align: center;
+        order: 1; /* Show content first */
+        padding: clamp(0.5rem, 2vw, 1rem) 0;
+    }
+    
+    .coaching-images-side {
+        display: none; /* Hide the desktop image slideshow on mobile */
     }
     
     .works-container {
@@ -3794,7 +3981,7 @@ footer {
     }
     
     .works-image {
-        height: clamp(200px, 30vw, 300px);
+        display: none; /* Hide the works image on mobile */
     }
     
     .cert-benefits {
@@ -3821,6 +4008,7 @@ footer {
     .coaching-cta-section {
         padding: clamp(20px, 6vw, 40px) clamp(0.8rem, 3vw, 1.5rem);
     }
+}
 }
 
 /* Extra small screens */
@@ -3969,7 +4157,14 @@ footer {
     }
     
     .coaching-hero-section {
-        padding: clamp(10px, 4vw, 20px) clamp(0.5rem, 2vw, 0.8rem);
+        height: 100vh;
+        padding: 0;
+        margin-top: 0;
+        position: relative;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .coaching-content-side h1 {

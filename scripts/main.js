@@ -26,6 +26,11 @@ let currentUSSlideIndex = 0;
 const usSlides = document.querySelectorAll('.us-travel-slide');
 let usSlideInterval;
 
+// Mobile coaching hero slideshow variables
+let currentMobileHeroSlideIndex = 0;
+const mobileHeroSlides = document.querySelectorAll('.mobile-hero-slide');
+let mobileHeroSlideInterval;
+
 // Slideshow functions
 function showSlide(index) {
     // Hide all slides
@@ -98,6 +103,30 @@ function startUSSlideshow() {
     }, 5000); // Change US travel slide every 5 seconds
 }
 
+// Mobile coaching hero slideshow functions
+function showMobileHeroSlide(index) {
+    // Hide all mobile hero slides
+    mobileHeroSlides.forEach(slide => {
+        slide.classList.remove('active');
+    });
+    
+    // Show current mobile hero slide
+    if (mobileHeroSlides[index]) {
+        mobileHeroSlides[index].classList.add('active');
+    }
+}
+
+function nextMobileHeroSlide() {
+    currentMobileHeroSlideIndex = (currentMobileHeroSlideIndex + 1) % mobileHeroSlides.length;
+    showMobileHeroSlide(currentMobileHeroSlideIndex);
+}
+
+function startMobileHeroSlideshow() {
+    mobileHeroSlideInterval = setInterval(() => {
+        nextMobileHeroSlide();
+    }, 4000); // Change mobile hero slide every 4 seconds
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Welcome to Moto Coach.');
     
@@ -156,31 +185,77 @@ document.addEventListener('DOMContentLoaded', function() {
         startUSSlideshow(); // Start auto-advance
     }
     
-    // Dropdown menu functionality
+    // Initialize mobile coaching hero slideshow if mobile hero slides exist
+    if (mobileHeroSlides.length > 0) {
+        showMobileHeroSlide(0); // Show first mobile hero slide
+        startMobileHeroSlideshow(); // Start auto-advance
+    }
+    
+    // Mobile coaching hero scroll down button functionality - dedicated function
+    const scrollDownBtn = document.getElementById('scroll-down');
+    if (scrollDownBtn) {
+        scrollDownBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Check if we're on mobile (screen width <= 768px)
+            if (window.innerWidth <= 768) {
+                // On mobile, scroll to the mobile coaching content section
+                const targetSection = document.querySelector('.mobile-coaching-content');
+                if (targetSection) {
+                    // Calculate offset to account for fixed navbar and add some padding
+                    const navbar = document.querySelector('.navbar');
+                    const navbarHeight = navbar ? navbar.offsetHeight : 0;
+                    const extraOffset = 20; // Additional padding to ensure title is visible
+                    
+                    const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - navbarHeight - extraOffset;
+                    
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            } else {
+                // On desktop, scroll to how-it-works section
+                const targetSection = document.querySelector('.how-it-works-section');
+                if (targetSection) {
+                    const navbar = document.querySelector('.navbar');
+                    const navbarHeight = navbar ? navbar.offsetHeight : 0;
+                    const extraOffset = 20;
+                    
+                    const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - navbarHeight - extraOffset;
+                    
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        });
+    }    // Dropdown menu functionality
     const dropdowns = document.querySelectorAll('.dropdown');
     
     dropdowns.forEach(dropdown => {
         const toggle = dropdown.querySelector('.dropdown-toggle');
         const menu = dropdown.querySelector('.dropdown-menu');
         
-        // Handle clicks for mobile/touch devices
-        toggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Check if this dropdown is currently active
-            const isCurrentlyActive = dropdown.classList.contains('active');
-            
-            // Close all dropdowns first
-            dropdowns.forEach(otherDropdown => {
-                otherDropdown.classList.remove('active');
+        if (toggle) {
+            // Handle clicks for mobile/touch devices
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Toggle this specific dropdown
+                dropdown.classList.toggle('active');
+                
+                // Close other dropdowns
+                dropdowns.forEach(otherDropdown => {
+                    if (otherDropdown !== dropdown) {
+                        otherDropdown.classList.remove('active');
+                    }
+                });
             });
-            
-            // If this dropdown wasn't active before, open it
-            if (!isCurrentlyActive) {
-                dropdown.classList.add('active');
-            }
-        });
+        }
         
         // Close dropdown when clicking outside
         document.addEventListener('click', function(e) {
