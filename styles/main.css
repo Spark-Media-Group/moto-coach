@@ -1606,6 +1606,118 @@ footer {
     }
 }
 
+/* Contact Form Styles */
+.contact-form-section {
+    background: #f8f9fa;
+    padding: 4rem 0;
+}
+
+.contact-form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    padding: 3rem;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+
+.form-header h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.form-header p {
+    color: #666;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.75rem;
+    border: 2px solid #e1e5e9;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #ff6b35;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.form-submit {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.btn-large {
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+}
+
+/* Mobile form styles */
+@media (max-width: 768px) {
+    .contact-form-container {
+        padding: 2rem;
+        margin: 0 1rem;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .form-header h2 {
+        font-size: 2rem;
+    }
+    
+    .contact-form {
+        gap: 1rem;
+    }
+}
+
 /* US Travel Program Page Styles */
 .us-travel-hero-combined {
     background: #000;
@@ -3419,6 +3531,13 @@ footer {
     transform: scale(1.1);
 }
 
+/* Remove bounce animation on mobile */
+@media (max-width: 768px) {
+    .scroll-down-btn {
+        animation: none;
+    }
+}
+
 @keyframes bounce {
     0%, 20%, 50%, 80%, 100% {
         transform: translateY(0);
@@ -4339,6 +4458,82 @@ footer {
     .cta-container p {
         font-size: clamp(0.6rem, 3vw, 0.9rem);
         margin-bottom: clamp(0.6rem, 1.5vw, 1.2rem);
+    }
+}
+
+/* Contact Form Messages */
+.form-message {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+    animation: slideInFromTop 0.3s ease-out;
+}
+
+.form-message svg {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.form-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.form-success svg {
+    color: #28a745;
+}
+
+.form-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.form-error svg {
+    color: #dc3545;
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Form loading state */
+.contact-form button[type="submit"]:disabled {
+    cursor: not-allowed;
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+}
+
+.contact-form button[type="submit"]:disabled:hover {
+    background-color: #6c757d !important;
+    border-color: #6c757d !important;
+    transform: none !important;
+}
+
+/* Mobile responsiveness for form messages */
+@media (max-width: 768px) {
+    .form-message {
+        padding: 12px 15px;
+        gap: 10px;
+        font-size: 0.9rem;
+    }
+    
+    .form-message svg {
+        width: 18px;
+        height: 18px;
     }
 }
 

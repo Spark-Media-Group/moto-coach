@@ -238,10 +238,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 // On mobile, scroll to the mobile coaching content section
                 const targetSection = document.querySelector('.mobile-coaching-content');
                 if (targetSection) {
-                    // Calculate offset to account for fixed navbar and add some padding
+                    // Calculate offset to account for fixed navbar and add padding
                     const navbar = document.querySelector('.navbar');
                     const navbarHeight = navbar ? navbar.offsetHeight : 0;
-                    const extraOffset = 20; // Additional padding to ensure title is visible
+                    const extraOffset = 0; // Increased padding to prevent undershooting
                     
                     const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - navbarHeight - extraOffset;
                     
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (targetSection) {
                     const navbar = document.querySelector('.navbar');
                     const navbarHeight = navbar ? navbar.offsetHeight : 0;
-                    const extraOffset = 20;
+                    const extraOffset = 0; // Increased padding to prevent undershooting
                     
                     const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - navbarHeight - extraOffset;
                     
@@ -495,5 +495,125 @@ document.addEventListener('DOMContentLoaded', function() {
     const vacationDetail = document.getElementById('vacation-detail');
     if (vacationDetail) {
         vacationDetail.classList.add('active');
+    }
+    
+    // Contact form handling
+    const contactForm = document.querySelector('.contact-form');
+    if (contactForm) {
+        contactForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.textContent;
+            
+            // Disable submit button and show loading state
+            submitButton.disabled = true;
+            submitButton.textContent = 'Sending...';
+            submitButton.style.opacity = '0.7';
+            
+            // Clear any previous error messages
+            clearFormErrors();
+            
+            // Get form data
+            const formData = new FormData(this);
+            const data = {
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                email: formData.get('email'),
+                phone: formData.get('phone'),
+                subject: formData.get('subject'),
+                message: formData.get('message')
+            };
+            
+            try {
+                const response = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Success - show success message and reset form
+                    showFormSuccess(result.message);
+                    this.reset();
+                } else {
+                    // Error - show error message
+                    showFormError(result.error || 'Something went wrong. Please try again.');
+                }
+            } catch (error) {
+                console.error('Form submission error:', error);
+                showFormError('Network error. Please check your connection and try again.');
+            } finally {
+                // Re-enable submit button
+                submitButton.disabled = false;
+                submitButton.textContent = originalButtonText;
+                submitButton.style.opacity = '1';
+            }
+        });
+    }
+    
+    // Form error and success message functions
+    function showFormError(message) {
+        clearFormMessages();
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'form-message form-error';
+        errorDiv.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>${message}</span>
+        `;
+        
+        const form = document.querySelector('.contact-form');
+        const submitButton = form.querySelector('.form-submit');
+        submitButton.parentNode.insertBefore(errorDiv, submitButton);
+        
+        // Scroll error message into view
+        errorDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    
+    function showFormSuccess(message) {
+        clearFormMessages();
+        
+        const successDiv = document.createElement('div');
+        successDiv.className = 'form-message form-success';
+        successDiv.innerHTML = `
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            <span>${message}</span>
+        `;
+        
+        const form = document.querySelector('.contact-form');
+        const submitButton = form.querySelector('.form-submit');
+        submitButton.parentNode.insertBefore(successDiv, submitButton);
+        
+        // Scroll success message into view
+        successDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Auto-hide success message after 5 seconds
+        setTimeout(() => {
+            successDiv.remove();
+        }, 5000);
+    }
+    
+    function clearFormMessages() {
+        const existingMessages = document.querySelectorAll('.form-message');
+        existingMessages.forEach(msg => msg.remove());
+    }
+    
+    function clearFormErrors() {
+        clearFormMessages();
+        
+        // Remove error styling from form fields
+        const formGroups = document.querySelectorAll('.form-group');
+        formGroups.forEach(group => {
+            group.classList.remove('error');
+        });
     }
 });

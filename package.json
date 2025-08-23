@@ -1,0 +1,16 @@
+{
+  "name": "moto-coach-website",
+  "version": "1.0.0",
+  "description": "Moto Coach Professional Motocross Training Website",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Static site - no build needed'",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "resend": "^3.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
