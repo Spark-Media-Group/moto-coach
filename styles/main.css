@@ -966,28 +966,32 @@ footer {
         top: clamp(50px, 8vw, 70px);
         left: 0;
         right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: calc(100vh - clamp(50px, 8vw, 70px));
         background: rgba(0, 0, 0, 0.98);
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(15px);
         flex-direction: column;
-        gap: 0;
-        width: 100%;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-        padding: 0 clamp(1rem, 3vw, 2rem);
+        justify-content: center;
+        align-items: center;
+        gap: 2rem;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        padding: 0;
         z-index: 999;
+        overflow: hidden;
     }
     
     .main-header .nav-links.active {
-        max-height: 500px;
-        padding: clamp(1rem, 3vw, 2rem);
+        transform: translateX(0);
     }
     
     .main-header .nav-links li {
-        width: 100%;
+        width: auto;
         text-align: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: clamp(0.6rem, 2vw, 1rem) 0;
+        border-bottom: none;
+        padding: 0;
+        margin: 0;
     }
     
     .main-header .nav-links li:last-child {
@@ -996,20 +1000,40 @@ footer {
     
     .main-header .nav-links a {
         display: block;
-        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
-        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-        width: 100%;
+        padding: 1rem 2rem;
+        font-size: clamp(1.2rem, 4vw, 1.8rem);
+        font-weight: 600;
         text-align: center;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+    }
+    
+    .main-header .nav-links a:hover {
+        background: rgba(255, 107, 53, 0.2);
+        color: #ff6b35;
+        transform: scale(1.05);
     }
     
     .main-header .dropdown-toggle {
         display: block;
-        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
-        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-        width: 100%;
+        padding: 1rem 2rem;
+        font-size: clamp(1.2rem, 4vw, 1.8rem);
+        font-weight: 600;
         text-align: center;
         color: white;
         cursor: pointer;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        transition: all 0.3s ease;
+    }
+    
+    .main-header .dropdown-toggle:hover {
+        background: rgba(255, 107, 53, 0.2);
+        color: #ff6b35;
+        transform: scale(1.05);
     }
     
     .main-header .dropdown-menu {
@@ -1019,12 +1043,13 @@ footer {
         transform: none;
         box-shadow: none;
         background: rgba(255, 107, 53, 0.1);
-        margin: clamp(0.3rem, 1vw, 0.5rem) 0;
-        border-radius: 4px;
+        margin: 0.5rem 0;
+        border-radius: 8px;
         display: none;
         border-left: 3px solid #ff6b35;
-        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
+        padding: 1rem 0;
         text-align: center;
+        backdrop-filter: blur(5px);
     }
     
     .main-header .dropdown:hover .dropdown-menu,
@@ -1033,18 +1058,20 @@ footer {
     }
     
     .main-header .dropdown-menu a {
-        font-size: clamp(0.8rem, 2vw, 1rem);
-        color: #ccc;
-        padding: clamp(0.5rem, 1.5vw, 0.75rem) 0;
+        font-size: clamp(1rem, 3vw, 1.4rem);
+        color: #e0e0e0;
+        padding: 0.75rem 1rem;
         text-align: center;
-        width: 100%;
         display: block;
+        border-radius: 6px;
+        margin: 0.25rem 1rem;
+        transition: all 0.3s ease;
     }
     
     .main-header .dropdown-menu a:hover {
         color: #ff6b35;
-        background: rgba(255, 107, 53, 0.1);
-        transition: all 0.3s ease;
+        background: rgba(255, 107, 53, 0.2);
+        transform: scale(1.02);
     }
     
     /* Universal header (other pages) mobile styles */
@@ -1059,28 +1086,32 @@ footer {
         top: clamp(50px, 8vw, 70px);
         left: 0;
         right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: calc(100vh - clamp(50px, 8vw, 70px));
         background: rgba(0, 0, 0, 0.98);
-        backdrop-filter: blur(10px);
+        backdrop-filter: blur(15px);
         flex-direction: column;
-        gap: 0;
-        width: 100%;
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
-        padding: 0 clamp(1rem, 3vw, 2rem);
+        justify-content: center;
+        align-items: center;
+        gap: 2rem;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        padding: 0;
         z-index: 999;
+        overflow: hidden;
     }
     
     .universal-header .nav-links.active {
-        max-height: 500px;
-        padding: clamp(1rem, 3vw, 2rem);
+        transform: translateX(0);
     }
     
     .universal-header .nav-links li {
-        width: 100%;
+        width: auto;
         text-align: center;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        padding: clamp(0.6rem, 2vw, 1rem) 0;
+        border-bottom: none;
+        padding: 0;
+        margin: 0;
     }
     
     .universal-header .nav-links li:last-child {
@@ -1089,20 +1120,40 @@ footer {
     
     .universal-header .nav-links a {
         display: block;
-        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
-        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-        width: 100%;
+        padding: 1rem 2rem;
+        font-size: clamp(1.2rem, 4vw, 1.8rem);
+        font-weight: 600;
         text-align: center;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+    }
+    
+    .universal-header .nav-links a:hover {
+        background: rgba(255, 107, 53, 0.2);
+        color: #ff6b35;
+        transform: scale(1.05);
     }
     
     .universal-header .dropdown-toggle {
         display: block;
-        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
-        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
-        width: 100%;
+        padding: 1rem 2rem;
+        font-size: clamp(1.2rem, 4vw, 1.8rem);
+        font-weight: 600;
         text-align: center;
         color: white;
         cursor: pointer;
+        border-radius: 8px;
+        margin: 0.5rem 0;
+        transition: all 0.3s ease;
+    }
+    
+    .universal-header .dropdown-toggle:hover {
+        background: rgba(255, 107, 53, 0.2);
+        color: #ff6b35;
+        transform: scale(1.05);
     }
     
     .universal-header .dropdown-menu {
@@ -1112,12 +1163,13 @@ footer {
         transform: none;
         box-shadow: none;
         background: rgba(255, 107, 53, 0.1);
-        margin: clamp(0.3rem, 1vw, 0.5rem) 0;
-        border-radius: 4px;
+        margin: 0.5rem 0;
+        border-radius: 8px;
         display: none;
         border-left: 3px solid #ff6b35;
-        padding: clamp(0.3rem, 1vw, 0.5rem) 0;
+        padding: 1rem 0;
         text-align: center;
+        backdrop-filter: blur(5px);
     }
     
     .universal-header .dropdown:hover .dropdown-menu,
@@ -1126,18 +1178,20 @@ footer {
     }
     
     .universal-header .dropdown-menu a {
-        font-size: clamp(0.8rem, 2vw, 1rem);
-        color: #ccc;
-        padding: clamp(0.5rem, 1.5vw, 0.75rem) 0;
+        font-size: clamp(1rem, 3vw, 1.4rem);
+        color: #e0e0e0;
+        padding: 0.75rem 1rem;
         text-align: center;
-        width: 100%;
         display: block;
+        border-radius: 6px;
+        margin: 0.25rem 1rem;
+        transition: all 0.3s ease;
     }
     
     .universal-header .dropdown-menu a:hover {
         color: #ff6b35;
-        background: rgba(255, 107, 53, 0.1);
-        transition: all 0.3s ease;
+        background: rgba(255, 107, 53, 0.2);
+        transform: scale(1.02);
     }
     
     
@@ -1192,8 +1246,18 @@ footer {
     }
     
     .about-stats {
-        grid-template-columns: 1fr;
-        gap: clamp(0.8rem, 2vw, 1.5rem);
+        grid-template-columns: repeat(3, 1fr);
+        gap: clamp(0.5rem, 2vw, 1rem);
+        margin-top: 1.5rem;
+    }
+    
+    .stat-item {
+        padding: clamp(0.8rem, 3vw, 1.2rem);
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
     }
     
     .about-highlight {
@@ -1324,8 +1388,9 @@ footer {
 
 @media (max-width: 768px) {
     .contact-cards-grid {
-        grid-template-columns: 1fr;
-        gap: 2rem;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.5rem;
+        padding: 0 0.5rem;
     }
     
     .contact-hero {
@@ -1333,11 +1398,97 @@ footer {
     }
     
     .contact-cards-section {
-        padding: 60px 1rem;
+        padding: 40px 0.5rem;
     }
     
     .contact-card {
-        padding: 2rem;
+        padding: 0.8rem 0.4rem;
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .contact-icon-box {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 0.6rem auto;
+    }
+    
+    .contact-icon-box svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .contact-card h3 {
+        font-size: 0.8rem;
+        margin-bottom: 0.3rem;
+        line-height: 1.1;
+    }
+    
+    .contact-card p {
+        font-size: 0.65rem;
+        margin-bottom: 0.6rem;
+        line-height: 1.1;
+    }
+    
+    .contact-link, .contact-location {
+        font-size: 0.7rem;
+        line-height: 1.1;
+        text-align: center;
+        word-break: break-word;
+    }
+}
+
+/* Very small mobile contact cards */
+@media (max-width: 480px) {
+    .contact-cards-grid {
+        gap: 0.3rem;
+        padding: 0 0.3rem;
+    }
+    
+    .contact-cards-section {
+        padding: 30px 0.3rem;
+    }
+    
+    .contact-card {
+        padding: 0.6rem 0.3rem;
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .contact-icon-box {
+        width: 32px;
+        height: 32px;
+        margin: 0 auto 0.4rem auto;
+    }
+    
+    .contact-icon-box svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .contact-card h3 {
+        font-size: 0.7rem;
+        margin-bottom: 0.2rem;
+        line-height: 1;
+    }
+    
+    .contact-card p {
+        font-size: 0.55rem;
+        margin-bottom: 0.4rem;
+        line-height: 1;
+    }
+    
+    .contact-link, .contact-location {
+        font-size: 0.6rem;
+        line-height: 1;
+        text-align: center;
+        word-break: break-word;
     }
 }
 
@@ -3505,6 +3656,10 @@ footer {
     
     .coaching-credentials .credential-badge {
         padding: 1.2rem;
+        aspect-ratio: 1.3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .coaching-credentials .badge-title {
@@ -3540,6 +3695,10 @@ footer {
     
     .coaching-credentials .credential-badge {
         padding: 1rem;
+        aspect-ratio: 1.2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
     
     .coaching-credentials .badge-title {
@@ -3573,17 +3732,46 @@ footer {
     }
     
     .coaching-image-main {
-        height: clamp(200px, 35vw, 300px);
+        height: clamp(300px, 50vw, 400px);
+    }
+    
+    .coaching-image-overlay {
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.65));
+        padding: clamp(20px, 5vw, 30px) clamp(15px, 4vw, 25px) clamp(15px, 4vw, 20px);
+    }
+    
+    .coaching-slide img {
+        filter: brightness(1.05) contrast(1.15);
     }
     
     .coaching-credentials {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, 1fr);
         gap: clamp(0.6rem, 2vw, 1rem);
         margin-top: clamp(0.8rem, 2vw, 1.5rem);
     }
     
     .coaching-credentials .credential-badge {
         padding: clamp(0.6rem, 2vw, 1rem);
+        aspect-ratio: 1.4;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .coaching-credentials .badge-text {
+        text-align: center;
+        width: 100%;
+    }
+    
+    .coaching-credentials .badge-title {
+        font-size: clamp(0.7rem, 2.5vw, 1rem);
+        line-height: 1.1;
+        margin-bottom: clamp(0.1rem, 0.5vw, 0.2rem);
+    }
+    
+    .coaching-credentials .badge-desc {
+        font-size: clamp(0.5rem, 2vw, 0.8rem);
+        line-height: 1.1;
     }
     
     .works-container {
@@ -3802,8 +3990,27 @@ footer {
     }
     
     .coaching-image-main {
-        height: clamp(120px, 30vw, 180px);
+        height: clamp(250px, 45vw, 350px);
         border-radius: 6px;
+    }
+    
+    .coaching-image-overlay {
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+        padding: clamp(15px, 4vw, 25px) clamp(10px, 3vw, 20px) clamp(10px, 3vw, 15px);
+    }
+    
+    .coaching-image-overlay h3 {
+        font-size: clamp(0.9rem, 4vw, 1.2rem);
+        margin-bottom: clamp(0.2rem, 1vw, 0.4rem);
+    }
+    
+    .coaching-image-overlay p {
+        font-size: clamp(0.7rem, 3vw, 0.9rem);
+    }
+    
+    .coaching-slide img {
+        filter: brightness(1.1) contrast(1.2);
+        object-position: center center;
     }
     
     .works-content-side h2,
