@@ -1557,57 +1557,6 @@ footer {
     }
 }
 
-/* Very small mobile contact cards */
-@media (max-width: 480px) {
-    .contact-cards-grid {
-        gap: 0.3rem;
-        padding: 0 0.3rem;
-    }
-    
-    .contact-cards-section {
-        padding: 30px 0.3rem;
-    }
-    
-    .contact-card {
-        padding: 0.6rem 0.3rem;
-        aspect-ratio: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-    }
-    
-    .contact-icon-box {
-        width: 32px;
-        height: 32px;
-        margin: 0 auto 0.4rem auto;
-    }
-    
-    .contact-icon-box svg {
-        width: 16px;
-        height: 16px;
-    }
-    
-    .contact-card h3 {
-        font-size: 0.7rem;
-        margin-bottom: 0.2rem;
-        line-height: 1;
-    }
-    
-    .contact-card p {
-        font-size: 0.55rem;
-        margin-bottom: 0.4rem;
-        line-height: 1;
-    }
-    
-    .contact-link, .contact-location {
-        font-size: 0.6rem;
-        line-height: 1;
-        text-align: center;
-        word-break: break-word;
-    }
-}
-
 /* Contact Form Styles */
 .contact-form-section {
     background: #2a2a2a;
