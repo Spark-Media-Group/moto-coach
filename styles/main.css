@@ -2992,6 +2992,16 @@ footer {
     font-size: 0.8rem;
 }
 
+/* Mobile-specific fix to prevent emoji conversion on iPhone */
+@media (max-width: 992px) {
+    .styled-list li::before {
+        content: "›";
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+}
+
 .package-note {
     margin-top: 1.5rem;
     padding: 1rem;
