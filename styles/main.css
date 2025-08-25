@@ -1446,6 +1446,8 @@ footer {
     max-width: 900px;
     max-height: 900px;
     margin: 0 auto;
+    justify-content: center;
+    align-items: center;
 }
 
 .contact-card {
@@ -4235,7 +4237,6 @@ footer {
         padding: clamp(20px, 6vw, 40px) clamp(0.8rem, 3vw, 1.5rem);
     }
 }
-}
 
 /* Extra small screens */
 @media (max-width: 480px) {
@@ -4853,6 +4854,33 @@ footer {
         display: block;
         width: 100%;
         margin-top: 0.3rem;
+    }
+}
+
+/* Mobile-only paragraph center alignment */
+@media (max-width: 768px) {
+    p {
+        text-align: center !important;
+    }
+    
+    /* Center the US training camp heading and apply button on mobile */
+    .detail-info h3 {
+        text-align: center !important;
+    }
+    
+    .top-apply-cta {
+        text-align: center !important;
+    }
+    
+    /* Keep facility features left-aligned on mobile */
+    .facility-feature h6,
+    .facility-feature p {
+        text-align: left !important;
+    }
+    
+    /* Keep additional information section left-aligned on mobile */
+    .info-item p {
+        text-align: left !important;
     }
 }
 
