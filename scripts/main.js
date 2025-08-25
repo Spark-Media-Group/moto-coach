@@ -617,3 +617,107 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Application form supporter functions
+function toggleSupporterDetails() {
+    const bringingSupporter = document.getElementById('bringingSupporter');
+    const supporterCountGroup = document.getElementById('supporterCountGroup');
+    const supporterForms = document.getElementById('supporterForms');
+    
+    if (bringingSupporter.value === 'yes') {
+        supporterCountGroup.style.display = 'block';
+        supporterCountGroup.querySelector('select').required = true;
+    } else {
+        supporterCountGroup.style.display = 'none';
+        supporterCountGroup.querySelector('select').required = false;
+        supporterForms.innerHTML = '';
+    }
+}
+
+function generateSupporterForms() {
+    const supporterCount = document.getElementById('supporterCount').value;
+    const supporterForms = document.getElementById('supporterForms');
+    
+    // Clear existing forms
+    supporterForms.innerHTML = '';
+    
+    if (supporterCount && parseInt(supporterCount) > 0) {
+        for (let i = 1; i <= parseInt(supporterCount); i++) {
+            const supporterForm = document.createElement('div');
+            supporterForm.className = 'supporter-form-section';
+            supporterForm.innerHTML = `
+                <div class="form-section-header">
+                    <h3>Supporter ${i} Information</h3>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="supporter${i}FirstName">Supporter ${i} First Name *</label>
+                        <input type="text" id="supporter${i}FirstName" name="supporter${i}FirstName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="supporter${i}LastName">Supporter ${i} Last Name *</label>
+                        <input type="text" id="supporter${i}LastName" name="supporter${i}LastName" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="supporter${i}DateOfBirth">Supporter ${i} Date of Birth *</label>
+                        <input type="date" id="supporter${i}DateOfBirth" name="supporter${i}DateOfBirth" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="supporter${i}Email">Supporter ${i} Email Address *</label>
+                        <input type="email" id="supporter${i}Email" name="supporter${i}Email" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="supporter${i}PassportPicture">Supporter ${i} Passport Picture *</label>
+                        <div class="file-upload-wrapper" onclick="document.getElementById('supporter${i}PassportPicture').click()">
+                            <span class="file-upload-text">Click to upload</span>
+                        </div>
+                        <input type="file" id="supporter${i}PassportPicture" name="supporter${i}PassportPicture" accept="image/*" required onchange="updateFileUploadText(this)">
+                    </div>
+                    <div class="form-group">
+                        <label for="supporter${i}PassportNumber">Supporter ${i} Passport Number *</label>
+                        <input type="text" id="supporter${i}PassportNumber" name="supporter${i}PassportNumber" required>
+                    </div>
+                </div>
+            `;
+            supporterForms.appendChild(supporterForm);
+        }
+    }
+}
+
+// File upload text update function
+function updateFileUploadText(input) {
+    const wrapper = input.previousElementSibling;
+    const textSpan = wrapper.querySelector('.file-upload-text');
+    
+    if (input.files && input.files[0]) {
+        textSpan.textContent = input.files[0].name;
+        wrapper.classList.add('has-file');
+    } else {
+        textSpan.textContent = 'Click to upload';
+        wrapper.classList.remove('has-file');
+    }
+}
+
+// Track reservation cost calculation function
+function calculateTotalCost() {
+    const numberOfRiders = document.getElementById('numberOfRiders');
+    const totalCostDisplay = document.getElementById('totalCost');
+    
+    if (numberOfRiders && totalCostDisplay) {
+        const riderCount = parseInt(numberOfRiders.value);
+        
+        if (riderCount && riderCount >= 10 && riderCount <= 20) {
+            const costPerRider = 450; // AUD per rider for 3 hours
+            const totalCost = riderCount * costPerRider;
+            totalCostDisplay.textContent = `$${totalCost.toLocaleString()} AUD`;
+            totalCostDisplay.classList.add('calculated');
+        } else {
+            totalCostDisplay.textContent = 'Select number of riders to calculate';
+            totalCostDisplay.classList.remove('calculated');
+        }
+    }
+}

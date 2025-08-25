@@ -1372,6 +1372,13 @@ footer {
         flex-direction: column;
         justify-content: center;
         align-items: center;
+        text-align: center;
+    }
+    
+    .stat-number,
+    .stat-label {
+        text-align: center;
+        width: 100%;
     }
     
     .about-highlight {
@@ -1435,20 +1442,22 @@ footer {
 .contact-cards-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 2rem;
-    max-width: 1200px;
+    gap: 1.5rem;
+    max-width: 900px;
+    max-height: 900px;
     margin: 0 auto;
 }
 
 .contact-card {
     background: #2a2a2a;
     border-radius: 8px;
-    padding: 2.5rem;
+    padding: 2rem;
     text-align: center;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
     border-left: 4px solid #ff6b35;
     transition: all 0.3s ease;
     position: relative;
+    aspect-ratio: 1;
 }
 
 .contact-icon-box {
@@ -1564,12 +1573,13 @@ footer {
 }
 
 .contact-form-container {
-    max-width: 800px;
+    max-width: 900px;
     margin: 0 auto;
-    background: #1a1a1a;
-    padding: 3rem;
-    border-radius: 10px;
-    border: 2px solid #ff6600;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 40px;
+    backdrop-filter: blur(10px);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
@@ -1620,23 +1630,32 @@ footer {
 .form-group select,
 .form-group textarea {
     padding: 0.75rem;
-    border: 2px solid #ff6600;
+    border: 2px solid rgba(255, 102, 0, 0.3);
     border-radius: 5px;
     font-size: 1rem;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
     font-family: inherit;
-    background: #1a1a1a;
+    background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
 }
 
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    border-color: #ff6600;
+    box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
+    background: rgba(255, 255, 255, 0.15);
+    outline: none;
+}
+
 .form-group select option {
-    background: white;
-    color: #333;
+    background: #333;
+    color: white;
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-    color: #999999;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .form-group input:focus,
@@ -1687,12 +1706,13 @@ footer {
 .us-travel-hero-combined {
     background: #000;
     color: white;
-    padding: 80px 2rem 60px;
     position: relative;
     overflow: hidden;
     height: 100vh;
     display: flex;
     align-items: center;
+    justify-content: center;
+    text-align: center;
 }
 
 .us-travel-hero-combined::before {
@@ -1765,11 +1785,14 @@ footer {
     align-items: center;
     justify-content: center;
     height: 100%;
+    padding: 0 clamp(1rem, 4vw, 2rem);
 }
 
 .us-travel-hero-combined .hero-content {
     text-align: center;
-    margin-bottom: 2.5rem;
+    max-width: 800px;
+    position: relative;
+    z-index: 2;
 }
 
 .us-travel-hero-combined .hero-content h1 {
@@ -1792,9 +1815,7 @@ footer {
 }
 
 .us-travel-hero-combined .overview-cta {
-    margin-top: auto;
-    margin-bottom: 60px;
-    padding-top: 80px;
+    margin-top: 2rem;
     z-index: 4;
     position: relative;
 }
@@ -2393,6 +2414,12 @@ footer {
     border-color: #ff6b35;
     transform: translateY(-2px);
     box-shadow: 0 10px 25px rgba(255,107,53,0.3);
+}
+
+/* Top apply button styling */
+.top-apply-cta {
+    margin: 1.5rem 0;
+    text-align: left;
 }
 
 .btn-large {
@@ -4006,6 +4033,11 @@ footer {
         padding: clamp(40px, 8vw, 80px) 1.5rem;
     }
     
+    /* Add more space from header on small monitors */
+    .us-travel-hero-combined {
+        padding-top: 120px;
+    }
+    
     .works-image {
         height: 650px;
     }
@@ -4529,6 +4561,298 @@ footer {
     .form-message svg {
         width: 18px;
         height: 18px;
+    }
+}
+
+/* Apply Page Styles */
+.apply-page {
+    background-color: #1a1a1a;
+    color: white;
+    min-height: 100vh;
+}
+
+.apply-container {
+    background-color: #1a1a1a;
+    min-height: 100vh;
+    padding-top: 120px;
+}
+
+.back-button-center {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.back-btn-simple {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #ff6600;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.back-btn-simple:hover {
+    background: #e55a00;
+    color: white;
+    text-decoration: none;
+    transform: translateX(-3px);
+}
+
+.back-btn-simple svg {
+    transition: transform 0.3s ease;
+}
+
+.back-btn-simple:hover svg {
+    transform: translateX(-2px);
+}
+
+.application-header {
+    text-align: center;
+    margin-bottom: 60px;
+    padding-top: 60px;
+}
+
+.application-header h1 {
+    color: white;
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+}
+
+.application-subtitle {
+    color: #ccc;
+    font-size: clamp(1rem, 2.5vw, 1.3rem);
+    max-width: 700px;
+    margin: 0 auto;
+    line-height: 1.6;
+}
+
+/* Application form container styling for apply page */
+.apply-page .contact-form-container {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 40px;
+    max-width: 900px;
+    margin: 0 auto;
+    backdrop-filter: blur(10px);
+}
+
+.apply-page .form-header h2 {
+    color: white;
+    font-family: 'Oswald', sans-serif;
+    margin-bottom: 1rem;
+}
+
+.apply-page .form-header p {
+    color: #ccc;
+    margin-bottom: 2rem;
+}
+
+/* Application form specific styling */
+.application-form .form-group label {
+    color: white !important;
+}
+
+.application-form .form-group input,
+.application-form .form-group select,
+.application-form .form-group textarea {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 102, 0, 0.3) !important;
+    color: white !important;
+}
+
+.application-form .form-group input::placeholder,
+.application-form .form-group textarea::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.application-form .form-group input:focus,
+.application-form .form-group select:focus,
+.application-form .form-group textarea:focus {
+    border-color: #ff6600 !important;
+    box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1) !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Application form section headers */
+.form-section-header {
+    margin: 2rem 0 1.5rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid rgba(255, 102, 0, 0.3);
+}
+
+.form-section-header h3 {
+    color: #ff6600 !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Supporter form sections */
+.supporter-form-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 102, 0, 0.2);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.supporter-form-section .form-section-header {
+    margin-top: 0;
+}
+
+/* File input styling for apply page */
+.application-form input[type="file"] {
+    display: none;
+}
+
+.application-form .file-upload-wrapper {
+    position: relative;
+    display: block;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 102, 0, 0.3) !important;
+    color: white !important;
+    padding: 0.75rem !important;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.application-form .file-upload-wrapper:hover {
+    border-color: #ff6600 !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.application-form .file-upload-wrapper.has-file {
+    color: #ff6600 !important;
+    border-color: #ff6600 !important;
+}
+
+.application-form .file-upload-text {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.application-form .file-upload-wrapper.has-file .file-upload-text {
+    color: #ff6600;
+    font-weight: 500;
+}
+
+/* Apply page footer override */
+.apply-page footer {
+    background: #111 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Cost breakdown styling for track reservation */
+.cost-breakdown {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-top: 10px;
+}
+
+.cost-breakdown p {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.cost-breakdown strong {
+    color: #ff6600;
+}
+
+/* Total cost display styling */
+.total-cost-display {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1rem;
+    min-height: 50px;
+    display: flex;
+    align-items: center;
+    transition: all 0.3s ease;
+    padding: 0.75rem 0;
+}
+
+.total-cost-display.calculated {
+    color: #ff6600;
+    font-weight: 700;
+    font-size: 1.4rem;
+}
+
+/* Mobile responsiveness for apply page */
+@media (max-width: 768px) {
+    .back-btn-simple {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+    
+    .apply-container {
+        padding-top: 100px;
+    }
+    
+    .back-button-center {
+        margin-bottom: 30px;
+    }
+    
+    .apply-page .contact-form-container {
+        padding: 30px 20px;
+        margin: 0 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .back-btn-simple {
+        padding: 8px 12px;
+        font-size: 13px;
+        gap: 6px;
+    }
+    
+    .back-btn-simple svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    /* Extra mobile centering for about stats on small screens */
+    .about-stats {
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    
+    .stat-item {
+        padding: 0.8rem 0.4rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        min-height: 100px;
+    }
+    
+    .stat-number {
+        text-align: center;
+        display: block;
+        width: 100%;
+        line-height: 1.1;
+    }
+    
+    .stat-label {
+        text-align: center;
+        display: block;
+        width: 100%;
+        margin-top: 0.3rem;
     }
 }
 
