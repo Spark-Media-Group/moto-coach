@@ -679,6 +679,11 @@ main {
     font-weight: 600;
 }
 
+/* Hide mobile programs subtitle on desktop */
+.mobile-programs-subtitle {
+    display: none;
+}
+
 .services-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -4872,10 +4877,50 @@ footer {
         text-align: center !important;
     }
     
-    /* Keep facility features left-aligned on mobile */
+    /* Center section headers on mobile */
+    .section-header {
+        text-align: center !important;
+    }
+    
+    /* Center facility features on mobile */
     .facility-feature h6,
     .facility-feature p {
-        text-align: left !important;
+        text-align: center !important;
+    }
+    
+    /* Center package titles and reorganize price layout on mobile */
+    .package-header {
+        text-align: center !important;
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid #333;
+    }
+    
+    .package-title {
+        padding-right: 0 !important;
+        margin-bottom: 1rem !important;
+        text-align: center !important;
+    }
+    
+    .package-price {
+        position: static !important;
+        display: block !important;
+        text-align: center !important;
+        margin-top: 0.5rem !important;
+        font-size: 1.3rem !important;
+    }
+    
+    /* Show mobile programs subtitle on mobile only */
+    .mobile-programs-subtitle {
+        display: block !important;
+        color: #ff6b35 !important;
+        font-size: 1rem !important;
+        font-weight: 500 !important;
+        margin-bottom: 2rem !important;
+        margin-top: -2rem !important;
+        text-align: center !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
     
     /* Keep additional information section left-aligned on mobile */
