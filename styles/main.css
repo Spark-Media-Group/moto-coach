@@ -5035,8 +5035,8 @@ footer {
 
 .calendar-day {
     background: #1a1a1a;
-    padding: 1rem;
-    min-height: 80px;
+    padding: 0.5rem;
+    min-height: 100px;
     border: none;
     color: #fff;
     cursor: pointer;
@@ -5075,13 +5075,11 @@ footer {
 }
 
 .calendar-day.has-events {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
-    border-left: 4px solid #ff6b35;
+    background: #1a1a1a;
 }
 
 .calendar-day.has-events:hover {
-    background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
-    border-left-color: #fff;
+    background: #2a2a2a;
 }
 
 .calendar-day.selected {
@@ -5090,15 +5088,63 @@ footer {
     color: #ff6b35;
 }
 
-.event-indicator {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    width: 8px;
-    height: 8px;
-    background: #ff6b35;
-    border-radius: 50%;
-    opacity: 0.8;
+.day-number {
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    font-size: 0.9rem;
+}
+
+.day-events {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+}
+
+.event-preview {
+    background: rgba(255, 107, 53, 0.8);
+    color: #fff;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.event-preview.event-coaching {
+    background: rgba(255, 107, 53, 0.9);
+}
+
+.event-preview.event-training {
+    background: rgba(46, 125, 50, 0.9);
+}
+
+.event-preview.event-group {
+    background: rgba(25, 118, 210, 0.9);
+}
+
+.event-preview.event-info {
+    background: rgba(156, 39, 176, 0.9);
+}
+
+.event-preview.event-open {
+    background: rgba(255, 152, 0, 0.9);
+}
+
+.event-preview.event-event {
+    background: rgba(96, 125, 139, 0.9);
+}
+
+.more-events {
+    color: #ff6b35;
+    font-size: 0.65rem;
+    font-weight: 600;
+    font-style: italic;
+    margin-top: 2px;
 }
 
 .event-panel {
@@ -5203,9 +5249,23 @@ footer {
     }
     
     .calendar-day {
-        min-height: 60px;
-        padding: 0.5rem;
+        min-height: 80px;
+        padding: 0.3rem;
         font-size: 0.9rem;
+    }
+    
+    .day-number {
+        font-size: 0.8rem;
+        margin-bottom: 0.2rem;
+    }
+    
+    .event-preview {
+        font-size: 0.6rem;
+        padding: 1px 3px;
+    }
+    
+    .more-events {
+        font-size: 0.6rem;
     }
     
     .event-panel {

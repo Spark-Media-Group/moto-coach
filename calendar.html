@@ -316,7 +316,12 @@
             createDayElement(day, isOtherMonth) {
                 const dayElement = document.createElement('div');
                 dayElement.className = 'calendar-day';
-                dayElement.textContent = day;
+                
+                // Create day number
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = day;
+                dayElement.appendChild(dayNumber);
 
                 if (isOtherMonth) {
                     dayElement.classList.add('other-month');
@@ -332,9 +337,33 @@
                     if (dayEvents.length > 0) {
                         dayElement.classList.add('has-events');
                         
-                        const indicator = document.createElement('div');
-                        indicator.className = 'event-indicator';
-                        dayElement.appendChild(indicator);
+                        // Add event previews directly in the calendar day
+                        const eventsContainer = document.createElement('div');
+                        eventsContainer.className = 'day-events';
+                        
+                        // Show up to 3 events in the day box
+                        dayEvents.slice(0, 3).forEach(event => {
+                            const eventPreview = document.createElement('div');
+                            eventPreview.className = `event-preview event-${event.type}`;
+                            
+                            // Show just the title for space efficiency
+                            const eventTitle = event.title.length > 20 
+                                ? event.title.substring(0, 20) + '...' 
+                                : event.title;
+                            
+                            eventPreview.textContent = eventTitle;
+                            eventsContainer.appendChild(eventPreview);
+                        });
+                        
+                        // If more than 3 events, show "and X more"
+                        if (dayEvents.length > 3) {
+                            const moreEvents = document.createElement('div');
+                            moreEvents.className = 'more-events';
+                            moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                            eventsContainer.appendChild(moreEvents);
+                        }
+                        
+                        dayElement.appendChild(eventsContainer);
                     }
 
                     dayElement.addEventListener('click', () => {
