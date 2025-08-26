@@ -2424,6 +2424,20 @@ footer {
     box-shadow: 0 10px 25px rgba(255,107,53,0.3);
 }
 
+.coaching-btn {
+    background: #ff6b35;
+    color: white;
+    border-color: #ff6b35;
+}
+
+.coaching-btn:hover {
+    background: transparent;
+    color: #ff6b35;
+    border-color: #ff6b35;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(255,107,53,0.3);
+}
+
 /* Top apply button styling */
 .top-apply-cta {
     margin: 1.5rem 0;
@@ -5035,7 +5049,7 @@ footer {
 }
 
 .calendar-day {
-    background: #1a1a1a;
+    background: rgba(255, 255, 255, 0.05);
     padding: 0.5rem;
     min-height: 100px;
     border: none;
@@ -5237,6 +5251,36 @@ footer {
     color: #aaa;
     font-size: 0.95rem;
     line-height: 1.4;
+}
+
+.event-register {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+}
+
+.btn-register {
+    display: inline-block;
+    padding: 8px 20px;
+    background: #ff6b35;
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    border: 2px solid #ff6b35;
+}
+
+.btn-register:hover {
+    background: transparent;
+    color: #ff6b35;
+    border-color: #ff6b35;
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(255, 107, 53, 0.3);
 }
 
 .no-events {

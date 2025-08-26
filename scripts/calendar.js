@@ -148,13 +148,28 @@ class MotoCoachCalendar {
                 timeString = 'All Day';
             }
 
+            // Check for registration requirement and clean description
+            let description = event.description || '';
+            let hasRegistration = false;
+            
+            // Case and spacing insensitive regex for "registration = on"
+            const registrationRegex = /registration\s*=\s*on/i;
+            if (registrationRegex.test(description)) {
+                hasRegistration = true;
+                // Remove the registration text from description
+                description = description.replace(registrationRegex, '').trim();
+                // Clean up any extra whitespace or newlines
+                description = description.replace(/\n\s*\n/g, '\n').trim();
+            }
+
             return {
                 date: eventDate,
                 time: timeString,
                 title: event.summary || 'Untitled Event',
-                description: event.description || '',
+                description: description,
                 location: event.location || '',
-                type: this.categorizeEvent(event.summary || '')
+                type: this.categorizeEvent(event.summary || ''),
+                hasRegistration: hasRegistration
             };
         }).filter(event => event.date);
     }
@@ -429,12 +444,19 @@ class MotoCoachCalendar {
         const locationStr = event.location ? `<div class="event-location">📍 ${event.location}</div>` : '';
         const descriptionStr = event.description ? `<div class="event-description">${event.description}</div>` : '';
         
+        // Add register button if event has registration enabled
+        const registerButtonStr = event.hasRegistration ? 
+            `<div class="event-register">
+                <a href="programs/track_reserve.html" class="btn-register">Register</a>
+            </div>` : '';
+        
         return `
             <div class="event-item">
                 <div class="event-time">${dateStr}${event.time}</div>
                 <div class="event-title">${event.title}</div>
                 ${locationStr}
                 ${descriptionStr}
+                ${registerButtonStr}
             </div>
         `;
     }
