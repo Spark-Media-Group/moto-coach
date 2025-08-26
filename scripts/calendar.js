@@ -3,6 +3,8 @@ class MotoCoachCalendar {
         this.currentDate = new Date();
         this.selectedDate = null;
         this.events = [];
+        this.currentWeekStart = null; // For mobile weekly view
+        this.isMobileView = false;
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -11,10 +13,43 @@ class MotoCoachCalendar {
     }
 
     async init() {
+        this.checkViewMode();
         this.bindEvents();
         await this.loadEvents();
         this.renderCalendar();
         this.updateEventPanel();
+        
+        // Add resize listener to switch between desktop/mobile views
+        window.addEventListener('resize', () => {
+            this.checkViewMode();
+            this.renderCalendar();
+        });
+    }
+
+    checkViewMode() {
+        const wasMobile = this.isMobileView;
+        this.isMobileView = window.innerWidth <= 768;
+        
+        // If switching from desktop to mobile, set current week
+        if (!wasMobile && this.isMobileView) {
+            this.setCurrentWeek(this.currentDate);
+        }
+        
+        // Update calendar wrapper class
+        const calendarWrapper = document.querySelector('.calendar-wrapper');
+        if (calendarWrapper) {
+            if (this.isMobileView) {
+                calendarWrapper.classList.add('mobile-week-view');
+            } else {
+                calendarWrapper.classList.remove('mobile-week-view');
+            }
+        }
+    }
+
+    setCurrentWeek(date) {
+        // Set to the start of the week (Sunday)
+        this.currentWeekStart = new Date(date);
+        this.currentWeekStart.setDate(date.getDate() - date.getDay());
     }
 
     bindEvents() {
@@ -22,12 +57,38 @@ class MotoCoachCalendar {
         const nextBtn = document.getElementById('nextMonth');
 
         if (prevBtn) {
-            prevBtn.addEventListener('click', () => this.previousMonth());
+            prevBtn.addEventListener('click', () => {
+                if (this.isMobileView) {
+                    this.previousWeek();
+                } else {
+                    this.previousMonth();
+                }
+            });
         }
         
         if (nextBtn) {
-            nextBtn.addEventListener('click', () => this.nextMonth());
+            nextBtn.addEventListener('click', () => {
+                if (this.isMobileView) {
+                    this.nextWeek();
+                } else {
+                    this.nextMonth();
+                }
+            });
         }
+    }
+
+    async previousWeek() {
+        this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
+        await this.checkAndLoadEvents();
+        this.renderCalendar();
+        this.updateEventPanel();
+    }
+
+    async nextWeek() {
+        this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
+        await this.checkAndLoadEvents();
+        this.renderCalendar();
+        this.updateEventPanel();
     }
 
     async loadEvents() {
@@ -155,6 +216,54 @@ class MotoCoachCalendar {
 
         if (!monthElement || !daysContainer) return;
 
+        if (this.isMobileView) {
+            this.renderWeeklyView(monthElement, daysContainer);
+        } else {
+            this.renderMonthlyView(monthElement, daysContainer);
+        }
+    }
+
+    renderWeeklyView(monthElement, daysContainer) {
+        if (!this.currentWeekStart) {
+            this.setCurrentWeek(this.currentDate);
+        }
+
+        // Create week range display
+        const weekEnd = new Date(this.currentWeekStart);
+        weekEnd.setDate(this.currentWeekStart.getDate() + 6);
+        
+        const startDay = this.currentWeekStart.getDate();
+        const endDay = weekEnd.getDate();
+        
+        // Use abbreviated month names for mobile
+        const monthNamesShort = [
+            'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+        ];
+        
+        const monthName = monthNamesShort[this.currentWeekStart.getMonth()];
+        
+        // Handle cross-month weeks
+        if (this.currentWeekStart.getMonth() !== weekEnd.getMonth()) {
+            const endMonthName = monthNamesShort[weekEnd.getMonth()];
+            monthElement.textContent = `${monthName} ${startDay} - ${endMonthName} ${endDay}`;
+        } else {
+            monthElement.textContent = `${monthName} ${startDay}-${endDay}`;
+        }
+
+        daysContainer.innerHTML = '';
+
+        // Render 7 days of the week
+        for (let i = 0; i < 7; i++) {
+            const currentDay = new Date(this.currentWeekStart);
+            currentDay.setDate(this.currentWeekStart.getDate() + i);
+            
+            const dayElement = this.createDayElement(currentDay.getDate(), false, currentDay);
+            daysContainer.appendChild(dayElement);
+        }
+    }
+
+    renderMonthlyView(monthElement, daysContainer) {
         const monthYear = `${this.monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
         monthElement.textContent = monthYear;
 
@@ -187,7 +296,7 @@ class MotoCoachCalendar {
         }
     }
 
-    createDayElement(day, isOtherMonth) {
+    createDayElement(day, isOtherMonth, fullDate = null) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
         
@@ -201,7 +310,13 @@ class MotoCoachCalendar {
             dayElement.classList.add('other-month');
         } else {
             const today = new Date();
-            const currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
+            let currentDay;
+            
+            if (this.isMobileView && fullDate) {
+                currentDay = fullDate;
+            } else {
+                currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
+            }
             
             if (this.isSameDay(currentDay, today)) {
                 dayElement.classList.add('today');
@@ -215,14 +330,16 @@ class MotoCoachCalendar {
                 const eventsContainer = document.createElement('div');
                 eventsContainer.className = 'day-events';
                 
-                // Show up to 3 events in the day box
-                dayEvents.slice(0, 3).forEach(event => {
+                // Show up to 3 events in the day box (2 for mobile)
+                const maxEvents = this.isMobileView ? 2 : 3;
+                dayEvents.slice(0, maxEvents).forEach(event => {
                     const eventPreview = document.createElement('div');
                     eventPreview.className = `event-preview event-${event.type}`;
                     
                     // Create event content: Event title, then time frame, then location
-                    const eventTitle = event.title.length > 15 
-                        ? event.title.substring(0, 15) + '...' 
+                    const maxTitleLength = this.isMobileView ? 12 : 15;
+                    const eventTitle = event.title.length > maxTitleLength 
+                        ? event.title.substring(0, maxTitleLength) + '...' 
                         : event.title;
                     
                     const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
@@ -232,7 +349,8 @@ class MotoCoachCalendar {
                         <div class="event-time-small">${eventTime}</div>
                     `;
                     
-                    if (event.location) {
+                    // Only show location on desktop to save space on mobile
+                    if (!this.isMobileView && event.location) {
                         const eventLocation = event.location.length > 20 
                             ? event.location.substring(0, 20) + '...' 
                             : event.location;
@@ -243,11 +361,11 @@ class MotoCoachCalendar {
                     eventsContainer.appendChild(eventPreview);
                 });
                 
-                // If more than 3 events, show "and X more"
-                if (dayEvents.length > 3) {
+                // If more events, show "and X more"
+                if (dayEvents.length > maxEvents) {
                     const moreEvents = document.createElement('div');
                     moreEvents.className = 'more-events';
-                    moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                    moreEvents.textContent = `+${dayEvents.length - maxEvents} more`;
                     eventsContainer.appendChild(moreEvents);
                 }
                 
@@ -322,14 +440,41 @@ class MotoCoachCalendar {
     }
 
     getEventsForDate(date) {
-        return this.events.filter(event => this.isSameDay(event.date, date));
+        // Get today's date in Sydney timezone
+        const todaySydney = new Date().toLocaleDateString('en-AU', {
+            timeZone: 'Australia/Sydney',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        const [dayToday, monthToday, yearToday] = todaySydney.split('/');
+        const today = new Date(yearToday, monthToday - 1, dayToday);
+        
+        // Only return events from today onwards
+        return this.events.filter(event => {
+            const isSameDay = this.isSameDay(event.date, date);
+            const isDateTodayOrFuture = date >= today;
+            return isSameDay && isDateTodayOrFuture;
+        });
     }
 
     getEventsForMonth(date) {
-        return this.events.filter(event => 
-            event.date.getMonth() === date.getMonth() && 
-            event.date.getFullYear() === date.getFullYear()
-        ).sort((a, b) => a.date - b.date);
+        // Get today's date in Sydney timezone
+        const todaySydney = new Date().toLocaleDateString('en-AU', {
+            timeZone: 'Australia/Sydney',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        const [dayToday, monthToday, yearToday] = todaySydney.split('/');
+        const today = new Date(yearToday, monthToday - 1, dayToday);
+        
+        return this.events.filter(event => {
+            const isInMonth = event.date.getMonth() === date.getMonth() && 
+                             event.date.getFullYear() === date.getFullYear();
+            const isDateTodayOrFuture = event.date >= today;
+            return isInMonth && isDateTodayOrFuture;
+        }).sort((a, b) => a.date - b.date);
     }
 
     isSameDay(date1, date2) {
