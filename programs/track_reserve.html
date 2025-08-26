@@ -94,6 +94,19 @@
                     <p>Book a spot with Leigh's coaching services.</p>
                 </div>
                 <form class="contact-form application-form" method="POST">
+                    <!-- Session Details -->
+                    <div class="form-section-header">
+                        <h3>Session Details</h3>
+                    </div>
+                    <div class="event-details-display">
+                        <div class="event-title" id="eventDisplay" style="color: white; font-size: 1.2em; font-weight: bold; margin-bottom: 10px;"></div>
+                        <div class="event-time" id="timeDisplay" style="color: white; margin-bottom: 8px;"></div>
+                        <div class="event-location" id="locationDisplay" style="color: white; margin-bottom: 8px;"></div>
+                        <div class="event-description" id="descriptionDisplay" style="color: white; line-height: 1.4;"></div>
+                    </div>
+                    <!-- Hidden input to store event name for form submission -->
+                    <input type="hidden" id="eventName" name="eventName" required>
+
                     <!-- Rider Information -->
                     <div class="form-section-header">
                         <h3>Rider Information</h3>
@@ -195,17 +208,6 @@
                         </div>
                     </div>
 
-                    <!-- Session Details -->
-                    <div class="form-section-header">
-                        <h3>Session Details</h3>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="eventName">Event *</label>
-                            <input type="text" id="eventName" name="eventName" readonly required style="background-color: #f5f5f5; cursor: not-allowed;">
-                        </div>
-                    </div>
-
                     <div class="form-submit">
                         <button type="submit" class="btn-primary btn-large">Submit Reservation Request</button>
                     </div>
@@ -242,11 +244,28 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         }
 
-        // Populate event name from URL parameter when page loads
+        // Populate event details from URL parameters when page loads
         document.addEventListener('DOMContentLoaded', function() {
             const eventName = getUrlParameter('event');
+            const eventTime = getUrlParameter('time');
+            const eventLocation = getUrlParameter('location');
+            const eventDescription = getUrlParameter('description');
+            
             if (eventName) {
+                document.getElementById('eventDisplay').textContent = eventName;
                 document.getElementById('eventName').value = eventName;
+            }
+            
+            if (eventTime) {
+                document.getElementById('timeDisplay').textContent = `🕒 ${eventTime}`;
+            }
+            
+            if (eventLocation) {
+                document.getElementById('locationDisplay').textContent = `📍 ${eventLocation}`;
+            }
+            
+            if (eventDescription) {
+                document.getElementById('descriptionDisplay').textContent = eventDescription;
             }
         });
 
