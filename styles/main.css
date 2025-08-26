@@ -5105,11 +5105,41 @@ footer {
 .event-preview {
     background: rgba(255, 107, 53, 0.8);
     color: #fff;
-    padding: 2px 4px;
+    padding: 3px 5px;
     border-radius: 3px;
     font-size: 0.7rem;
     font-weight: 500;
     line-height: 1.2;
+    margin-bottom: 1px;
+}
+
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 3px;
+}
+
+.event-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+}
+
+.event-time-small {
+    font-size: 0.6rem;
+    font-weight: 400;
+    opacity: 0.9;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.event-location-small {
+    font-size: 0.6rem;
+    opacity: 0.8;
+    margin-top: 1px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -5261,7 +5291,15 @@ footer {
     
     .event-preview {
         font-size: 0.6rem;
-        padding: 1px 3px;
+        padding: 2px 3px;
+    }
+    
+    .event-time-small {
+        font-size: 0.55rem;
+    }
+    
+    .event-location-small {
+        font-size: 0.55rem;
     }
     
     .more-events {

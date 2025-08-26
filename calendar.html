@@ -217,7 +217,7 @@
                         date: eventDate,
                         time: timeString,
                         title: event.summary || 'Untitled Event',
-                        description: event.description || 'No description available',
+                        description: event.description || '',
                         location: event.location || '',
                         type: this.categorizeEvent(event.summary || '')
                     };
@@ -346,12 +346,28 @@
                             const eventPreview = document.createElement('div');
                             eventPreview.className = `event-preview event-${event.type}`;
                             
-                            // Show just the title for space efficiency
-                            const eventTitle = event.title.length > 20 
-                                ? event.title.substring(0, 20) + '...' 
+                            // Create event content with title/time and location
+                            const eventTitle = event.title.length > 15 
+                                ? event.title.substring(0, 15) + '...' 
                                 : event.title;
                             
-                            eventPreview.textContent = eventTitle;
+                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                            
+                            let eventContent = `
+                                <div class="event-header">
+                                    <span class="event-name">${eventTitle}</span>
+                                    <span class="event-time-small">${eventTime}</span>
+                                </div>
+                            `;
+                            
+                            if (event.location) {
+                                const eventLocation = event.location.length > 20 
+                                    ? event.location.substring(0, 20) + '...' 
+                                    : event.location;
+                                eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                            }
+                            
+                            eventPreview.innerHTML = eventContent;
                             eventsContainer.appendChild(eventPreview);
                         });
                         
@@ -421,13 +437,14 @@
             createEventHTML(event, showDate = false) {
                 const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
                 const locationStr = event.location ? `<div class="event-location">📍 ${event.location}</div>` : '';
+                const descriptionStr = event.description ? `<div class="event-description">${event.description}</div>` : '';
                 
                 return `
                     <div class="event-item">
                         <div class="event-time">${dateStr}${event.time}</div>
                         <div class="event-title">${event.title}</div>
                         ${locationStr}
-                        <div class="event-description">${event.description}</div>
+                        ${descriptionStr}
                     </div>
                 `;
             }
