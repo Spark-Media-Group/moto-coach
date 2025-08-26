@@ -1,0 +1,347 @@
+class MotoCoachCalendar {
+    constructor() {
+        this.currentDate = new Date();
+        this.selectedDate = null;
+        this.events = [];
+        this.monthNames = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ];
+        this.init();
+    }
+
+    async init() {
+        this.bindEvents();
+        await this.loadEvents();
+        this.renderCalendar();
+        this.updateEventPanel();
+    }
+
+    bindEvents() {
+        const prevBtn = document.getElementById('prevMonth');
+        const nextBtn = document.getElementById('nextMonth');
+
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => this.previousMonth());
+        }
+        
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => this.nextMonth());
+        }
+    }
+
+    async loadEvents() {
+        try {
+            // Calculate date range (3 months back to 6 months forward)
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 3);
+            const endDate = new Date();
+            endDate.setMonth(endDate.getMonth() + 6);
+
+            const timeMin = startDate.toISOString();
+            const timeMax = endDate.toISOString();
+
+            // Call our Vercel API endpoint
+            const response = await fetch(`/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&maxResults=50`);
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.fallback) {
+                console.log('API returned fallback, no events to display');
+                this.events = [];
+            } else {
+                // Convert Google Calendar events to our format
+                this.events = this.convertGoogleEvents(data.events || []);
+                console.log(`Loaded ${this.events.length} events from Google Calendar`);
+            }
+            
+        } catch (error) {
+            console.error('Error loading calendar events:', error);
+            console.log('No events to display');
+            this.events = [];
+        }
+    }
+
+    convertGoogleEvents(googleEvents) {
+        return googleEvents.map(event => {
+            let eventDate;
+            let timeString = 'All Day';
+
+            if (event.start.dateTime) {
+                eventDate = new Date(event.start.dateTime);
+                const startTime = this.formatTime(eventDate);
+                
+                if (event.end.dateTime) {
+                    const endDate = new Date(event.end.dateTime);
+                    const endTime = this.formatTime(endDate);
+                    timeString = `${startTime} - ${endTime}`;
+                } else {
+                    timeString = startTime;
+                }
+            } else if (event.start.date) {
+                eventDate = new Date(event.start.date);
+                timeString = 'All Day';
+            }
+
+            return {
+                date: eventDate,
+                time: timeString,
+                title: event.summary || 'Untitled Event',
+                description: event.description || '',
+                location: event.location || '',
+                type: this.categorizeEvent(event.summary || '')
+            };
+        }).filter(event => event.date);
+    }
+
+    categorizeEvent(title) {
+        const titleLower = title.toLowerCase();
+        
+        if (titleLower.includes('coaching') || titleLower.includes('lesson')) {
+            return 'coaching';
+        } else if (titleLower.includes('training') || titleLower.includes('practice')) {
+            return 'training';
+        } else if (titleLower.includes('group') || titleLower.includes('session')) {
+            return 'group';
+        } else if (titleLower.includes('info') || titleLower.includes('meeting')) {
+            return 'info';
+        } else if (titleLower.includes('track') || titleLower.includes('open')) {
+            return 'open';
+        } else {
+            return 'event';
+        }
+    }
+
+    formatTime(date) {
+        return date.toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        });
+    }
+
+    async previousMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+        await this.checkAndLoadEvents();
+        this.renderCalendar();
+        this.updateEventPanel();
+    }
+
+    async nextMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+        await this.checkAndLoadEvents();
+        this.renderCalendar();
+        this.updateEventPanel();
+    }
+
+    async checkAndLoadEvents() {
+        const hasEventsForMonth = this.events.some(event => 
+            event.date.getMonth() === this.currentDate.getMonth() && 
+            event.date.getFullYear() === this.currentDate.getFullYear()
+        );
+
+        if (!hasEventsForMonth) {
+            await this.loadEvents();
+        }
+    }
+
+    renderCalendar() {
+        const monthElement = document.getElementById('currentMonth');
+        const daysContainer = document.getElementById('calendarDays');
+
+        if (!monthElement || !daysContainer) return;
+
+        const monthYear = `${this.monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+        monthElement.textContent = monthYear;
+
+        daysContainer.innerHTML = '';
+
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDayOfWeek = firstDay.getDay();
+
+        // Previous month's trailing days
+        const prevMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 0);
+        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+            const dayElement = this.createDayElement(prevMonth.getDate() - i, true);
+            daysContainer.appendChild(dayElement);
+        }
+
+        // Current month's days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayElement = this.createDayElement(day, false);
+            daysContainer.appendChild(dayElement);
+        }
+
+        // Next month's leading days
+        const totalCells = daysContainer.children.length;
+        const remainingCells = 42 - totalCells;
+        for (let day = 1; day <= remainingCells; day++) {
+            const dayElement = this.createDayElement(day, true);
+            daysContainer.appendChild(dayElement);
+        }
+    }
+
+    createDayElement(day, isOtherMonth) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        
+        // Create day number
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = day;
+        dayElement.appendChild(dayNumber);
+
+        if (isOtherMonth) {
+            dayElement.classList.add('other-month');
+        } else {
+            const today = new Date();
+            const currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
+            
+            if (this.isSameDay(currentDay, today)) {
+                dayElement.classList.add('today');
+            }
+
+            const dayEvents = this.getEventsForDate(currentDay);
+            if (dayEvents.length > 0) {
+                dayElement.classList.add('has-events');
+                
+                // Add event previews directly in the calendar day
+                const eventsContainer = document.createElement('div');
+                eventsContainer.className = 'day-events';
+                
+                // Show up to 3 events in the day box
+                dayEvents.slice(0, 3).forEach(event => {
+                    const eventPreview = document.createElement('div');
+                    eventPreview.className = `event-preview event-${event.type}`;
+                    
+                    // Create event content: Event title, then time frame, then location
+                    const eventTitle = event.title.length > 15 
+                        ? event.title.substring(0, 15) + '...' 
+                        : event.title;
+                    
+                    const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                    
+                    let eventContent = `
+                        <div class="event-title-small">${eventTitle}</div>
+                        <div class="event-time-small">${eventTime}</div>
+                    `;
+                    
+                    if (event.location) {
+                        const eventLocation = event.location.length > 20 
+                            ? event.location.substring(0, 20) + '...' 
+                            : event.location;
+                        eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                    }
+                    
+                    eventPreview.innerHTML = eventContent;
+                    eventsContainer.appendChild(eventPreview);
+                });
+                
+                // If more than 3 events, show "and X more"
+                if (dayEvents.length > 3) {
+                    const moreEvents = document.createElement('div');
+                    moreEvents.className = 'more-events';
+                    moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                    eventsContainer.appendChild(moreEvents);
+                }
+                
+                dayElement.appendChild(eventsContainer);
+            }
+
+            dayElement.addEventListener('click', () => {
+                this.selectDate(currentDay);
+            });
+        }
+
+        return dayElement;
+    }
+
+    selectDate(date) {
+        const previousSelected = document.querySelector('.calendar-day.selected');
+        if (previousSelected) {
+            previousSelected.classList.remove('selected');
+        }
+
+        const dayElements = document.querySelectorAll('.calendar-day:not(.other-month)');
+        dayElements.forEach(element => {
+            if (parseInt(element.textContent) === date.getDate()) {
+                element.classList.add('selected');
+            }
+        });
+
+        this.selectedDate = date;
+        this.updateEventPanel();
+    }
+
+    updateEventPanel() {
+        const eventList = document.getElementById('eventList');
+        if (!eventList) return;
+
+        if (this.selectedDate) {
+            const dayEvents = this.getEventsForDate(this.selectedDate);
+            
+            if (dayEvents.length > 0) {
+                eventList.innerHTML = dayEvents.map(event => this.createEventHTML(event)).join('');
+            } else {
+                eventList.innerHTML = '<p class="no-events">No events scheduled for this date</p>';
+            }
+        } else {
+            const monthEvents = this.getEventsForMonth(this.currentDate);
+            if (monthEvents.length > 0) {
+                eventList.innerHTML = `
+                    <p style="color: #ff6b35; font-weight: 600; margin-bottom: 1rem;">
+                        Upcoming events this month:
+                    </p>
+                    ${monthEvents.slice(0, 5).map(event => this.createEventHTML(event, true)).join('')}
+                `;
+            } else {
+                eventList.innerHTML = '<p class="no-events">No events scheduled this month</p>';
+            }
+        }
+    }
+
+    createEventHTML(event, showDate = false) {
+        const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
+        const locationStr = event.location ? `<div class="event-location">📍 ${event.location}</div>` : '';
+        const descriptionStr = event.description ? `<div class="event-description">${event.description}</div>` : '';
+        
+        return `
+            <div class="event-item">
+                <div class="event-time">${dateStr}${event.time}</div>
+                <div class="event-title">${event.title}</div>
+                ${locationStr}
+                ${descriptionStr}
+            </div>
+        `;
+    }
+
+    getEventsForDate(date) {
+        return this.events.filter(event => this.isSameDay(event.date, date));
+    }
+
+    getEventsForMonth(date) {
+        return this.events.filter(event => 
+            event.date.getMonth() === date.getMonth() && 
+            event.date.getFullYear() === date.getFullYear()
+        ).sort((a, b) => a.date - b.date);
+    }
+
+    isSameDay(date1, date2) {
+        return date1.getDate() === date2.getDate() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getFullYear() === date2.getFullYear();
+    }
+}
+
+// Initialize calendar when DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('calendarDays')) {
+        new MotoCoachCalendar();
+    }
+});
