@@ -57,13 +57,14 @@ export default async function handler(req, res) {
         // Get the host from headers to determine if this is development
         const host = req.headers.host || '';
         const isDevelopment = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('192.168.');
+        const isProduction = host.includes('vercel.app') || host.includes('motocoach.com.au');
         
         if (!isDevelopment && !recaptchaResponse) {
             return res.status(400).json({ error: 'reCAPTCHA verification is required' });
         }
 
         // Verify reCAPTCHA with Google (skip in development)
-        if (!isDevelopment && recaptchaResponse) {
+        if (!isDevelopment && recaptchaResponse && isProduction) {
             const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
             const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
                 method: 'POST',

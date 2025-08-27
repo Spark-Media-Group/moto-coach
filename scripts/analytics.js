@@ -6,8 +6,13 @@
                   window.location.hostname.includes('192.168.') ||
                   window.location.protocol === 'file:';
     
-    // Only load analytics in production (deployed on Vercel)
-    if (!isDev) {
+    // Check if we're on a production domain (main domain or Vercel)
+    const isProduction = window.location.hostname === 'motocoach.com.au' || 
+                         window.location.hostname === 'smg-mc.vercel.app' ||
+                         window.location.hostname.includes('.vercel.app');
+    
+    // Only load analytics in production (deployed on Vercel or main domain)
+    if (!isDev && isProduction) {
         // Vercel Analytics Web Vitals tracking
         function vitals(metric) {
             const body = JSON.stringify(metric);

@@ -279,7 +279,8 @@ async function handleFormSubmission(event) {
     } catch (error) {
         console.warn('reCAPTCHA not loaded or error:', error);
         // For development/testing, you might want to allow submissions
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (isDev) {
             console.log('Development mode: skipping reCAPTCHA verification');
         } else {
             alert('reCAPTCHA verification system is not available. Please try again later or contact us directly.');
@@ -287,7 +288,8 @@ async function handleFormSubmission(event) {
         }
     }
     
-    if (!recaptchaResponse && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (!recaptchaResponse && !isDev) {
         alert('Please complete the reCAPTCHA verification.');
         return;
     }
