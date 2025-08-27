@@ -1,4 +1,7 @@
 const { google } = require('googleapis');
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export default async function handler(req, res) {
     // Set CORS headers
@@ -80,7 +83,7 @@ export default async function handler(req, res) {
                 lastName: formData[`riderLastName${riderIndex}`] || '',
                 bikeNumber: formData[`bikeNumber${riderIndex}`] || '', // Optional field
                 bikeSize: formData[`bikeSize${riderIndex}`] || '',
-                dateOfBirth: formData[`dateOfBirth${riderIndex}`] || '',
+                dateOfBirth: formData[`dateOfBirth${riderIndex}`] || '', // Australian format DD/MM/YYYY
                 email: formData[`riderEmail${riderIndex}`] || '', // Individual rider email
                 phone: formData[`riderPhone${riderIndex}`] || ''  // Individual rider phone
             };
@@ -170,6 +173,9 @@ export default async function handler(req, res) {
             },
         });
 
+        // Send confirmation emails
+        await sendConfirmationEmails(riders, formData);
+
         res.status(200).json({ 
             success: true, 
             message: 'Registration submitted successfully',
@@ -199,5 +205,190 @@ export default async function handler(req, res) {
             details: errorDetails,
             timestamp: new Date().toISOString()
         });
+    }
+}
+
+// Function to send confirmation emails
+async function sendConfirmationEmails(riders, formData) {
+    try {
+        // Calculate age for each rider to determine email recipients
+        const emailRecipients = new Set(); // Use Set to avoid duplicate emails
+        
+        for (const rider of riders) {
+            if (rider.dateOfBirth) {
+                // Parse Australian date format DD/MM/YYYY
+                const [day, month, year] = rider.dateOfBirth.split('/');
+                const dob = new Date(year, month - 1, day);
+                const today = new Date();
+                
+                let age = today.getFullYear() - dob.getFullYear();
+                const monthDiff = today.getMonth() - dob.getMonth();
+                
+                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+                    age--;
+                }
+                
+                // If rider is 18+ and has email, send to rider
+                if (age >= 18 && rider.email) {
+                    emailRecipients.add({
+                        email: rider.email,
+                        name: `${rider.firstName} ${rider.lastName}`,
+                        isRider: true
+                    });
+                }
+            }
+        }
+        
+        // Always send to parent/emergency contact if we have young riders or as backup
+        if (formData.contactEmail) {
+            emailRecipients.add({
+                email: formData.contactEmail,
+                name: `${formData.contactFirstName} ${formData.contactLastName}`,
+                isRider: false
+            });
+        }
+        
+        // Create rider names list for email
+        const riderNames = riders.map(rider => `${rider.firstName} ${rider.lastName}`).join(', ');
+        
+        // Send emails to all recipients
+        const emailPromises = Array.from(emailRecipients).map(recipient => 
+            sendIndividualConfirmationEmail(recipient, formData, riderNames, riders)
+        );
+        
+        await Promise.all(emailPromises);
+        
+    } catch (error) {
+        console.error('Error sending confirmation emails:', error);
+        // Don't throw - we don't want email failure to break the registration
+    }
+}
+
+// Function to send individual confirmation email
+async function sendIndividualConfirmationEmail(recipient, formData, riderNames, riders) {
+    try {
+        const logoUrl = 'https://motocoach.com.au/images/long%20logo.png'; // URL encode the space
+        
+        const { data, error } = await resend.emails.send({
+            from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
+            to: [recipient.email],
+            subject: `Track Reservation Confirmation - ${formData.eventName}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <!-- Header with Logo -->
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <img src="${logoUrl}" alt="Moto Coach" style="max-width: 300px; height: auto;" />
+                    </div>
+                    
+                    <h2 style="color: #ff6b35; border-bottom: 2px solid #ff6b35; padding-bottom: 10px; text-align: center;">
+                        Track Reservation Confirmation
+                    </h2>
+                    
+                    <p style="font-size: 16px; color: #333;">
+                        Dear ${recipient.name},
+                    </p>
+                    
+                    <p style="font-size: 16px; color: #333; line-height: 1.6;">
+                        Thank you for your track reservation! We're excited to have ${riderNames} join us for this training session.
+                    </p>
+                    
+                    <!-- Event Details -->
+                    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff6b35;">
+                        <h3 style="margin-top: 0; color: #ff6b35;">Session Details</h3>
+                        <p><strong>Event:</strong> ${formData.eventName}</p>
+                        <p><strong>Date:</strong> ${formData.eventDate}</p>
+                        ${formData.eventTime ? `<p><strong>Time:</strong> ${formData.eventTime}</p>` : ''}
+                        ${formData.eventLocation ? `<p><strong>Location:</strong> ${formData.eventLocation}</p>` : ''}
+                    </div>
+                    
+                    <!-- Rider Information -->
+                    <div style="background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #333;">Registered Riders</h3>
+                        ${riders.map(rider => `
+                            <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f8f8; border-radius: 4px;">
+                                <p style="margin: 5px 0;"><strong>Name:</strong> ${rider.firstName} ${rider.lastName}</p>
+                                <p style="margin: 5px 0;"><strong>Bike Size:</strong> ${rider.bikeSize}</p>
+                                ${rider.bikeNumber ? `<p style="margin: 5px 0;"><strong>Bike Number:</strong> ${rider.bikeNumber}</p>` : ''}
+                                <p style="margin: 5px 0;"><strong>Date of Birth:</strong> ${rider.dateOfBirth}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <!-- Contact Information -->
+                    <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                        <h3 style="margin-top: 0; color: #333;">Emergency Contact</h3>
+                        <p><strong>Name:</strong> ${formData.contactFirstName} ${formData.contactLastName}</p>
+                        <p><strong>Email:</strong> ${formData.contactEmail}</p>
+                        <p><strong>Phone:</strong> ${formData.contactPhone}</p>
+                    </div>
+                    
+                    <!-- What's Next -->
+                    <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffeeba;">
+                        <h3 style="margin-top: 0; color: #856404;">What's Next?</h3>
+                        <ul style="color: #856404; line-height: 1.6;">
+                            <li>We will review your registration and confirm availability</li>
+                            <li>You'll receive a follow-up email with detailed session information</li>
+                            <li>Please arrive 15 minutes early for check-in</li>
+                            <li>Bring appropriate safety gear (helmet, boots, gloves, etc.)</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div style="margin-top: 30px; padding: 20px; background-color: #1a1a1a; color: #ccc; border-radius: 8px; text-align: center;">
+                        <p style="margin: 0; font-size: 14px;">
+                            Questions? Contact us at <a href="mailto:leigh@motocoach.com.au" style="color: #ff6b35;">leigh@motocoach.com.au</a>
+                        </p>
+                        <p style="margin: 10px 0 0 0; font-size: 12px;">
+                            This confirmation was sent from Moto Coach Track Reservation System
+                        </p>
+                    </div>
+                </div>
+            `,
+            text: `
+TRACK RESERVATION CONFIRMATION
+
+Dear ${recipient.name},
+
+Thank you for your track reservation! We're excited to have ${riderNames} join us for this training session.
+
+SESSION DETAILS:
+Event: ${formData.eventName}
+Date: ${formData.eventDate}
+${formData.eventTime ? `Time: ${formData.eventTime}` : ''}
+${formData.eventLocation ? `Location: ${formData.eventLocation}` : ''}
+
+REGISTERED RIDERS:
+${riders.map(rider => `
+- ${rider.firstName} ${rider.lastName}
+  Bike Size: ${rider.bikeSize}
+  ${rider.bikeNumber ? `Bike Number: ${rider.bikeNumber}` : ''}
+  Date of Birth: ${rider.dateOfBirth}
+`).join('')}
+
+EMERGENCY CONTACT:
+Name: ${formData.contactFirstName} ${formData.contactLastName}
+Email: ${formData.contactEmail}
+Phone: ${formData.contactPhone}
+
+WHAT'S NEXT?
+- We will review your registration and confirm availability
+- You'll receive a follow-up email with detailed session information
+- Please arrive 15 minutes early for check-in
+- Bring appropriate safety gear (helmet, boots, gloves, etc.)
+
+Questions? Contact us at leigh@motocoach.com.au
+
+This confirmation was sent from Moto Coach Track Reservation System
+            `
+        });
+
+        if (error) {
+            console.error('Error sending email to:', recipient.email, error);
+        } else {
+            console.log('Confirmation email sent to:', recipient.email);
+        }
+
+    } catch (error) {
+        console.error('Error sending individual email:', error);
     }
 }

@@ -5514,3 +5514,21 @@ footer {
     }
 }
 
+/* Australian date input styling */
+input[type="text"][pattern*="DD/MM/YYYY"],
+input[placeholder="DD/MM/YYYY"] {
+    font-family: 'Roboto Condensed', monospace;
+    letter-spacing: 0.5px;
+}
+
+input[type="text"][pattern*="DD/MM/YYYY"]:invalid,
+input[placeholder="DD/MM/YYYY"]:invalid {
+    border-color: #ff6b35;
+    box-shadow: 0 0 5px rgba(255, 107, 53, 0.3);
+}
+
+input[type="text"][pattern*="DD/MM/YYYY"]:valid,
+input[placeholder="DD/MM/YYYY"]:valid {
+    border-color: #28a745;
+}
+

@@ -48,8 +48,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="dateOfBirth${riderCount}">Date of Birth *</label>
-                        <input type="date" id="dateOfBirth${riderCount}" name="dateOfBirth${riderCount}" required onchange="toggleAgeBasedFields('${riderCount}')">
+                        <label for="dateOfBirth${riderCount}">Date of Birth (DD/MM/YYYY) *</label>
+                        <input type="text" id="dateOfBirth${riderCount}" name="dateOfBirth${riderCount}" required 
+                               pattern="^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$" 
+                               placeholder="DD/MM/YYYY" 
+                               maxlength="10"
+                               onchange="toggleAgeBasedFields('${riderCount}')" 
+                               onblur="validateAustralianDate(this)"
+                               oninput="formatDateInput(this)">
                     </div>
                 </div>
                 
@@ -151,12 +157,75 @@ function populateEventDetails() {
     }
 }
 
+// Function to format date input as DD/MM/YYYY while typing
+function formatDateInput(input) {
+    let value = input.value.replace(/\D/g, ''); // Remove non-digits
+    
+    if (value.length >= 3 && value.length <= 4) {
+        value = value.substring(0, 2) + '/' + value.substring(2);
+    } else if (value.length >= 5) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4) + '/' + value.substring(4, 8);
+    }
+    
+    input.value = value;
+}
+
+// Function to validate Australian date format
+function validateAustralianDate(input) {
+    const value = input.value.trim();
+    if (!value) return;
+    
+    const pattern = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+    
+    if (!pattern.test(value)) {
+        input.setCustomValidity('Please enter date in DD/MM/YYYY format');
+        input.reportValidity();
+        return false;
+    }
+    
+    // Parse the date to check if it's valid
+    const [day, month, year] = value.split('/');
+    const date = new Date(year, month - 1, day);
+    
+    if (date.getDate() != day || date.getMonth() != (month - 1) || date.getFullYear() != year) {
+        input.setCustomValidity('Please enter a valid date');
+        input.reportValidity();
+        return false;
+    }
+    
+    // Check if date is not in the future
+    const today = new Date();
+    if (date > today) {
+        input.setCustomValidity('Date of birth cannot be in the future');
+        input.reportValidity();
+        return false;
+    }
+    
+    // Clear any previous validation messages
+    input.setCustomValidity('');
+    return true;
+}
+
+// Function to parse Australian date format (DD/MM/YYYY) to Date object
+function parseAustralianDate(dateString) {
+    if (!dateString) return null;
+    
+    const [day, month, year] = dateString.split('/');
+    return new Date(year, month - 1, day);
+}
+
 // Toggle age-based contact fields for individual riders
 function toggleAgeBasedFields(riderId) {
     const dobInput = document.getElementById(`dateOfBirth${riderId}`);
     if (!dobInput || !dobInput.value) return;
     
-    const dob = new Date(dobInput.value);
+    // Validate the date format first
+    if (!validateAustralianDate(dobInput)) return;
+    
+    // Parse the Australian date format
+    const dob = parseAustralianDate(dobInput.value);
+    if (!dob) return;
+    
     const today = new Date();
     let age = today.getFullYear() - dob.getFullYear();
     const monthDiff = today.getMonth() - dob.getMonth();
@@ -239,7 +308,7 @@ async function handleFormSubmission(event) {
             submitButton.innerHTML = '✓ Submitted Successfully!';
             
             setTimeout(() => {
-                alert('Registration submitted successfully! We will contact you soon with confirmation details.');
+                alert('Registration submitted successfully! We will contact you soon with confirmation details. A confirmation email has been sent to the appropriate email address(es).');
                 form.reset();
                 // Reset button after success
                 submitButton.disabled = false;

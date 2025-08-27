@@ -153,8 +153,14 @@
                             </div>
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label for="dateOfBirth1">Date of Birth *</label>
-                                    <input type="date" id="dateOfBirth1" name="dateOfBirth1" required onchange="toggleAgeBasedFields('1')">
+                                    <label for="dateOfBirth1">Date of Birth (DD/MM/YYYY) *</label>
+                                    <input type="text" id="dateOfBirth1" name="dateOfBirth1" required 
+                                           pattern="^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\d{4}$" 
+                                           placeholder="DD/MM/YYYY" 
+                                           maxlength="10"
+                                           onchange="toggleAgeBasedFields('1')" 
+                                           onblur="validateAustralianDate(this)"
+                                           oninput="formatDateInput(this)">
                                 </div>
                             </div>
                             
