@@ -110,48 +110,62 @@
                     <!-- Rider Information -->
                     <div class="form-section-header">
                         <h3>Rider Information</h3>
+                        <button type="button" id="addRiderBtn" class="btn-secondary" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;">+ Add Another Rider</button>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="riderFirstName">First Name *</label>
-                            <input type="text" id="riderFirstName" name="riderFirstName" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="riderLastName">Last Name *</label>
-                            <input type="text" id="riderLastName" name="riderLastName" required>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="bikeNumber">Bike Number (Optional)</label>
-                            <input type="text" id="bikeNumber" name="bikeNumber">
-                        </div>
-                        <div class="form-group">
-                            <label for="bikeSize">Bike Size *</label>
-                            <select id="bikeSize" name="bikeSize" required>
-                                <option value="">Select bike size</option>
-                                <option value="50cc">50cc</option>
-                                <option value="65cc">65cc</option>
-                                <option value="85cc">85cc</option>
-                                <option value="125cc">125cc</option>
-                                <option value="250cc">250cc</option>
-                                <option value="450cc">450cc</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="dateOfBirth">Date of Birth *</label>
-                            <input type="date" id="dateOfBirth" name="dateOfBirth" required onchange="toggleAgeBasedFields()">
+                    <div id="ridersContainer">
+                        <div class="rider-section" id="rider1">
+                            <div class="rider-header">
+                                <h4>Rider 1</h4>
+                                <button type="button" class="remove-rider-btn" style="display: none;" onclick="removeRider('rider1')">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="riderFirstName1">First Name *</label>
+                                    <input type="text" id="riderFirstName1" name="riderFirstName1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="riderLastName1">Last Name *</label>
+                                    <input type="text" id="riderLastName1" name="riderLastName1" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="bikeNumber1">Bike Number (Optional)</label>
+                                    <input type="text" id="bikeNumber1" name="bikeNumber1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bikeSize1">Bike Size *</label>
+                                    <select id="bikeSize1" name="bikeSize1" required>
+                                        <option value="">Select bike size</option>
+                                        <option value="50cc">50cc</option>
+                                        <option value="65cc">65cc</option>
+                                        <option value="85cc">85cc</option>
+                                        <option value="125cc">125cc</option>
+                                        <option value="250cc">250cc</option>
+                                        <option value="450cc">450cc</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="dateOfBirth1">Date of Birth *</label>
+                                    <input type="date" id="dateOfBirth1" name="dateOfBirth1" required onchange="toggleAgeBasedFields()">
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Adult Rider Contact Information (18+) -->
-                    <div class="form-section-header" id="adultContactSection" style="display: none;">
-                        <h3>Contact Information</h3>
+                    <!-- Contact Information (18+ riders only) -->
+                    <div class="form-section-header" id="riderContactSection" style="display: none;">
+                        <h3>Rider Contact Information</h3>
+                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">For riders 18 and over</p>
                     </div>
-                    <div class="form-row" id="adultContactFields" style="display: none;">
+                    <div class="form-row" id="riderContactFields" style="display: none;">
                         <div class="form-group">
                             <label for="riderEmail">Email Address *</label>
                             <input type="email" id="riderEmail" name="riderEmail">
@@ -162,49 +176,29 @@
                         </div>
                     </div>
 
-                    <!-- Emergency Contact (18+ only) -->
-                    <div class="form-section-header" id="emergencyContactSection" style="display: none;">
-                        <h3>Emergency Contact</h3>
+                    <!-- Parent/Guardian/Emergency Contact (Always shown) -->
+                    <div class="form-section-header">
+                        <h3>Parent/Guardian/Emergency Contact</h3>
+                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">Required for all registrations</p>
                     </div>
-                    <div class="form-row" id="emergencyContactFields1" style="display: none;">
+                    <div class="form-row">
                         <div class="form-group">
-                            <label for="emergencyFirstName">Emergency Contact First Name *</label>
-                            <input type="text" id="emergencyFirstName" name="emergencyFirstName">
+                            <label for="contactFirstName">First Name *</label>
+                            <input type="text" id="contactFirstName" name="contactFirstName" required>
                         </div>
                         <div class="form-group">
-                            <label for="emergencyLastName">Emergency Contact Last Name *</label>
-                            <input type="text" id="emergencyLastName" name="emergencyLastName">
-                        </div>
-                    </div>
-                    <div class="form-row" id="emergencyContactFields2" style="display: none;">
-                        <div class="form-group">
-                            <label for="emergencyPhone">Emergency Contact Phone *</label>
-                            <input type="tel" id="emergencyPhone" name="emergencyPhone">
+                            <label for="contactLastName">Last Name *</label>
+                            <input type="text" id="contactLastName" name="contactLastName" required>
                         </div>
                     </div>
-
-                    <!-- Parent/Guardian Information (Under 18) -->
-                    <div class="form-section-header" id="parentSection" style="display: none;">
-                        <h3>Parent/Guardian Information</h3>
-                    </div>
-                    <div class="form-row" id="parentFields1" style="display: none;">
+                    <div class="form-row">
                         <div class="form-group">
-                            <label for="parentFirstName">Parent/Guardian First Name *</label>
-                            <input type="text" id="parentFirstName" name="parentFirstName">
+                            <label for="contactEmail">Email Address *</label>
+                            <input type="email" id="contactEmail" name="contactEmail" required>
                         </div>
                         <div class="form-group">
-                            <label for="parentLastName">Parent/Guardian Last Name *</label>
-                            <input type="text" id="parentLastName" name="parentLastName">
-                        </div>
-                    </div>
-                    <div class="form-row" id="parentFields2" style="display: none;">
-                        <div class="form-group">
-                            <label for="parentEmail">Parent/Guardian Email *</label>
-                            <input type="email" id="parentEmail" name="parentEmail">
-                        </div>
-                        <div class="form-group">
-                            <label for="parentPhone">Parent/Guardian Phone *</label>
-                            <input type="tel" id="parentPhone" name="parentPhone">
+                            <label for="contactPhone">Phone Number *</label>
+                            <input type="tel" id="contactPhone" name="contactPhone" required>
                         </div>
                     </div>
 
@@ -235,124 +229,6 @@
     </footer>
 
     <script src="../scripts/main.js"></script>
-    <script>
-        // Function to get URL parameters
-        function getUrlParameter(name) {
-            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-            const regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-            const results = regex.exec(location.search);
-            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
-        }
-
-        // Populate event details from URL parameters when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            const eventName = getUrlParameter('event');
-            const eventTime = getUrlParameter('time');
-            const eventLocation = getUrlParameter('location');
-            const eventDescription = getUrlParameter('description');
-            
-            if (eventName) {
-                document.getElementById('eventDisplay').textContent = eventName;
-                document.getElementById('eventName').value = eventName;
-            }
-            
-            if (eventTime) {
-                document.getElementById('timeDisplay').textContent = `🕒 ${eventTime}`;
-            }
-            
-            if (eventLocation) {
-                document.getElementById('locationDisplay').textContent = `📍 ${eventLocation}`;
-            }
-            
-            if (eventDescription) {
-                document.getElementById('descriptionDisplay').textContent = eventDescription;
-            }
-        });
-
-        function toggleAgeBasedFields() {
-            const dobInput = document.getElementById('dateOfBirth');
-            const dob = new Date(dobInput.value);
-            const today = new Date();
-            let age = today.getFullYear() - dob.getFullYear();
-            const monthDiff = today.getMonth() - dob.getMonth();
-            
-            if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-                age--;
-            }
-
-            // Get all the sections
-            const adultContactSection = document.getElementById('adultContactSection');
-            const adultContactFields = document.getElementById('adultContactFields');
-            const emergencyContactSection = document.getElementById('emergencyContactSection');
-            const emergencyContactFields1 = document.getElementById('emergencyContactFields1');
-            const emergencyContactFields2 = document.getElementById('emergencyContactFields2');
-            const parentSection = document.getElementById('parentSection');
-            const parentFields1 = document.getElementById('parentFields1');
-            const parentFields2 = document.getElementById('parentFields2');
-
-            // Get all the fields that might need to be required/not required
-            const riderEmail = document.getElementById('riderEmail');
-            const riderPhone = document.getElementById('riderPhone');
-            const emergencyFirstName = document.getElementById('emergencyFirstName');
-            const emergencyLastName = document.getElementById('emergencyLastName');
-            const emergencyPhone = document.getElementById('emergencyPhone');
-            const parentFirstName = document.getElementById('parentFirstName');
-            const parentLastName = document.getElementById('parentLastName');
-            const parentEmail = document.getElementById('parentEmail');
-            const parentPhone = document.getElementById('parentPhone');
-
-            if (age >= 18) {
-                // Show adult fields
-                adultContactSection.style.display = 'block';
-                adultContactFields.style.display = 'flex';
-                emergencyContactSection.style.display = 'block';
-                emergencyContactFields1.style.display = 'flex';
-                emergencyContactFields2.style.display = 'flex';
-                
-                // Hide parent fields
-                parentSection.style.display = 'none';
-                parentFields1.style.display = 'none';
-                parentFields2.style.display = 'none';
-
-                // Set required attributes for adult
-                riderEmail.required = true;
-                riderPhone.required = true;
-                emergencyFirstName.required = true;
-                emergencyLastName.required = true;
-                emergencyPhone.required = true;
-
-                // Remove required from parent fields
-                parentFirstName.required = false;
-                parentLastName.required = false;
-                parentEmail.required = false;
-                parentPhone.required = false;
-            } else {
-                // Show parent fields
-                parentSection.style.display = 'block';
-                parentFields1.style.display = 'flex';
-                parentFields2.style.display = 'flex';
-                
-                // Hide adult fields
-                adultContactSection.style.display = 'none';
-                adultContactFields.style.display = 'none';
-                emergencyContactSection.style.display = 'none';
-                emergencyContactFields1.style.display = 'none';
-                emergencyContactFields2.style.display = 'none';
-
-                // Set required attributes for parent
-                parentFirstName.required = true;
-                parentLastName.required = true;
-                parentEmail.required = true;
-                parentPhone.required = true;
-
-                // Remove required from adult fields
-                riderEmail.required = false;
-                riderPhone.required = false;
-                emergencyFirstName.required = false;
-                emergencyLastName.required = false;
-                emergencyPhone.required = false;
-            }
-        }
-    </script>
+    <script src="../scripts/track_reserve.js"></script>
 </body>
 </html>
