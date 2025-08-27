@@ -3,6 +3,38 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Helper function for fetch in case it's not available globally
+const fetchPolyfill = async (url, options) => {
+    if (typeof fetch !== 'undefined') {
+        return fetch(url, options);
+    }
+    // Use node-fetch or other polyfill if needed
+    const https = require('https');
+    const querystring = require('querystring');
+    
+    return new Promise((resolve, reject) => {
+        const data = options.body;
+        const req = https.request(url, {
+            method: options.method,
+            headers: options.headers
+        }, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                resolve({
+                    ok: res.statusCode >= 200 && res.statusCode < 300,
+                    status: res.statusCode,
+                    json: () => Promise.resolve(JSON.parse(body))
+                });
+            });
+        });
+        
+        req.on('error', reject);
+        if (data) req.write(data);
+        req.end();
+    });
+};
+
 export default async function handler(req, res) {
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -19,6 +51,32 @@ export default async function handler(req, res) {
     }
 
     try {
+        // Verify reCAPTCHA first
+        const { recaptchaResponse } = req.body;
+        
+        if (!recaptchaResponse) {
+            return res.status(400).json({ error: 'reCAPTCHA verification is required' });
+        }
+
+        // Verify reCAPTCHA with Google
+        const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+        const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaResponse}`
+        });
+
+        const recaptchaResult = await recaptchaVerification.json();
+        
+        if (!recaptchaResult.success) {
+            return res.status(400).json({ 
+                error: 'reCAPTCHA verification failed',
+                details: recaptchaResult['error-codes'] 
+            });
+        }
+
         // Debug: Log environment variables (without sensitive data)
         console.log('Environment check:', {
             hasGoogleSheetsId: !!process.env.GOOGLE_SHEETS_ID,

@@ -1680,6 +1680,90 @@ footer {
     min-height: 120px;
 }
 
+/* Human verification / reCAPTCHA styling */
+.verification-group {
+    margin: 1.5rem 0;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* reCAPTCHA widget styling */
+.g-recaptcha {
+    display: inline-block;
+    transform-origin: center;
+}
+
+/* Make reCAPTCHA responsive */
+@media (max-width: 768px) {
+    .g-recaptcha {
+        transform: scale(0.85);
+        transform-origin: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .g-recaptcha {
+        transform: scale(0.75);
+        transform-origin: center;
+    }
+}
+
+/* Legacy checkbox styles (keeping for fallback) */
+.checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #ccc;
+    user-select: none;
+    gap: 12px;
+}
+
+.checkbox-label input[type="checkbox"] {
+    display: none;
+}
+
+.checkmark {
+    position: relative;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 107, 53, 0.5);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.checkmark::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 6px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark {
+    background: #ff6b35;
+    border-color: #ff6b35;
+}
+
+.checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+    opacity: 1;
+}
+
+.checkbox-label:hover .checkmark {
+    border-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.1);
+}
+
 .form-submit {
     text-align: center;
     margin-top: 1rem;

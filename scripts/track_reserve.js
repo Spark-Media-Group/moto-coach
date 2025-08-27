@@ -272,6 +272,13 @@ async function handleFormSubmission(event) {
         return;
     }
     
+    // Check reCAPTCHA verification
+    const recaptchaResponse = grecaptcha.getResponse();
+    if (!recaptchaResponse) {
+        alert('Please complete the reCAPTCHA verification.');
+        return;
+    }
+    
     // Show loading state
     submitButton.disabled = true;
     submitButton.textContent = 'Submitting...';
@@ -285,6 +292,9 @@ async function handleFormSubmission(event) {
         for (let [key, value] of formData.entries()) {
             data[key] = value;
         }
+        
+        // Add reCAPTCHA response
+        data.recaptchaResponse = recaptchaResponse;
         
         // Add event details from URL parameters (use consistent naming)
         const urlParams = new URLSearchParams(window.location.search);
@@ -310,6 +320,8 @@ async function handleFormSubmission(event) {
             setTimeout(() => {
                 alert('Registration submitted successfully! We will contact you soon with confirmation details. A confirmation email has been sent to the appropriate email address(es).');
                 form.reset();
+                // Reset reCAPTCHA
+                grecaptcha.reset();
                 // Reset button after success
                 submitButton.disabled = false;
                 submitButton.style.backgroundColor = '';
@@ -329,6 +341,8 @@ async function handleFormSubmission(event) {
         
         setTimeout(() => {
             alert('There was an error submitting your registration. Please try again or contact us directly.');
+            // Reset reCAPTCHA
+            grecaptcha.reset();
             // Reset button state
             submitButton.disabled = false;
             submitButton.style.backgroundColor = '';
