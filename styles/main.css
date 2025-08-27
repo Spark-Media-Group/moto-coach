@@ -5368,6 +5368,16 @@ footer {
     letter-spacing: 0.5px;
     transition: all 0.3s ease;
     border: 2px solid #ff6b35;
+    cursor: pointer;
+}
+
+/* Button element specific styling */
+button.btn-register {
+    background: #ff6b35;
+    color: white;
+    border: 2px solid #ff6b35;
+    cursor: pointer;
+    min-width: 120px;
 }
 
 .btn-register:hover {
@@ -5376,6 +5386,13 @@ footer {
     border-color: #ff6b35;
     transform: translateY(-1px);
     box-shadow: 0 5px 15px rgba(255, 107, 53, 0.3);
+}
+
+/* Button element hover styling */
+button.btn-register:hover {
+    background: transparent;
+    color: #ff6b35;
+    border-color: #ff6b35;
 }
 
 /* Spots remaining display */

@@ -51,36 +51,64 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Verify reCAPTCHA first (skip in development)
-        const { recaptchaResponse } = req.body;
+        // Verify reCAPTCHA Enterprise (skip in development)
+        const { recaptchaToken } = req.body;
         
         // Get the host from headers to determine if this is development
         const host = req.headers.host || '';
         const isDevelopment = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('192.168.');
         const isProduction = host.includes('vercel.app') || host.includes('motocoach.com.au');
         
-        if (!isDevelopment && !recaptchaResponse) {
+        if (!isDevelopment && !recaptchaToken) {
             return res.status(400).json({ error: 'reCAPTCHA verification is required' });
         }
 
-        // Verify reCAPTCHA with Google (skip in development)
-        if (!isDevelopment && recaptchaResponse && isProduction) {
-            const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-            const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaResponse}`
-            });
+        // Verify reCAPTCHA with Google Enterprise API (skip in development)
+        if (!isDevelopment && recaptchaToken && isProduction) {
+            try {
+                const projectId = process.env.RECAPTCHA_PROJECT_ID || process.env.GOOGLE_PROJECT_ID;
+                const apiKey = process.env.GOOGLE_RECAPTCHA_API_KEY || process.env.GOOGLE_CALENDAR_API_KEY;
+                
+                if (!projectId || !apiKey) {
+                    console.warn('reCAPTCHA Enterprise not configured, skipping verification');
+                } else {
+                    const recaptchaVerifyUrl = `https://recaptchaenterprise.googleapis.com/v1/projects/${projectId}/assessments?key=${apiKey}`;
+                    
+                    const requestBody = {
+                        event: {
+                            token: recaptchaToken,
+                            expectedAction: 'TRACK_RESERVATION',
+                            siteKey: process.env.RECAPTCHA_SITE_KEY,
+                        }
+                    };
 
-            const recaptchaResult = await recaptchaVerification.json();
-            
-            if (!recaptchaResult.success) {
-                return res.status(400).json({ 
-                    error: 'reCAPTCHA verification failed',
-                    details: recaptchaResult['error-codes'] 
-                });
+                    const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    const recaptchaResult = await recaptchaVerification.json();
+                    
+                    if (!recaptchaResult.tokenProperties?.valid) {
+                        return res.status(400).json({ 
+                            error: 'reCAPTCHA verification failed',
+                            details: recaptchaResult.tokenProperties?.invalidReason || 'Unknown error'
+                        });
+                    }
+                    
+                    // Check the risk score (0.0 = very likely a bot, 1.0 = very likely a human)
+                    const riskScore = recaptchaResult.riskAnalysis?.score || 0;
+                    if (riskScore < 0.5) {
+                        console.warn(`Low reCAPTCHA score: ${riskScore}`);
+                        // You can decide whether to reject or just log this
+                    }
+                }
+            } catch (error) {
+                console.error('reCAPTCHA verification error:', error);
+                // Continue without blocking - you can decide to block if needed
             }
         } else if (isDevelopment) {
             console.log('Development mode: skipping reCAPTCHA verification');
