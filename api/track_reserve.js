@@ -70,16 +70,14 @@ export default async function handler(req, res) {
         // Extract form data
         const formData = req.body;
         
-        // Prepare row data - starting from the form structure
+        // Prepare row data - properly structured for the spreadsheet
         const rowData = [
-            new Date().toISOString(), // Timestamp
-            formData.eventName || '',
-            formData.contactFirstName || '',
-            formData.contactLastName || '',
-            formData.contactEmail || '',
-            formData.contactPhone || '',
-            formData.riderEmail || '', // Only filled if rider is 18+
-            formData.riderPhone || '', // Only filled if rider is 18+
+            new Date().toISOString(), // Column A: Timestamp
+            formData.eventName || '', // Column B: Event
+            formData.contactFirstName || '', // Column C: Contact First Name  
+            formData.contactLastName || '', // Column D: Contact Last Name
+            formData.contactEmail || '', // Column E: Contact Email
+            formData.contactPhone || '', // Column F: Contact Phone
         ];
 
         // Add rider information - we need to handle multiple riders
@@ -99,12 +97,30 @@ export default async function handler(req, res) {
             riderIndex++;
         }
 
-        // Convert riders to a string format for the sheet
-        const ridersString = riders.map(rider => 
-            `${rider.firstName} ${rider.lastName} (${rider.bikeSize}${rider.bikeNumber ? ', #' + rider.bikeNumber : ''}, DOB: ${rider.dateOfBirth})`
-        ).join(' | ');
+        // Add first rider details (main rider)
+        if (riders.length > 0) {
+            const mainRider = riders[0];
+            rowData.push(mainRider.firstName); // Column G: Rider First Name
+            rowData.push(mainRider.lastName);  // Column H: Rider Last Name
+            rowData.push(mainRider.bikeNumber); // Column I: Bike Number
+            rowData.push(mainRider.bikeSize);   // Column J: Bike Size
+            rowData.push(mainRider.dateOfBirth); // Column K: Date of Birth
+            rowData.push(formData.riderEmail || ''); // Column L: Rider Email (18+)
+            rowData.push(formData.riderPhone || ''); // Column M: Rider Phone (18+)
+        } else {
+            // Fill empty columns if no rider data
+            rowData.push('', '', '', '', '', '', '');
+        }
 
-        rowData.push(ridersString);
+        // Add additional riders as a combined string if there are multiple
+        if (riders.length > 1) {
+            const additionalRiders = riders.slice(1).map(rider => 
+                `${rider.firstName} ${rider.lastName} (${rider.bikeSize}${rider.bikeNumber ? ', #' + rider.bikeNumber : ''}, DOB: ${rider.dateOfBirth})`
+            ).join(' | ');
+            rowData.push(additionalRiders); // Column N: Additional Riders
+        } else {
+            rowData.push(''); // No additional riders
+        }
 
         // Append the data to the sheet (starting from row 3)
         const response = await sheets.spreadsheets.values.append({
