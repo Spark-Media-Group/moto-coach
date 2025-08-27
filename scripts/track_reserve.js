@@ -116,7 +116,11 @@ function populateEventDetails() {
     
     if (eventName) {
         document.getElementById('eventDisplay').textContent = eventName;
-        document.getElementById('eventName').value = eventName;
+        // Make sure to populate the hidden field for form validation
+        const hiddenEventName = document.getElementById('eventName');
+        if (hiddenEventName) {
+            hiddenEventName.value = eventName;
+        }
     }
     
     if (eventTime) {
@@ -175,6 +179,12 @@ async function handleFormSubmission(event) {
     const submitButton = form.querySelector('button[type="submit"]');
     const originalButtonText = submitButton.textContent;
     
+    // Validate the form manually before submission
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
     // Show loading state
     submitButton.disabled = true;
     submitButton.textContent = 'Submitting...';
@@ -189,9 +199,9 @@ async function handleFormSubmission(event) {
             data[key] = value;
         }
         
-        // Add event details from URL parameters
+        // Add event details from URL parameters (use consistent naming)
         const urlParams = new URLSearchParams(window.location.search);
-        data.eventTitle = urlParams.get('event') || '';
+        data.eventName = urlParams.get('event') || data.eventName || '';
         data.eventDate = urlParams.get('date') || '';
         data.eventLocation = urlParams.get('location') || '';
         data.eventTime = urlParams.get('time') || '';
@@ -206,11 +216,18 @@ async function handleFormSubmission(event) {
         });
         
         if (response.ok) {
-            // Success - show success message and redirect or reset form
-            alert('Registration submitted successfully! We will contact you soon with confirmation details.');
-            form.reset();
-            // Optionally redirect to a thank you page
-            // window.location.href = '/thank-you.html';
+            // Success - show success message and reset form
+            submitButton.style.backgroundColor = '#28a745';
+            submitButton.innerHTML = '✓ Submitted Successfully!';
+            
+            setTimeout(() => {
+                alert('Registration submitted successfully! We will contact you soon with confirmation details.');
+                form.reset();
+                // Reset button after success
+                submitButton.disabled = false;
+                submitButton.style.backgroundColor = '';
+                submitButton.textContent = originalButtonText;
+            }, 1500);
         } else {
             const errorData = await response.json();
             throw new Error(errorData.error || 'Failed to submit registration');
@@ -218,10 +235,17 @@ async function handleFormSubmission(event) {
         
     } catch (error) {
         console.error('Error submitting form:', error);
-        alert('There was an error submitting your registration. Please try again or contact us directly.');
-    } finally {
-        // Reset button state
-        submitButton.disabled = false;
-        submitButton.textContent = originalButtonText;
+        
+        // Show error state
+        submitButton.style.backgroundColor = '#dc3545';
+        submitButton.innerHTML = '✗ Submission Failed';
+        
+        setTimeout(() => {
+            alert('There was an error submitting your registration. Please try again or contact us directly.');
+            // Reset button state
+            submitButton.disabled = false;
+            submitButton.style.backgroundColor = '';
+            submitButton.textContent = originalButtonText;
+        }, 2000);
     }
 }
