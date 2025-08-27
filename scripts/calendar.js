@@ -481,27 +481,37 @@ class MotoCoachCalendar {
             
             // Get registration count for this event
             let spotsDisplay = '';
+            let showRegisterButton = true;
+            
             if (event.maxSpots !== null) {
                 try {
                     const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
                     const remainingSpots = event.maxSpots - registrationCount;
                     
                     if (remainingSpots > 0) {
-                        spotsDisplay = `<div class="spots-remaining">${remainingSpots} spots remaining</div>`;
+                        const lowSpotsClass = remainingSpots < 5 ? ' low' : '';
+                        spotsDisplay = `<div class="spots-remaining${lowSpotsClass}">${remainingSpots} spots remaining</div>`;
+                        showRegisterButton = true;
                     } else {
                         spotsDisplay = `<div class="spots-remaining full">Event is full</div>`;
+                        showRegisterButton = false;
                     }
                 } catch (error) {
                     console.error('Error getting registration count:', error);
                     spotsDisplay = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
+                    showRegisterButton = true;
                 }
             } else {
                 spotsDisplay = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
+                showRegisterButton = true;
             }
+            
+            const registerButton = showRegisterButton ? 
+                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}" class="btn-register">Register</a>` : '';
             
             registerButtonStr = `
                 <div class="event-register">
-                    <a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}" class="btn-register">Register</a>
+                    ${registerButton}
                     ${spotsDisplay}
                 </div>`;
         }
