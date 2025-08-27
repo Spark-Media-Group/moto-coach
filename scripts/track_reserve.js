@@ -273,8 +273,21 @@ async function handleFormSubmission(event) {
     }
     
     // Check reCAPTCHA verification
-    const recaptchaResponse = grecaptcha.getResponse();
-    if (!recaptchaResponse) {
+    let recaptchaResponse = '';
+    try {
+        recaptchaResponse = grecaptcha.getResponse();
+    } catch (error) {
+        console.warn('reCAPTCHA not loaded or error:', error);
+        // For development/testing, you might want to allow submissions
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            console.log('Development mode: skipping reCAPTCHA verification');
+        } else {
+            alert('reCAPTCHA verification system is not available. Please try again later or contact us directly.');
+            return;
+        }
+    }
+    
+    if (!recaptchaResponse && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         alert('Please complete the reCAPTCHA verification.');
         return;
     }

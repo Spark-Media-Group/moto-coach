@@ -51,30 +51,38 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Verify reCAPTCHA first
+        // Verify reCAPTCHA first (skip in development)
         const { recaptchaResponse } = req.body;
         
-        if (!recaptchaResponse) {
+        // Get the host from headers to determine if this is development
+        const host = req.headers.host || '';
+        const isDevelopment = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('192.168.');
+        
+        if (!isDevelopment && !recaptchaResponse) {
             return res.status(400).json({ error: 'reCAPTCHA verification is required' });
         }
 
-        // Verify reCAPTCHA with Google
-        const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-        const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaResponse}`
-        });
-
-        const recaptchaResult = await recaptchaVerification.json();
-        
-        if (!recaptchaResult.success) {
-            return res.status(400).json({ 
-                error: 'reCAPTCHA verification failed',
-                details: recaptchaResult['error-codes'] 
+        // Verify reCAPTCHA with Google (skip in development)
+        if (!isDevelopment && recaptchaResponse) {
+            const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+            const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaResponse}`
             });
+
+            const recaptchaResult = await recaptchaVerification.json();
+            
+            if (!recaptchaResult.success) {
+                return res.status(400).json({ 
+                    error: 'reCAPTCHA verification failed',
+                    details: recaptchaResult['error-codes'] 
+                });
+            }
+        } else if (isDevelopment) {
+            console.log('Development mode: skipping reCAPTCHA verification');
         }
 
         // Debug: Log environment variables (without sensitive data)

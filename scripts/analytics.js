@@ -3,9 +3,10 @@
     // Check if we're in development mode
     const isDev = window.location.hostname === 'localhost' || 
                   window.location.hostname === '127.0.0.1' || 
-                  window.location.hostname.includes('vercel.app') === false;
+                  window.location.hostname.includes('192.168.') ||
+                  window.location.protocol === 'file:';
     
-    // Only load analytics in production
+    // Only load analytics in production (deployed on Vercel)
     if (!isDev) {
         // Vercel Analytics Web Vitals tracking
         function vitals(metric) {
