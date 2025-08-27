@@ -49,7 +49,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="form-row">
                     <div class="form-group">
                         <label for="dateOfBirth${riderCount}">Date of Birth *</label>
-                        <input type="date" id="dateOfBirth${riderCount}" name="dateOfBirth${riderCount}" required onchange="toggleAgeBasedFields()">
+                        <input type="date" id="dateOfBirth${riderCount}" name="dateOfBirth${riderCount}" required onchange="toggleAgeBasedFields('${riderCount}')">
+                    </div>
+                </div>
+                
+                <!-- Rider Contact Information (18+ only) -->
+                <div class="rider-contact-section" id="riderContactSection${riderCount}" style="display: none;">
+                    <h4 style="color: #ccc; margin: 15px 0 10px 0; font-size: 1em;">Contact Information (18+ only)</h4>
+                    <div class="form-row" id="riderContactFields${riderCount}">
+                        <div class="form-group">
+                            <label for="riderEmail${riderCount}">Email Address *</label>
+                            <input type="email" id="riderEmail${riderCount}" name="riderEmail${riderCount}">
+                        </div>
+                        <div class="form-group">
+                            <label for="riderPhone${riderCount}">Phone Number *</label>
+                            <input type="tel" id="riderPhone${riderCount}" name="riderPhone${riderCount}">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -136,9 +151,9 @@ function populateEventDetails() {
     }
 }
 
-// Toggle age-based contact fields
-function toggleAgeBasedFields() {
-    const dobInput = document.getElementById('dateOfBirth1'); // Use first rider's DOB for contact logic
+// Toggle age-based contact fields for individual riders
+function toggleAgeBasedFields(riderId) {
+    const dobInput = document.getElementById(`dateOfBirth${riderId}`);
     if (!dobInput || !dobInput.value) return;
     
     const dob = new Date(dobInput.value);
@@ -150,11 +165,11 @@ function toggleAgeBasedFields() {
         age--;
     }
 
-    // Get rider contact section elements
-    const riderContactSection = document.getElementById('riderContactSection');
-    const riderContactFields = document.getElementById('riderContactFields');
-    const riderEmail = document.getElementById('riderEmail');
-    const riderPhone = document.getElementById('riderPhone');
+    // Get rider contact section elements for this specific rider
+    const riderContactSection = document.getElementById(`riderContactSection${riderId}`);
+    const riderContactFields = document.getElementById(`riderContactFields${riderId}`);
+    const riderEmail = document.getElementById(`riderEmail${riderId}`);
+    const riderPhone = document.getElementById(`riderPhone${riderId}`);
 
     if (age >= 18) {
         // Show rider contact fields for 18+ riders
@@ -168,6 +183,9 @@ function toggleAgeBasedFields() {
         riderContactFields.style.display = 'none';
         riderEmail.required = false;
         riderPhone.required = false;
+        // Clear the values when hiding
+        riderEmail.value = '';
+        riderPhone.value = '';
     }
 }
 

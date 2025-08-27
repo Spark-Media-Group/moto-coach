@@ -154,25 +154,24 @@
                             <div class="form-row">
                                 <div class="form-group">
                                     <label for="dateOfBirth1">Date of Birth *</label>
-                                    <input type="date" id="dateOfBirth1" name="dateOfBirth1" required onchange="toggleAgeBasedFields()">
+                                    <input type="date" id="dateOfBirth1" name="dateOfBirth1" required onchange="toggleAgeBasedFields('1')">
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Contact Information (18+ riders only) -->
-                    <div class="form-section-header" id="riderContactSection" style="display: none;">
-                        <h3>Rider Contact Information</h3>
-                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">For riders 18 and over</p>
-                    </div>
-                    <div class="form-row" id="riderContactFields" style="display: none;">
-                        <div class="form-group">
-                            <label for="riderEmail">Email Address *</label>
-                            <input type="email" id="riderEmail" name="riderEmail">
-                        </div>
-                        <div class="form-group">
-                            <label for="riderPhone">Phone Number *</label>
-                            <input type="tel" id="riderPhone" name="riderPhone">
+                            
+                            <!-- Rider Contact Information (18+ only) -->
+                            <div class="rider-contact-section" id="riderContactSection1" style="display: none;">
+                                <h4 style="color: #ccc; margin: 15px 0 10px 0; font-size: 1em;">Contact Information (18+ only)</h4>
+                                <div class="form-row" id="riderContactFields1">
+                                    <div class="form-group">
+                                        <label for="riderEmail1">Email Address *</label>
+                                        <input type="email" id="riderEmail1" name="riderEmail1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="riderPhone1">Phone Number *</label>
+                                        <input type="tel" id="riderPhone1" name="riderPhone1">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

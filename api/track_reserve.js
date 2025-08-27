@@ -80,7 +80,9 @@ export default async function handler(req, res) {
                 lastName: formData[`riderLastName${riderIndex}`] || '',
                 bikeNumber: formData[`bikeNumber${riderIndex}`] || '', // Optional field
                 bikeSize: formData[`bikeSize${riderIndex}`] || '',
-                dateOfBirth: formData[`dateOfBirth${riderIndex}`] || ''
+                dateOfBirth: formData[`dateOfBirth${riderIndex}`] || '',
+                email: formData[`riderEmail${riderIndex}`] || '', // Individual rider email
+                phone: formData[`riderPhone${riderIndex}`] || ''  // Individual rider phone
             };
             riders.push(rider);
             riderIndex++;
@@ -90,17 +92,39 @@ export default async function handler(req, res) {
         const rows = [];
         
         for (const rider of riders) {
+            // Format dates in Australian format (DD/MM/YYYY)
+            const timestamp = new Date().toLocaleDateString('en-AU', {
+                day: '2-digit',
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            // Format event date in Australian format if available
+            let formattedEventDate = '';
+            if (formData.eventDate) {
+                const eventDate = new Date(formData.eventDate);
+                formattedEventDate = eventDate.toLocaleDateString('en-AU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+            }
+
             const rowData = [
-                new Date().toISOString(), // Column A: Timestamp
+                timestamp, // Column A: Timestamp (Australian format)
                 formData.eventName || '', // Column B: Event Name
-                formData.eventDate || '', // Column C: Event Date
+                formattedEventDate, // Column C: Event Date (Australian format DD/MM/YYYY)
                 rider.firstName, // Column D: Rider First Name
                 rider.lastName, // Column E: Rider Last Name
                 rider.bikeNumber, // Column F: Bike Number (optional - empty if not provided)
                 rider.bikeSize, // Column G: Bike Size
                 rider.dateOfBirth, // Column H: Date of Birth
-                formData.riderEmail || '', // Column I: Rider Email (optional - only for 18+)
-                formData.riderPhone || '', // Column J: Rider Phone (optional - only for 18+)
+                rider.email, // Column I: Rider Email (individual per rider, 18+ only)
+                rider.phone, // Column J: Rider Phone (individual per rider, 18+ only)
                 formData.contactFirstName || '', // Column K: Parent/Contact First Name
                 formData.contactLastName || '', // Column L: Parent/Contact Last Name
                 formData.contactEmail || '', // Column M: Parent/Contact Email
