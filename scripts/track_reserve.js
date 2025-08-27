@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
     populateEventDetails();
 });
 
-// Initialize reCAPTCHA Enterprise
+// Initialize reCAPTCHA v2
 async function initializeRecaptcha() {
     try {
         // Get configuration from API
@@ -105,65 +105,95 @@ async function initializeRecaptcha() {
         
         if (!recaptchaSiteKey) {
             console.warn('reCAPTCHA site key not configured');
+            showFallbackMessage();
             return;
         }
         
+        console.log('reCAPTCHA site key loaded:', recaptchaSiteKey);
+        
         // Wait for reCAPTCHA to load
-        if (typeof grecaptcha === 'undefined') {
-            // Wait for script to load
-            const checkRecaptcha = setInterval(() => {
-                if (typeof grecaptcha !== 'undefined' && grecaptcha.enterprise) {
-                    clearInterval(checkRecaptcha);
-                    renderRecaptcha();
-                }
-            }, 100);
+        let attempts = 0;
+        const maxAttempts = 50; // 5 seconds
+        
+        const checkRecaptcha = () => {
+            attempts++;
+            console.log(`Checking for reCAPTCHA... attempt ${attempts}`);
             
-            // Timeout after 10 seconds
-            setTimeout(() => {
-                clearInterval(checkRecaptcha);
-                console.warn('reCAPTCHA failed to load');
-            }, 10000);
-        } else {
-            renderRecaptcha();
-        }
+            if (typeof grecaptcha !== 'undefined' && grecaptcha.render) {
+                console.log('reCAPTCHA v2 loaded successfully');
+                renderRecaptcha();
+                return;
+            }
+            
+            if (attempts < maxAttempts) {
+                setTimeout(checkRecaptcha, 100);
+            } else {
+                console.warn('reCAPTCHA failed to load after 5 seconds');
+                showFallbackMessage();
+            }
+        };
+        
+        checkRecaptcha();
+        
     } catch (error) {
         console.error('Failed to initialize reCAPTCHA:', error);
+        showFallbackMessage();
+    }
+}
+
+// Show fallback message when reCAPTCHA fails to load
+function showFallbackMessage() {
+    const container = document.getElementById('recaptcha-container');
+    if (container) {
+        container.innerHTML = '<p style="color: #ccc; text-align: center;">Security verification will be processed during form submission.</p>';
     }
 }
 
 // Render reCAPTCHA widget
 function renderRecaptcha() {
     const container = document.getElementById('recaptcha-container');
-    if (!container || !recaptchaSiteKey) return;
+    if (!container || !recaptchaSiteKey) {
+        console.error('Container or site key missing');
+        return;
+    }
     
     try {
-        grecaptcha.enterprise.ready(() => {
-            // For invisible reCAPTCHA, we'll execute it when the form is submitted
-            // For now, let's render a visible reCAPTCHA for better UX
-            container.innerHTML = `
-                <div class="g-recaptcha" data-sitekey="${recaptchaSiteKey}" data-callback="onRecaptchaSuccess"></div>
-            `;
-            
-            // Re-render the reCAPTCHA with the site key
-            if (grecaptcha.render) {
-                grecaptcha.render(container.querySelector('.g-recaptcha'), {
-                    'sitekey': recaptchaSiteKey,
-                    'callback': onRecaptchaSuccess
-                });
+        console.log('Rendering reCAPTCHA v2...');
+        
+        // Clear container first
+        container.innerHTML = '';
+        
+        // Create a div for the reCAPTCHA widget
+        const recaptchaDiv = document.createElement('div');
+        recaptchaDiv.id = 'recaptcha-widget';
+        container.appendChild(recaptchaDiv);
+        
+        // Render the reCAPTCHA
+        const widgetId = grecaptcha.render('recaptcha-widget', {
+            'sitekey': recaptchaSiteKey,
+            'callback': function(token) {
+                console.log('reCAPTCHA completed successfully');
+                recaptchaToken = token;
+            },
+            'expired-callback': function() {
+                console.log('reCAPTCHA expired');
+                recaptchaToken = null;
             }
         });
+        
+        console.log('reCAPTCHA widget rendered with ID:', widgetId);
+        
     } catch (error) {
         console.error('Failed to render reCAPTCHA:', error);
-        // Fallback: show a simple notice
-        container.innerHTML = '<p style="color: #ccc;">reCAPTCHA verification will be required for form submission.</p>';
+        showFallbackMessage();
     }
 }
 
-// reCAPTCHA success callback
-function onRecaptchaSuccess(token) {
+// Global reCAPTCHA success callback (backup)
+window.onRecaptchaSuccess = function(token) {
+    console.log('reCAPTCHA completed successfully (global callback)');
     recaptchaToken = token;
-    console.log('reCAPTCHA completed successfully');
-}
+};
 
 // Remove rider functionality
 function removeRider(riderId) {
@@ -351,24 +381,15 @@ async function handleFormSubmission(event) {
     const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
     if (!isDev) {
-        if (!recaptchaToken && recaptchaSiteKey) {
-            // Try to execute invisible reCAPTCHA
+        // For production, check if we have a token from the widget
+        if (!recaptchaToken) {
+            // Try to get response from reCAPTCHA widget
             try {
-                await new Promise((resolve, reject) => {
-                    grecaptcha.enterprise.ready(async () => {
-                        try {
-                            const token = await grecaptcha.enterprise.execute(recaptchaSiteKey, {action: 'TRACK_RESERVATION'});
-                            recaptchaToken = token;
-                            resolve(token);
-                        } catch (error) {
-                            reject(error);
-                        }
-                    });
-                });
+                if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+                    recaptchaToken = grecaptcha.getResponse();
+                }
             } catch (error) {
-                console.error('reCAPTCHA execution failed:', error);
-                alert('reCAPTCHA verification failed. Please try again or contact us directly.');
-                return;
+                console.warn('Could not get reCAPTCHA response:', error);
             }
         }
         
