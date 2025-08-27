@@ -1580,7 +1580,8 @@ footer {
     padding: 4rem 0;
 }
 
-.contact-form-container {
+.contact-form-container,
+.track-reservation-form-container {
     max-width: 900px;
     margin: 0 auto;
     background: rgba(255, 255, 255, 0.08);

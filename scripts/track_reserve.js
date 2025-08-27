@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Set up form submission
-    const form = document.querySelector('.contact-form');
+    const form = document.querySelector('.track-reservation-form');
     if (form) {
         form.addEventListener('submit', handleFormSubmission);
     }

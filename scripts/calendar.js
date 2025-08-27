@@ -447,7 +447,7 @@ class MotoCoachCalendar {
         // Add register button if event has registration enabled
         const registerButtonStr = event.hasRegistration ? 
             `<div class="event-register">
-                <a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}" class="btn-register">Register</a>
+                <a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(event.start)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}" class="btn-register">Register</a>
             </div>` : '';
         
         return `
