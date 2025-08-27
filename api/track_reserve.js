@@ -16,6 +16,29 @@ export default async function handler(req, res) {
     }
 
     try {
+        // Debug: Log environment variables (without sensitive data)
+        console.log('Environment check:', {
+            hasGoogleSheetsId: !!process.env.GOOGLE_SHEETS_ID,
+            hasGoogleProjectId: !!process.env.GOOGLE_PROJECT_ID,
+            hasGoogleClientEmail: !!process.env.GOOGLE_CLIENT_EMAIL,
+            hasGooglePrivateKey: !!process.env.GOOGLE_PRIVATE_KEY
+        });
+
+        // Validate required environment variables
+        const requiredEnvVars = [
+            'GOOGLE_SHEETS_ID',
+            'GOOGLE_PROJECT_ID', 
+            'GOOGLE_CLIENT_EMAIL',
+            'GOOGLE_PRIVATE_KEY',
+            'GOOGLE_CLIENT_ID'
+        ];
+
+        for (const envVar of requiredEnvVars) {
+            if (!process.env[envVar]) {
+                throw new Error(`Missing required environment variable: ${envVar}`);
+            }
+        }
+
         // Get the Google Sheets credentials from environment variables
         const credentials = {
             type: 'service_account',
@@ -101,9 +124,26 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('Error submitting to Google Sheets:', error);
+        
+        // Provide more detailed error information
+        let errorMessage = 'Failed to submit registration';
+        let errorDetails = error.message;
+        
+        if (error.message.includes('GOOGLE_SHEETS_ID')) {
+            errorMessage = 'Google Sheets configuration error';
+            errorDetails = 'GOOGLE_SHEETS_ID environment variable not set';
+        } else if (error.message.includes('credentials')) {
+            errorMessage = 'Authentication error';
+            errorDetails = 'Google service account credentials not properly configured';
+        } else if (error.code === 'ENOTFOUND') {
+            errorMessage = 'Network error';
+            errorDetails = 'Unable to connect to Google Sheets API';
+        }
+        
         res.status(500).json({ 
-            error: 'Failed to submit registration',
-            details: error.message 
+            error: errorMessage,
+            details: errorDetails,
+            timestamp: new Date().toISOString()
         });
     }
 }
