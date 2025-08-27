@@ -5219,11 +5219,20 @@ footer {
     padding: 1rem;
     margin-bottom: 1rem;
     transition: all 0.3s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
 }
 
 .event-item:hover {
     border-color: #ff6b35;
     box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
+}
+
+.event-details {
+    flex: 1;
+    text-align: left;
 }
 
 .event-time {
@@ -5255,9 +5264,10 @@ footer {
 }
 
 .event-register {
-    margin-top: 1rem;
-    padding-top: 1rem;
-    border-top: 1px solid #333;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    align-self: flex-start;
 }
 
 .btn-register {
@@ -5489,5 +5499,18 @@ footer {
 
 .btn-secondary:hover {
     background-color: #5a6268;
+}
+
+/* Mobile responsive styling for events */
+@media (max-width: 768px) {
+    .event-item {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .event-register {
+        align-self: flex-end;
+        margin-top: 0.5rem;
+    }
 }
 

@@ -103,15 +103,25 @@ export default async function handler(req, res) {
                 hour12: false
             });
             
-            // Format event date in Australian format if available
+            // Format event date - handle both Australian format (DD/MM/YYYY) and ISO format
             let formattedEventDate = '';
             if (formData.eventDate) {
-                const eventDate = new Date(formData.eventDate);
-                formattedEventDate = eventDate.toLocaleDateString('en-AU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
+                // Check if it's already in DD/MM/YYYY format (from calendar)
+                if (formData.eventDate.includes('/') && formData.eventDate.split('/').length === 3) {
+                    formattedEventDate = formData.eventDate; // Already in DD/MM/YYYY format
+                } else {
+                    // Convert from ISO or other format to DD/MM/YYYY
+                    const eventDate = new Date(formData.eventDate);
+                    if (!isNaN(eventDate.getTime())) {
+                        formattedEventDate = eventDate.toLocaleDateString('en-AU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        });
+                    } else {
+                        formattedEventDate = formData.eventDate; // Use as-is if parsing fails
+                    }
+                }
             }
 
             const rowData = [
