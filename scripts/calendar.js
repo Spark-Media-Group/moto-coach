@@ -148,10 +148,11 @@ class MotoCoachCalendar {
                 timeString = 'All Day';
             }
 
-            // Check for registration requirement and spots limit, clean description
+            // Check for registration requirement, spots limit, and rate, then clean description
             let description = event.description || '';
             let hasRegistration = false;
             let maxSpots = null;
+            let ratePerRider = 190; // Default rate in AUD
             
             // Case and spacing insensitive regex for "registration = on"
             const registrationRegex = /registration\s*=\s*on/i;
@@ -170,6 +171,15 @@ class MotoCoachCalendar {
                 description = description.replace(spotsRegex, '').trim();
             }
             
+            // Parse rate from description (rate = number)
+            const rateRegex = /rate\s*=\s*(\d+)/i;
+            const rateMatch = description.match(rateRegex);
+            if (rateMatch) {
+                ratePerRider = parseInt(rateMatch[1]);
+                // Remove the rate text from description
+                description = description.replace(rateRegex, '').trim();
+            }
+            
             // Clean up any extra whitespace or newlines
             description = description.replace(/\n\s*\n/g, '\n').trim();
 
@@ -181,7 +191,8 @@ class MotoCoachCalendar {
                 location: event.location || '',
                 type: this.categorizeEvent(event.summary || ''),
                 hasRegistration: hasRegistration,
-                maxSpots: maxSpots
+                maxSpots: maxSpots,
+                ratePerRider: ratePerRider
             };
         }).filter(event => event.date);
     }
@@ -507,7 +518,7 @@ class MotoCoachCalendar {
             }
             
             const registerButton = showRegisterButton ? 
-                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}" class="btn-register">Register</a>` : '';
+                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}&rate=${encodeURIComponent(event.ratePerRider)}&maxSpots=${encodeURIComponent(event.maxSpots || '')}&remainingSpots=${encodeURIComponent(remainingSpots)}" class="btn-register">Register</a>` : '';
             
             registerButtonStr = `
                 <div class="event-register">

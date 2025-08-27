@@ -1,14 +1,26 @@
 let riderCount = 1;
 let recaptchaSiteKey = null;
 let recaptchaToken = null;
+let ratePerRider = 190; // Default rate in AUD
+let maxSpots = null; // Maximum spots available for the event
+let remainingSpots = null; // Remaining spots available
 
 // Add rider functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Load configuration and initialize reCAPTCHA v3
     initializeRecaptcha();
     
+    // Initialize pricing from URL parameters
+    initializePricing();
+    
     // Set up add rider button event listener
     document.getElementById('addRiderBtn').addEventListener('click', function() {
+        // Check if we've reached the maximum number of riders
+        if (remainingSpots !== null && riderCount >= remainingSpots) {
+            alert(`Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed for this event.`);
+            return;
+        }
+        
         riderCount++;
         const ridersContainer = document.getElementById('ridersContainer');
         
@@ -83,6 +95,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         ridersContainer.insertAdjacentHTML('beforeend', newRiderHTML);
         updateRemoveButtons();
+        updatePricing(); // Update pricing when adding rider
+        updateAddRiderButton(); // Update add rider button state
     });
 
     // Set up form submission
@@ -159,6 +173,85 @@ function renumberRiders() {
         const header = section.querySelector('.rider-header h4');
         header.textContent = `Rider ${riderNumber}`;
     });
+    // Update rider count and pricing
+    riderCount = riderSections.length;
+    updatePricing();
+    updateAddRiderButton(); // Update add rider button state when removing riders
+}
+
+// Initialize pricing from URL parameters
+function initializePricing() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlRate = urlParams.get('rate');
+    const urlMaxSpots = urlParams.get('maxSpots');
+    const urlRemainingSpots = urlParams.get('remainingSpots');
+    
+    if (urlRate && !isNaN(urlRate)) {
+        ratePerRider = parseInt(urlRate);
+    }
+    
+    if (urlMaxSpots && urlMaxSpots !== '' && !isNaN(urlMaxSpots)) {
+        maxSpots = parseInt(urlMaxSpots);
+    }
+    
+    if (urlRemainingSpots && urlRemainingSpots !== '' && !isNaN(urlRemainingSpots)) {
+        remainingSpots = parseInt(urlRemainingSpots);
+    }
+    
+    updatePricing();
+    updateAddRiderButton();
+}
+
+// Update pricing display
+function updatePricing() {
+    const rateDisplay = document.getElementById('ratePerRider');
+    const ridersDisplay = document.getElementById('numberOfRiders');
+    const totalDisplay = document.getElementById('totalPrice');
+    const spotsLimitRow = document.getElementById('spotsLimitRow');
+    const spotsRemainingDisplay = document.getElementById('spotsRemaining');
+    
+    if (rateDisplay && ridersDisplay && totalDisplay) {
+        const total = ratePerRider * riderCount;
+        
+        rateDisplay.textContent = `$${ratePerRider.toFixed(2)} AUD`;
+        ridersDisplay.textContent = riderCount;
+        totalDisplay.textContent = `$${total.toFixed(2)} AUD`;
+    }
+    
+    // Show spots information if available
+    if (spotsLimitRow && spotsRemainingDisplay && remainingSpots !== null) {
+        spotsLimitRow.style.display = 'flex';
+        const currentRemaining = remainingSpots - (riderCount - 1); // Subtract additional riders beyond the first
+        spotsRemainingDisplay.textContent = Math.max(0, currentRemaining);
+        
+        // Add warning color if spots are low
+        if (currentRemaining <= 2 && currentRemaining > 0) {
+            spotsRemainingDisplay.style.color = '#ffa500'; // Orange for low spots
+        } else if (currentRemaining <= 0) {
+            spotsRemainingDisplay.style.color = '#ff4444'; // Red for no spots
+        } else {
+            spotsRemainingDisplay.style.color = '#ff6b35'; // Default orange
+        }
+    }
+}
+
+// Update add rider button based on available spots
+function updateAddRiderButton() {
+    const addRiderBtn = document.getElementById('addRiderBtn');
+    
+    if (addRiderBtn && remainingSpots !== null) {
+        if (riderCount >= remainingSpots) {
+            addRiderBtn.disabled = true;
+            addRiderBtn.textContent = `Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed`;
+            addRiderBtn.style.opacity = '0.5';
+            addRiderBtn.style.cursor = 'not-allowed';
+        } else {
+            addRiderBtn.disabled = false;
+            addRiderBtn.textContent = '+ Add Another Rider';
+            addRiderBtn.style.opacity = '1';
+            addRiderBtn.style.cursor = 'pointer';
+        }
+    }
 }
 
 // Function to get URL parameters
@@ -313,6 +406,12 @@ async function handleFormSubmission(event) {
         return;
     }
     
+    // Check if number of riders exceeds available spots
+    if (remainingSpots !== null && riderCount > remainingSpots) {
+        alert(`Cannot register ${riderCount} rider${riderCount !== 1 ? 's' : ''}. Only ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''} remaining for this event.`);
+        return;
+    }
+    
     // Check reCAPTCHA v3 verification
     const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
@@ -366,6 +465,8 @@ async function handleFormSubmission(event) {
         data.eventDate = urlParams.get('date') || '';
         data.eventLocation = urlParams.get('location') || '';
         data.eventTime = urlParams.get('time') || '';
+        data.ratePerRider = ratePerRider;
+        data.totalAmount = ratePerRider * riderCount;
         
         // Submit to API
         const response = await fetch('/api/track_reserve', {
