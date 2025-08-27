@@ -148,9 +148,10 @@ class MotoCoachCalendar {
                 timeString = 'All Day';
             }
 
-            // Check for registration requirement and clean description
+            // Check for registration requirement and spots limit, clean description
             let description = event.description || '';
             let hasRegistration = false;
+            let maxSpots = null;
             
             // Case and spacing insensitive regex for "registration = on"
             const registrationRegex = /registration\s*=\s*on/i;
@@ -158,9 +159,19 @@ class MotoCoachCalendar {
                 hasRegistration = true;
                 // Remove the registration text from description
                 description = description.replace(registrationRegex, '').trim();
-                // Clean up any extra whitespace or newlines
-                description = description.replace(/\n\s*\n/g, '\n').trim();
             }
+            
+            // Parse spots limit from description (spots = number)
+            const spotsRegex = /spots\s*=\s*(\d+)/i;
+            const spotsMatch = description.match(spotsRegex);
+            if (spotsMatch) {
+                maxSpots = parseInt(spotsMatch[1]);
+                // Remove the spots text from description
+                description = description.replace(spotsRegex, '').trim();
+            }
+            
+            // Clean up any extra whitespace or newlines
+            description = description.replace(/\n\s*\n/g, '\n').trim();
 
             return {
                 date: eventDate,
@@ -169,7 +180,8 @@ class MotoCoachCalendar {
                 description: description,
                 location: event.location || '',
                 type: this.categorizeEvent(event.summary || ''),
-                hasRegistration: hasRegistration
+                hasRegistration: hasRegistration,
+                maxSpots: maxSpots
             };
         }).filter(event => event.date);
     }
@@ -412,7 +424,7 @@ class MotoCoachCalendar {
         this.updateEventPanel();
     }
 
-    updateEventPanel() {
+    async updateEventPanel() {
         const eventList = document.getElementById('eventList');
         if (!eventList) return;
 
@@ -420,18 +432,36 @@ class MotoCoachCalendar {
             const dayEvents = this.getEventsForDate(this.selectedDate);
             
             if (dayEvents.length > 0) {
-                eventList.innerHTML = dayEvents.map(event => this.createEventHTML(event)).join('');
+                // Show loading state
+                eventList.innerHTML = '<p class="loading-events">Loading event details...</p>';
+                
+                // Generate HTML for all events
+                const eventHTMLPromises = dayEvents.map(event => this.createEventHTML(event));
+                const eventHTMLs = await Promise.all(eventHTMLPromises);
+                eventList.innerHTML = eventHTMLs.join('');
             } else {
                 eventList.innerHTML = '<p class="no-events">No events scheduled for this date</p>';
             }
         } else {
             const monthEvents = this.getEventsForMonth(this.currentDate);
             if (monthEvents.length > 0) {
+                // Show loading state
                 eventList.innerHTML = `
                     <p style="color: #ff6b35; font-weight: 600; margin-bottom: 1rem;">
                         Upcoming events this month:
                     </p>
-                    ${monthEvents.slice(0, 5).map(event => this.createEventHTML(event, true)).join('')}
+                    <p class="loading-events">Loading event details...</p>
+                `;
+                
+                // Generate HTML for events with spots info
+                const eventHTMLPromises = monthEvents.slice(0, 5).map(event => this.createEventHTML(event, true));
+                const eventHTMLs = await Promise.all(eventHTMLPromises);
+                
+                eventList.innerHTML = `
+                    <p style="color: #ff6b35; font-weight: 600; margin-bottom: 1rem;">
+                        Upcoming events this month:
+                    </p>
+                    ${eventHTMLs.join('')}
                 `;
             } else {
                 eventList.innerHTML = '<p class="no-events">No events scheduled this month</p>';
@@ -439,16 +469,42 @@ class MotoCoachCalendar {
         }
     }
 
-    createEventHTML(event, showDate = false) {
+    async createEventHTML(event, showDate = false) {
         const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
         const locationStr = event.location ? `<div class="event-location">📍 ${event.location}</div>` : '';
         const descriptionStr = event.description ? `<div class="event-description">${event.description}</div>` : '';
         
-        // Add register button if event has registration enabled
-        const registerButtonStr = event.hasRegistration ? 
-            `<div class="event-register">
-                <a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(`${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}" class="btn-register">Register</a>
-            </div>` : '';
+        // Add register button and spots info if event has registration enabled
+        let registerButtonStr = '';
+        if (event.hasRegistration) {
+            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            
+            // Get registration count for this event
+            let spotsDisplay = '';
+            if (event.maxSpots !== null) {
+                try {
+                    const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
+                    const remainingSpots = event.maxSpots - registrationCount;
+                    
+                    if (remainingSpots > 0) {
+                        spotsDisplay = `<div class="spots-remaining">${remainingSpots} spots remaining</div>`;
+                    } else {
+                        spotsDisplay = `<div class="spots-remaining full">Event is full</div>`;
+                    }
+                } catch (error) {
+                    console.error('Error getting registration count:', error);
+                    spotsDisplay = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
+                }
+            } else {
+                spotsDisplay = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
+            }
+            
+            registerButtonStr = `
+                <div class="event-register">
+                    <a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}" class="btn-register">Register</a>
+                    ${spotsDisplay}
+                </div>`;
+        }
         
         return `
             <div class="event-item">
@@ -461,6 +517,32 @@ class MotoCoachCalendar {
                 ${registerButtonStr}
             </div>
         `;
+    }
+
+    async getRegistrationCount(eventName, eventDate) {
+        try {
+            const response = await fetch('/api/calendar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    eventName: eventName,
+                    eventDate: eventDate
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.registrationCount || 0;
+
+        } catch (error) {
+            console.error('Error fetching registration count:', error);
+            return 0; // Return 0 if there's an error
+        }
     }
 
     getEventsForDate(date) {
