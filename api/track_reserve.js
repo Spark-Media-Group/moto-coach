@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Verify reCAPTCHA v2 (skip in development)
+        // Verify reCAPTCHA v3 (skip in development)
         const { recaptchaToken } = req.body;
         
         // Get the host from headers to determine if this is development
@@ -63,7 +63,7 @@ export default async function handler(req, res) {
             return res.status(400).json({ error: 'reCAPTCHA verification is required' });
         }
 
-        // Verify reCAPTCHA with Google v2 API (skip in development)
+        // Verify reCAPTCHA v3 with Google API (skip in development)
         if (!isDevelopment && recaptchaToken && isProduction) {
             try {
                 const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
@@ -84,7 +84,17 @@ export default async function handler(req, res) {
                     });
                 }
                 
-                console.log('reCAPTCHA verification successful');
+                // For reCAPTCHA v3, check the score (0.0 = bot, 1.0 = human)
+                const score = recaptchaResult.score || 0;
+                console.log('reCAPTCHA v3 score:', score);
+                
+                // You can set your own threshold. Google recommends 0.5
+                if (score < 0.5) {
+                    console.warn(`Low reCAPTCHA score: ${score}. This might be a bot.`);
+                    // For now, we'll log but not block. You can decide to block if needed.
+                }
+                
+                console.log('reCAPTCHA v3 verification successful, score:', score);
                 
             } catch (error) {
                 console.error('reCAPTCHA verification error:', error);
