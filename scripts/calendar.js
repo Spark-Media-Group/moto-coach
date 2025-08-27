@@ -493,11 +493,12 @@ class MotoCoachCalendar {
             // Get registration count for this event
             let spotsDisplay = '';
             let showRegisterButton = true;
+            let remainingSpots = null; // Initialize remainingSpots variable
             
             if (event.maxSpots !== null) {
                 try {
                     const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
-                    const remainingSpots = event.maxSpots - registrationCount;
+                    remainingSpots = event.maxSpots - registrationCount;
                     
                     if (remainingSpots > 0) {
                         const lowSpotsClass = remainingSpots < 5 ? ' low' : '';
@@ -509,16 +510,18 @@ class MotoCoachCalendar {
                     }
                 } catch (error) {
                     console.error('Error getting registration count:', error);
+                    remainingSpots = event.maxSpots; // Fallback to max spots if error
                     spotsDisplay = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
                     showRegisterButton = true;
                 }
             } else {
                 spotsDisplay = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
                 showRegisterButton = true;
+                remainingSpots = null; // No limit
             }
             
             const registerButton = showRegisterButton ? 
-                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}&rate=${encodeURIComponent(event.ratePerRider)}&maxSpots=${encodeURIComponent(event.maxSpots || '')}&remainingSpots=${encodeURIComponent(remainingSpots)}" class="btn-register">Register</a>` : '';
+                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}&rate=${encodeURIComponent(event.ratePerRider)}&maxSpots=${encodeURIComponent(event.maxSpots || '')}&remainingSpots=${encodeURIComponent(remainingSpots || '')}" class="btn-register">Register</a>` : '';
             
             registerButtonStr = `
                 <div class="event-register">
