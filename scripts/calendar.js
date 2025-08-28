@@ -77,16 +77,28 @@ class MotoCoachCalendar {
             });
         }
 
-        // Add click listener to calendar wrapper to deselect date when clicking outside days
-        const calendarWrapper = document.querySelector('.calendar-wrapper');
-        if (calendarWrapper) {
-            calendarWrapper.addEventListener('click', (e) => {
-                // Check if click was outside calendar days
-                if (!e.target.closest('.calendar-day')) {
-                    this.deselectDate();
-                }
-            });
-        }
+        // Add click listener to document to deselect date when clicking outside calendar
+        document.addEventListener('click', (e) => {
+            // Only deselect if there's actually a date selected
+            if (!this.selectedDate) {
+                return; // No date selected, nothing to deselect
+            }
+            
+            // Check if click was outside the calendar area entirely
+            const calendarWrapper = document.querySelector('.calendar-wrapper');
+            const selectionPanel = document.querySelector('.selection-panel');
+            
+            // Don't deselect if clicking within:
+            // - Calendar wrapper (calendar grid, headers, navigation, EVENT PANEL)
+            // - Selection panel (multi-event selection UI)
+            // - Any buttons or interactive elements
+            if (calendarWrapper && !calendarWrapper.contains(e.target) && 
+                (!selectionPanel || !selectionPanel.contains(e.target)) &&
+                !e.target.closest('button') &&
+                !e.target.closest('a')) {
+                this.deselectDate();
+            }
+        });
     }
 
     async previousWeek() {
@@ -438,6 +450,12 @@ class MotoCoachCalendar {
     }
 
     selectDate(date) {
+        // If clicking the same date that's already selected, deselect it
+        if (this.selectedDate && this.isSameDay(this.selectedDate, date)) {
+            this.deselectDate();
+            return;
+        }
+
         const previousSelected = document.querySelector('.calendar-day.selected');
         if (previousSelected) {
             previousSelected.classList.remove('selected');
