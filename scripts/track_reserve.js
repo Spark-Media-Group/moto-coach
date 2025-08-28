@@ -277,7 +277,7 @@ function populateMultiEventDetails(events, pricingInfo) {
     
     if (eventDisplay) {
         const eventText = events.length === 1 ? 'event' : 'events';
-        eventDisplay.innerHTML = `<strong>Registration info for ${events.length} ${eventText}</strong>`;
+        eventDisplay.innerHTML = `Registration info for ${events.length} ${eventText}`;
     }
     
     // Create detailed event list
@@ -551,11 +551,11 @@ async function handleFormSubmission(event) {
         
         // Handle multi-event vs single event data
         if (window.multiEventData) {
-            // Multi-event registration
+            // Multi-event registration - create separate entries for each event-rider combination
             data.multiEventRegistration = true;
             data.events = window.multiEventData.events;
             data.pricingInfo = window.multiEventData.pricingInfo;
-            data.eventName = `Multi-Event Registration: ${window.multiEventData.events.map(e => e.title).join(', ')}`;
+            // Don't set a combined eventName here - let the backend handle individual events
             data.totalAmount = window.multiEventData.pricingInfo.totalCost * riderCount;
         } else {
             // Single event registration

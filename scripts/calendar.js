@@ -708,7 +708,10 @@ class MotoCoachCalendar {
             if (monthEvents.length > 0) {
                 // Show loading state
                 eventList.innerHTML = `
-                    <p style="color: #ff6b35; font-weight: 600; margin-bottom: 1rem;">
+                    <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
+                        Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
+                    </p>
+                    <p style="color: #fff; font-weight: 600; margin-bottom: 1rem;">
                         Upcoming events this month:
                     </p>
                     <p class="loading-events">Loading event details...</p>
@@ -719,7 +722,10 @@ class MotoCoachCalendar {
                 const eventHTMLs = await Promise.all(eventHTMLPromises);
                 
                 eventList.innerHTML = `
-                    <p style="color: #ff6b35; font-weight: 600; margin-bottom: 1rem;">
+                    <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
+                        Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
+                    </p>
+                    <p style="color: #fff; font-weight: 600; margin-bottom: 1rem;">
                         Upcoming events this month:
                     </p>
                     ${eventHTMLs.join('')}
@@ -734,7 +740,18 @@ class MotoCoachCalendar {
         const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
         const locationStr = event.location ? `<div class="event-location">📍 ${event.location}</div>` : '';
         const descriptionStr = event.description ? `<div class="event-description">${event.description}</div>` : '';
-        const rateStr = event.hasRegistration ? `<div class="event-rate">💰 $${event.ratePerRider} AUD per rider</div>` : '';
+        
+        // Rate display logic
+        let rateStr = '';
+        if (event.hasRegistration) {
+            if (event.ratePerRider === 190) {
+                // Standard rate - show "Standard Rates Apply"
+                rateStr = `<div class="event-rate">Standard Rates Apply</div>`;
+            } else {
+                // Custom rate - show simplified format
+                rateStr = `<div class="event-rate">$${event.ratePerRider} AUD/rider</div>`;
+            }
+        }
         
         // Add register button and spots info if event has registration enabled
         let registerButtonStr = '';

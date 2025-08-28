@@ -176,59 +176,96 @@ export default async function handler(req, res) {
             riderIndex++;
         }
 
-        // Prepare rows - one row per rider, all sharing same contact info
+        // Prepare rows - one row per rider per event for multi-event, or one row per rider for single event
         const rows = [];
         
-        for (const rider of riders) {
-            // Format dates in Australian format (DD/MM/YYYY)
-            const timestamp = new Date().toLocaleDateString('en-AU', {
-                day: '2-digit',
-                month: '2-digit', 
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-            });
-            
-            // Format event date - handle both Australian format (DD/MM/YYYY) and ISO format
-            let formattedEventDate = '';
-            if (formData.eventDate) {
-                // Check if it's already in DD/MM/YYYY format (from calendar)
-                if (formData.eventDate.includes('/') && formData.eventDate.split('/').length === 3) {
-                    formattedEventDate = formData.eventDate; // Already in DD/MM/YYYY format
-                } else {
-                    // Convert from ISO or other format to DD/MM/YYYY
-                    const eventDate = new Date(formData.eventDate);
-                    if (!isNaN(eventDate.getTime())) {
-                        formattedEventDate = eventDate.toLocaleDateString('en-AU', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                        });
-                    } else {
-                        formattedEventDate = formData.eventDate; // Use as-is if parsing fails
-                    }
+        // Check if this is a multi-event registration
+        if (formData.multiEventRegistration && formData.events && Array.isArray(formData.events)) {
+            // Multi-event registration: create one row for each event-rider combination
+            for (const event of formData.events) {
+                for (const rider of riders) {
+                    const timestamp = new Date().toLocaleDateString('en-AU', {
+                        day: '2-digit',
+                        month: '2-digit', 
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: false
+                    });
+                    
+                    const rowData = [
+                        timestamp, // Column A: Timestamp (Australian format)
+                        event.title || '', // Column B: Event Name (individual event)
+                        event.date || '', // Column C: Event Date (from event data)
+                        rider.firstName, // Column D: Rider First Name
+                        rider.lastName, // Column E: Rider Last Name
+                        rider.bikeNumber, // Column F: Bike Number (optional - empty if not provided)
+                        rider.bikeSize, // Column G: Bike Size
+                        rider.dateOfBirth, // Column H: Date of Birth
+                        rider.email, // Column I: Rider Email (individual per rider, 18+ only)
+                        rider.phone, // Column J: Rider Phone (individual per rider, 18+ only)
+                        formData.contactFirstName || '', // Column K: Parent/Contact First Name
+                        formData.contactLastName || '', // Column L: Parent/Contact Last Name
+                        formData.contactEmail || '', // Column M: Parent/Contact Email
+                        formData.contactPhone || '', // Column N: Parent/Contact Phone
+                    ];
+                    rows.push(rowData);
                 }
             }
+        } else {
+            // Single event registration: one row per rider
+            for (const rider of riders) {
+                // Format dates in Australian format (DD/MM/YYYY)
+                const timestamp = new Date().toLocaleDateString('en-AU', {
+                    day: '2-digit',
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                });
+                
+                // Format event date - handle both Australian format (DD/MM/YYYY) and ISO format
+                let formattedEventDate = '';
+                if (formData.eventDate) {
+                    // Check if it's already in DD/MM/YYYY format (from calendar)
+                    if (formData.eventDate.includes('/') && formData.eventDate.split('/').length === 3) {
+                        formattedEventDate = formData.eventDate; // Already in DD/MM/YYYY format
+                    } else {
+                        // Convert from ISO or other format to DD/MM/YYYY
+                        const eventDate = new Date(formData.eventDate);
+                        if (!isNaN(eventDate.getTime())) {
+                            formattedEventDate = eventDate.toLocaleDateString('en-AU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            });
+                        } else {
+                            formattedEventDate = formData.eventDate; // Use as-is if parsing fails
+                        }
+                    }
+                }
 
-            const rowData = [
-                timestamp, // Column A: Timestamp (Australian format)
-                formData.eventName || '', // Column B: Event Name
-                formattedEventDate, // Column C: Event Date (Australian format DD/MM/YYYY)
-                rider.firstName, // Column D: Rider First Name
-                rider.lastName, // Column E: Rider Last Name
-                rider.bikeNumber, // Column F: Bike Number (optional - empty if not provided)
-                rider.bikeSize, // Column G: Bike Size
-                rider.dateOfBirth, // Column H: Date of Birth
-                rider.email, // Column I: Rider Email (individual per rider, 18+ only)
-                rider.phone, // Column J: Rider Phone (individual per rider, 18+ only)
-                formData.contactFirstName || '', // Column K: Parent/Contact First Name
-                formData.contactLastName || '', // Column L: Parent/Contact Last Name
-                formData.contactEmail || '', // Column M: Parent/Contact Email
-                formData.contactPhone || '', // Column N: Parent/Contact Phone
-            ];
-            rows.push(rowData);
+                const rowData = [
+                    timestamp, // Column A: Timestamp (Australian format)
+                    formData.eventName || '', // Column B: Event Name
+                    formattedEventDate, // Column C: Event Date (Australian format DD/MM/YYYY)
+                    rider.firstName, // Column D: Rider First Name
+                    rider.lastName, // Column E: Rider Last Name
+                    rider.bikeNumber, // Column F: Bike Number (optional - empty if not provided)
+                    rider.bikeSize, // Column G: Bike Size
+                    rider.dateOfBirth, // Column H: Date of Birth
+                    rider.email, // Column I: Rider Email (individual per rider, 18+ only)
+                    rider.phone, // Column J: Rider Phone (individual per rider, 18+ only)
+                    formData.contactFirstName || '', // Column K: Parent/Contact First Name
+                    formData.contactLastName || '', // Column L: Parent/Contact Last Name
+                    formData.contactEmail || '', // Column M: Parent/Contact Email
+                    formData.contactPhone || '', // Column N: Parent/Contact Phone
+                ];
+                rows.push(rowData);
+            }
         }
 
         // If no riders, create one empty row with just contact info
@@ -264,7 +301,8 @@ export default async function handler(req, res) {
         res.status(200).json({ 
             success: true, 
             message: 'Registration submitted successfully',
-            sheetResponse: response.data
+            sheetResponse: response.data,
+            rowsCreated: rows.length
         });
 
     } catch (error) {
@@ -296,8 +334,10 @@ export default async function handler(req, res) {
 // Function to send confirmation emails
 async function sendConfirmationEmails(riders, formData) {
     try {
-        // Calculate age for each rider to determine email recipients
-        const emailRecipients = new Set(); // Use Set to avoid duplicate emails
+        console.log('Sending confirmation emails for registration...');
+        
+        // Use a Map to track unique email addresses and their details
+        const emailRecipients = new Map();
         
         for (const rider of riders) {
             if (rider.dateOfBirth) {
@@ -314,8 +354,8 @@ async function sendConfirmationEmails(riders, formData) {
                 }
                 
                 // If rider is 18+ and has email, send to rider
-                if (age >= 18 && rider.email) {
-                    emailRecipients.add({
+                if (age >= 18 && rider.email && !emailRecipients.has(rider.email)) {
+                    emailRecipients.set(rider.email, {
                         email: rider.email,
                         name: `${rider.firstName} ${rider.lastName}`,
                         isRider: true
@@ -324,24 +364,29 @@ async function sendConfirmationEmails(riders, formData) {
             }
         }
         
-        // Always send to parent/emergency contact if we have young riders or as backup
-        if (formData.contactEmail) {
-            emailRecipients.add({
+        // Always send to parent/emergency contact
+        if (formData.contactEmail && !emailRecipients.has(formData.contactEmail)) {
+            emailRecipients.set(formData.contactEmail, {
                 email: formData.contactEmail,
                 name: `${formData.contactFirstName} ${formData.contactLastName}`,
                 isRider: false
             });
         }
         
+        // Convert Map to Array for processing
+        const recipients = Array.from(emailRecipients.values());
+        console.log(`Sending ${recipients.length} confirmation email(s) to:`, recipients.map(r => r.email));
+        
         // Create rider names list for email
         const riderNames = riders.map(rider => `${rider.firstName} ${rider.lastName}`).join(', ');
         
-        // Send emails to all recipients
-        const emailPromises = Array.from(emailRecipients).map(recipient => 
+        // Send one email per unique recipient
+        const emailPromises = recipients.map(recipient => 
             sendIndividualConfirmationEmail(recipient, formData, riderNames, riders)
         );
         
         await Promise.all(emailPromises);
+        console.log('All confirmation emails sent successfully');
         
     } catch (error) {
         console.error('Error sending confirmation emails:', error);
@@ -352,118 +397,117 @@ async function sendConfirmationEmails(riders, formData) {
 // Function to send individual confirmation email
 async function sendIndividualConfirmationEmail(recipient, formData, riderNames, riders) {
     try {
+        console.log(`Sending confirmation email to: ${recipient.email}`);
+        
         const logoUrl = 'https://motocoach.com.au/images/long%20logo.png'; // URL encode the space
+        
+        // Create a subject line that indicates multi-event if applicable
+        const subjectLine = formData.multiEventRegistration && formData.events && formData.events.length > 1 
+            ? `Track Reservation Confirmation - ${formData.events.length} Events` 
+            : `Track Reservation Confirmation - ${formData.eventName || formData.events?.[0]?.title || 'Event'}`;
         
         const { data, error } = await resend.emails.send({
             from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
             to: [recipient.email],
-            subject: `Track Reservation Confirmation - ${formData.eventName}`,
+            subject: subjectLine,
             html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <!-- Header with Logo -->
-                    <div style="text-align: center; margin-bottom: 30px;">
-                        <img src="${logoUrl}" alt="Moto Coach" style="max-width: 300px; height: auto;" />
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
+                    <!-- Header -->
+                    <div style="background: linear-gradient(135deg, #ff6b35 0%, #ff8a5c 100%); padding: 40px 30px; text-align: center;">
+                        <img src="${logoUrl}" alt="Moto Coach" style="max-width: 250px; height: auto; margin-bottom: 20px;" />
+                        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 300; letter-spacing: 1px;">Registration Confirmed</h1>
                     </div>
                     
-                    <h2 style="color: #ff6b35; border-bottom: 2px solid #ff6b35; padding-bottom: 10px; text-align: center;">
-                        Track Reservation Confirmation
-                    </h2>
-                    
-                    <p style="font-size: 16px; color: #333;">
-                        Dear ${recipient.name},
-                    </p>
-                    
-                    <p style="font-size: 16px; color: #333; line-height: 1.6;">
-                        Thank you for your track reservation! We're excited to have ${riderNames} join us for this training session.
-                    </p>
-                    
-                    <!-- Event Details -->
-                    <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ff6b35;">
-                        <h3 style="margin-top: 0; color: #ff6b35;">Session Details</h3>
-                        <p><strong>Event:</strong> ${formData.eventName}</p>
-                        <p><strong>Date:</strong> ${formData.eventDate}</p>
-                        ${formData.eventTime ? `<p><strong>Time:</strong> ${formData.eventTime}</p>` : ''}
-                        ${formData.eventLocation ? `<p><strong>Location:</strong> ${formData.eventLocation}</p>` : ''}
-                    </div>
-                    
-                    <!-- Rider Information -->
-                    <div style="background-color: #fff; padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin: 20px 0;">
-                        <h3 style="margin-top: 0; color: #333;">Registered Riders</h3>
+                    <!-- Main Content -->
+                    <div style="padding: 40px 30px;">
+                        <p style="font-size: 18px; color: #333; margin: 0 0 30px 0; line-height: 1.6;">
+                            Hi ${recipient.name},<br><br>
+                            Your registration is confirmed! We're excited to see ${riderNames} on the track.
+                        </p>
+                        
+                        <!-- Event Details -->
+                        <h3 style="color: #ff6b35; margin: 30px 0 20px 0; font-size: 20px; border-bottom: 2px solid #ff6b35; padding-bottom: 8px;">
+                            ${formData.multiEventRegistration && formData.events && formData.events.length > 1 ? 'Your Events' : 'Event Details'}
+                        </h3>
+                        ${formData.multiEventRegistration && formData.events ? 
+                            // Multi-event registration - simple list
+                            formData.events.map(event => `
+                                <div style="margin: 20px 0; padding: 15px 0; border-bottom: 1px solid #eee;">
+                                    <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">${event.title}</div>
+                                    <div style="color: #666; font-size: 16px;">
+                                        ${event.date}${event.time ? ` at ${event.time}` : ''}
+                                        ${event.location ? `<br>${event.location}` : ''}
+                                    </div>
+                                </div>
+                            `).join('')
+                            :
+                            // Single event registration - simple layout
+                            `<div style="margin: 20px 0;">
+                                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">${formData.eventName}</div>
+                                <div style="color: #666; font-size: 16px; line-height: 1.6;">
+                                    ${formData.eventDate}${formData.eventTime ? ` at ${formData.eventTime}` : ''}
+                                    ${formData.eventLocation ? `<br>${formData.eventLocation}` : ''}
+                                </div>
+                            </div>`
+                        }
+                        
+                        <!-- Riders -->
+                        <h3 style="color: #333; margin: 40px 0 20px 0; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 8px;">Registered Riders</h3>
                         ${riders.map(rider => `
-                            <div style="margin-bottom: 15px; padding: 10px; background-color: #f8f8f8; border-radius: 4px;">
-                                <p style="margin: 5px 0;"><strong>Name:</strong> ${rider.firstName} ${rider.lastName}</p>
-                                <p style="margin: 5px 0;"><strong>Bike Size:</strong> ${rider.bikeSize}</p>
-                                ${rider.bikeNumber ? `<p style="margin: 5px 0;"><strong>Bike Number:</strong> ${rider.bikeNumber}</p>` : ''}
-                                <p style="margin: 5px 0;"><strong>Date of Birth:</strong> ${rider.dateOfBirth}</p>
+                            <div style="margin: 15px 0; padding: 10px 0;">
+                                <span style="font-weight: 600; color: #333; font-size: 16px;">${rider.firstName} ${rider.lastName}</span>
+                                <span style="color: #666; font-size: 14px; margin-left: 15px;">${rider.bikeSize}${rider.bikeNumber ? ` • #${rider.bikeNumber}` : ''}</span>
                             </div>
                         `).join('')}
-                    </div>
-                    
-                    <!-- Contact Information -->
-                    <div style="background-color: #e8f4fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                        <h3 style="margin-top: 0; color: #333;">Emergency Contact</h3>
-                        <p><strong>Name:</strong> ${formData.contactFirstName} ${formData.contactLastName}</p>
-                        <p><strong>Email:</strong> ${formData.contactEmail}</p>
-                        <p><strong>Phone:</strong> ${formData.contactPhone}</p>
-                    </div>
-                    
-                    <!-- What's Next -->
-                    <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #ffeeba;">
-                        <h3 style="margin-top: 0; color: #856404;">What's Next?</h3>
-                        <ul style="color: #856404; line-height: 1.6;">
-                            <li>We will review your registration and confirm availability</li>
-                            <li>You'll receive a follow-up email with detailed session information</li>
-                            <li>Please arrive 15 minutes early for check-in</li>
-                            <li>Bring appropriate safety gear (helmet, boots, gloves, etc.)</li>
-                        </ul>
+                        
+                        <!-- Next Steps -->
+                        <h3 style="color: #333; margin: 40px 0 20px 0; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 8px;">What's Next?</h3>
+                        <div style="color: #333; line-height: 1.8; font-size: 15px; margin: 20px 0;">
+                            • We'll confirm availability and send session details<br>
+                            • Arrive 15 minutes early for check-in<br>
+                            • Bring safety gear (helmet, boots, gloves)
+                        </div>
                     </div>
                     
                     <!-- Footer -->
-                    <div style="margin-top: 30px; padding: 20px; background-color: #1a1a1a; color: #ccc; border-radius: 8px; text-align: center;">
-                        <p style="margin: 0; font-size: 14px;">
-                            Questions? Contact us at <a href="mailto:leigh@motocoach.com.au" style="color: #ff6b35;">leigh@motocoach.com.au</a>
-                        </p>
-                        <p style="margin: 10px 0 0 0; font-size: 12px;">
-                            This confirmation was sent from Moto Coach Track Reservation System
-                        </p>
+                    <div style="background-color: #2c3e50; padding: 30px; text-align: center; color: #95a5a6;">
+                        <div style="font-size: 16px; margin-bottom: 10px;">
+                            Questions? <a href="mailto:leigh@motocoach.com.au" style="color: #ff6b35; text-decoration: none;">leigh@motocoach.com.au</a>
+                        </div>
+                        <div style="font-size: 13px; opacity: 0.8;">
+                            Moto Coach Track Reservation System
+                        </div>
                     </div>
                 </div>
             `,
             text: `
-TRACK RESERVATION CONFIRMATION
+MOTO COACH - REGISTRATION CONFIRMED
 
-Dear ${recipient.name},
+Hi ${recipient.name},
 
-Thank you for your track reservation! We're excited to have ${riderNames} join us for this training session.
+Your registration is confirmed! We're excited to see ${riderNames} on the track.
 
-SESSION DETAILS:
-Event: ${formData.eventName}
-Date: ${formData.eventDate}
-${formData.eventTime ? `Time: ${formData.eventTime}` : ''}
-${formData.eventLocation ? `Location: ${formData.eventLocation}` : ''}
+EVENT DETAILS:
+${formData.multiEventRegistration && formData.events ? 
+    formData.events.map(event => `${event.title}
+${event.date}${event.time ? ` at ${event.time}` : ''}${event.location ? ` - ${event.location}` : ''}`).join('\n\n')
+    :
+    `${formData.eventName}
+${formData.eventDate}${formData.eventTime ? ` at ${formData.eventTime}` : ''}${formData.eventLocation ? ` - ${formData.eventLocation}` : ''}`
+}
 
 REGISTERED RIDERS:
-${riders.map(rider => `
-- ${rider.firstName} ${rider.lastName}
-  Bike Size: ${rider.bikeSize}
-  ${rider.bikeNumber ? `Bike Number: ${rider.bikeNumber}` : ''}
-  Date of Birth: ${rider.dateOfBirth}
-`).join('')}
-
-EMERGENCY CONTACT:
-Name: ${formData.contactFirstName} ${formData.contactLastName}
-Email: ${formData.contactEmail}
-Phone: ${formData.contactPhone}
+${riders.map(rider => `${rider.firstName} ${rider.lastName} (${rider.bikeSize}${rider.bikeNumber ? `, #${rider.bikeNumber}` : ''})`).join('\n')}
 
 WHAT'S NEXT?
-- We will review your registration and confirm availability
-- You'll receive a follow-up email with detailed session information
-- Please arrive 15 minutes early for check-in
-- Bring appropriate safety gear (helmet, boots, gloves, etc.)
+• We'll confirm availability and send session details
+• Arrive 15 minutes early for check-in
+• Bring safety gear (helmet, boots, gloves)
 
 Questions? Contact us at leigh@motocoach.com.au
 
-This confirmation was sent from Moto Coach Track Reservation System
+---
+Moto Coach Track Reservation System
             `
         });
 
