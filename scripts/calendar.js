@@ -559,26 +559,26 @@ class MotoCoachCalendar {
             // Create pricing breakdown
             let pricingBreakdown = '';
             if (defaultRateEvents.length > 0 && customRateEvents.length > 0) {
-                // Mixed pricing - show breakdown
+                // Mixed pricing - show inline breakdown
                 const defaultPrice = defaultRateEvents.length === 1 ? 190 : 
                                    defaultRateEvents.length === 2 ? 175 : 150;
                 pricingBreakdown = `<div class="pricing-breakdown">
-                    <small>${defaultRateEvents.length} standard event${defaultRateEvents.length !== 1 ? 's' : ''} @ $${defaultPrice} each = $${defaultEventsTotal}</small>
-                    <small>${customRateEvents.length} custom event${customRateEvents.length !== 1 ? 's' : ''} = $${customEventsTotal}</small>
+                    <small>${defaultRateEvents.length} standard @ $${defaultPrice}</small>
+                    <small>${customRateEvents.length} custom rate</small>
                 </div>`;
             } else if (defaultRateEvents.length > 1) {
                 // Show bundle discount for default events
                 const defaultPrice = defaultRateEvents.length === 2 ? 175 : 150;
                 const savings = (190 * defaultRateEvents.length) - defaultEventsTotal;
                 pricingBreakdown = `<div class="pricing-breakdown">
-                    <small>Bundle discount: $${defaultPrice} per event (Save $${savings}!)</small>
+                    <small>Bundle discount: Save $${savings} total</small>
                 </div>`;
             }
 
             selectionPanel.innerHTML = `
                 <div class="selection-header">
                     <h4>${selectionCount} Event${selectionCount !== 1 ? 's' : ''} Selected</h4>
-                    <span class="selection-total">Total: $${totalCost.toFixed(2)} AUD per rider</span>
+                    <span class="selection-total">$${totalCost.toFixed(2)} AUD</span>
                 </div>
                 ${pricingBreakdown}
                 <div class="selection-actions">
@@ -734,6 +734,7 @@ class MotoCoachCalendar {
         const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
         const locationStr = event.location ? `<div class="event-location">📍 ${event.location}</div>` : '';
         const descriptionStr = event.description ? `<div class="event-description">${event.description}</div>` : '';
+        const rateStr = event.hasRegistration ? `<div class="event-rate">💰 $${event.ratePerRider} AUD per rider</div>` : '';
         
         // Add register button and spots info if event has registration enabled
         let registerButtonStr = '';
@@ -784,15 +785,13 @@ class MotoCoachCalendar {
                 }
             }
             
-            // Add single registration option
-            const singleRegisterButton = showRegisterButton ? 
-                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}&rate=${encodeURIComponent(event.ratePerRider)}&maxSpots=${encodeURIComponent(event.maxSpots || '')}&remainingSpots=${encodeURIComponent(remainingSpots || '')}" class="btn-register-single">Register for This Event Only</a>` : '';
+            // Add single registration option - REMOVED per user request
+            // Users can add to selection then register for just 1 event if needed
             
             registerButtonStr = `
                 <div class="event-register ${isSelected ? 'event-selected' : ''}">
                     <div class="register-options">
                         ${registerButton}
-                        ${singleRegisterButton}
                     </div>
                     ${spotsDisplay}
                 </div>`;
@@ -805,6 +804,7 @@ class MotoCoachCalendar {
                     <div class="event-title">${event.title}</div>
                     ${locationStr}
                     ${descriptionStr}
+                    ${rateStr}
                 </div>
                 ${registerButtonStr}
             </div>

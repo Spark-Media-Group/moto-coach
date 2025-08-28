@@ -1834,84 +1834,103 @@ footer {
 
 /* Event Selection Styles */
 .selection-panel {
-    background: rgba(255, 107, 53, 0.1);
-    border: 2px solid #ff6b35;
+    background: rgba(40, 40, 40, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 1.5rem;
     margin-top: 2rem;
     animation: slideUp 0.3s ease-out;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .selection-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
+    align-items: baseline;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 1rem;
 }
 
 .selection-header h4 {
-    color: #ff6b35;
+    color: #fff;
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
+    font-weight: 400;
 }
 
 .selection-total {
-    color: #fff;
-    font-weight: 600;
-    font-size: 1.1rem;
+    color: #ff6b35;
+    font-weight: 700;
+    font-size: 1.3rem;
 }
 
 .pricing-breakdown {
-    margin: 0.75rem 0;
-    padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.4;
 }
 
 .pricing-breakdown small {
-    display: block;
-    color: #ccc;
-    font-size: 0.85rem;
-    margin: 0.25rem 0;
+    display: inline;
+    color: inherit;
+    font-size: inherit;
+    margin: 0;
+}
+
+.pricing-breakdown small:not(:last-child):after {
+    content: " • ";
+    margin: 0 0.5rem;
 }
 
 .selection-actions {
     display: flex;
     gap: 1rem;
     justify-content: flex-end;
+    margin-top: 1.5rem;
 }
 
 .btn-clear-selection {
     background: transparent;
-    border: 1px solid #666;
-    color: #ccc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
     padding: 0.75rem 1.5rem;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-size: 0.9rem;
+    font-weight: 500;
     transition: all 0.3s ease;
 }
 
 .btn-clear-selection:hover {
-    border-color: #ff6b35;
-    color: #ff6b35;
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #fff;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .btn-register-selected {
-    background: #ff6b35;
+    background: linear-gradient(135deg, #ff6b35 0%, #e55a2b 100%);
     border: none;
     color: white;
     padding: 0.75rem 2rem;
-    border-radius: 6px;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 600;
     font-size: 0.9rem;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .btn-register-selected:hover {
-    background: #e55a2b;
     transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
 }
 
 .btn-add-selection {
@@ -5623,6 +5642,13 @@ footer {
     color: #aaa;
     font-size: 0.95rem;
     line-height: 1.4;
+}
+
+.event-rate {
+    color: #4CAF50;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0.3rem 0;
 }
 
 .event-register {

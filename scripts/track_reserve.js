@@ -276,7 +276,8 @@ function populateMultiEventDetails(events, pricingInfo) {
     const descriptionDisplay = document.getElementById('descriptionDisplay');
     
     if (eventDisplay) {
-        eventDisplay.innerHTML = `<strong>Multiple Events Registration (${events.length} events)</strong>`;
+        const eventText = events.length === 1 ? 'event' : 'events';
+        eventDisplay.innerHTML = `<strong>Registration info for ${events.length} ${eventText}</strong>`;
     }
     
     // Create detailed event list
@@ -288,7 +289,7 @@ function populateMultiEventDetails(events, pricingInfo) {
                 <div style="margin-bottom: 0.25rem;">📅 ${event.date}</div>
                 <div style="margin-bottom: 0.25rem;">🕒 ${event.time}</div>
                 ${event.location ? `<div style="margin-bottom: 0.25rem;">📍 ${event.location}</div>` : ''}
-                ${event.description ? `<div style="margin-bottom: 0.25rem; font-size: 0.9rem; opacity: 0.8;">${event.description}</div>` : ''}
+                ${event.description ? `<div style="margin-bottom: 0.25rem; font-size: 0.9rem; opacity: 0.8;">${event.description.toLowerCase()}</div>` : ''}
                 <div style="color: #ff6b35; font-weight: 600;">Rate: $${event.effectiveRate} AUD per rider</div>
             </div>
         `;
@@ -343,7 +344,7 @@ function populateSingleEventDetails() {
     }
     
     if (eventDescription) {
-        document.getElementById('descriptionDisplay').textContent = eventDescription;
+        document.getElementById('descriptionDisplay').textContent = eventDescription.toLowerCase();
     }
     
     // Clear any multi-event data
