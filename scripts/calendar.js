@@ -5,6 +5,7 @@ class MotoCoachCalendar {
         this.events = [];
         this.currentWeekStart = null; // For mobile weekly view
         this.isMobileView = false;
+        this.selectedEvents = new Map(); // Store selected events for multi-registration
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -72,6 +73,17 @@ class MotoCoachCalendar {
                     this.nextWeek();
                 } else {
                     this.nextMonth();
+                }
+            });
+        }
+
+        // Add click listener to calendar wrapper to deselect date when clicking outside days
+        const calendarWrapper = document.querySelector('.calendar-wrapper');
+        if (calendarWrapper) {
+            calendarWrapper.addEventListener('click', (e) => {
+                // Check if click was outside calendar days
+                if (!e.target.closest('.calendar-day')) {
+                    this.deselectDate();
                 }
             });
         }
@@ -364,50 +376,57 @@ class MotoCoachCalendar {
             if (dayEvents.length > 0) {
                 dayElement.classList.add('has-events');
                 
-                // Add event previews directly in the calendar day
-                const eventsContainer = document.createElement('div');
-                eventsContainer.className = 'day-events';
-                
-                // Show up to 3 events in the day box (2 for mobile)
-                const maxEvents = this.isMobileView ? 2 : 3;
-                dayEvents.slice(0, maxEvents).forEach(event => {
-                    const eventPreview = document.createElement('div');
-                    eventPreview.className = `event-preview event-${event.type}`;
+                if (this.isMobileView) {
+                    // Mobile: Show just the number of events
+                    const eventCount = document.createElement('div');
+                    eventCount.className = 'event-count';
+                    eventCount.textContent = dayEvents.length;
+                    dayElement.appendChild(eventCount);
+                } else {
+                    // Desktop: Show event previews
+                    const eventsContainer = document.createElement('div');
+                    eventsContainer.className = 'day-events';
                     
-                    // Create event content: Event title, then time frame, then location
-                    const maxTitleLength = this.isMobileView ? 12 : 15;
-                    const eventTitle = event.title.length > maxTitleLength 
-                        ? event.title.substring(0, maxTitleLength) + '...' 
-                        : event.title;
+                    // Show up to 3 events in the day box
+                    dayEvents.slice(0, 3).forEach(event => {
+                        const eventPreview = document.createElement('div');
+                        eventPreview.className = `event-preview event-${event.type}`;
+                        
+                        // Create event content: Event title, then time frame, then location
+                        const maxTitleLength = 15;
+                        const eventTitle = event.title.length > maxTitleLength 
+                            ? event.title.substring(0, maxTitleLength) + '...' 
+                            : event.title;
+                        
+                        const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                        
+                        let eventContent = `
+                            <div class="event-title-small">${eventTitle}</div>
+                            <div class="event-time-small">${eventTime}</div>
+                        `;
+                        
+                        // Show location on desktop
+                        if (event.location) {
+                            const eventLocation = event.location.length > 20 
+                                ? event.location.substring(0, 20) + '...' 
+                                : event.location;
+                            eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                        }
+                        
+                        eventPreview.innerHTML = eventContent;
+                        eventsContainer.appendChild(eventPreview);
+                    });
                     
-                    const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                    
-                    let eventContent = `
-                        <div class="event-title-small">${eventTitle}</div>
-                        <div class="event-time-small">${eventTime}</div>
-                    `;
-                    
-                    // Only show location on desktop to save space on mobile
-                    if (!this.isMobileView && event.location) {
-                        const eventLocation = event.location.length > 20 
-                            ? event.location.substring(0, 20) + '...' 
-                            : event.location;
-                        eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                    // If more events, show "and X more"
+                    if (dayEvents.length > 3) {
+                        const moreEvents = document.createElement('div');
+                        moreEvents.className = 'more-events';
+                        moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                        eventsContainer.appendChild(moreEvents);
                     }
                     
-                    eventPreview.innerHTML = eventContent;
-                    eventsContainer.appendChild(eventPreview);
-                });
-                
-                // If more events, show "and X more"
-                if (dayEvents.length > maxEvents) {
-                    const moreEvents = document.createElement('div');
-                    moreEvents.className = 'more-events';
-                    moreEvents.textContent = `+${dayEvents.length - maxEvents} more`;
-                    eventsContainer.appendChild(moreEvents);
+                    dayElement.appendChild(eventsContainer);
                 }
-                
-                dayElement.appendChild(eventsContainer);
             }
 
             dayElement.addEventListener('click', () => {
@@ -433,6 +452,187 @@ class MotoCoachCalendar {
 
         this.selectedDate = date;
         this.updateEventPanel();
+    }
+
+    deselectDate() {
+        const previousSelected = document.querySelector('.calendar-day.selected');
+        if (previousSelected) {
+            previousSelected.classList.remove('selected');
+        }
+
+        this.selectedDate = null;
+        this.updateEventPanel();
+    }
+
+    // Event selection methods for multi-registration
+    addEventToSelection(event) {
+        const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+        this.selectedEvents.set(eventKey, {
+            ...event,
+            eventKey: eventKey,
+            dateString: `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`
+        });
+        this.updateSelectionUI();
+        this.updateEventPanel(); // Refresh to show updated button states
+    }
+
+    addEventToSelectionByKey(eventKey, buttonElement) {
+        // Find the event by key from our current events
+        const targetEvent = this.events.find(event => {
+            const key = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            return key === eventKey;
+        });
+        
+        if (targetEvent) {
+            this.addEventToSelection(targetEvent);
+        }
+    }
+
+    removeEventFromSelection(eventKey) {
+        this.selectedEvents.delete(eventKey);
+        this.updateSelectionUI();
+        this.updateEventPanel(); // Refresh to show updated button states
+    }
+
+    isEventSelected(event) {
+        const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+        return this.selectedEvents.has(eventKey);
+    }
+
+    updateSelectionUI() {
+        const selectionCount = this.selectedEvents.size;
+        let selectionPanel = document.getElementById('selectionPanel');
+        
+        if (selectionCount > 0) {
+            if (!selectionPanel) {
+                // Create selection panel
+                selectionPanel = document.createElement('div');
+                selectionPanel.id = 'selectionPanel';
+                selectionPanel.className = 'selection-panel';
+                
+                const calendarWrapper = document.querySelector('.calendar-wrapper');
+                calendarWrapper.appendChild(selectionPanel);
+            }
+
+            // Calculate pricing with bundle discounts
+            const events = Array.from(this.selectedEvents.values());
+            const defaultRateEvents = events.filter(event => event.ratePerRider === 190);
+            const customRateEvents = events.filter(event => event.ratePerRider !== 190);
+            
+            // Bundle pricing for default rate events
+            let defaultEventsTotal = 0;
+            if (defaultRateEvents.length > 0) {
+                let pricePerDefault;
+                if (defaultRateEvents.length === 1) {
+                    pricePerDefault = 190;
+                } else if (defaultRateEvents.length === 2) {
+                    pricePerDefault = 175; // $350 total / 2 events
+                } else {
+                    pricePerDefault = 150; // $450+ total / 3+ events
+                }
+                defaultEventsTotal = defaultRateEvents.length * pricePerDefault;
+            }
+            
+            // Individual pricing for custom rate events
+            const customEventsTotal = customRateEvents.reduce((sum, event) => sum + event.ratePerRider, 0);
+            
+            const totalCost = defaultEventsTotal + customEventsTotal;
+            
+            // Create pricing breakdown
+            let pricingBreakdown = '';
+            if (defaultRateEvents.length > 0 && customRateEvents.length > 0) {
+                // Mixed pricing - show breakdown
+                const defaultPrice = defaultRateEvents.length === 1 ? 190 : 
+                                   defaultRateEvents.length === 2 ? 175 : 150;
+                pricingBreakdown = `<div class="pricing-breakdown">
+                    <small>${defaultRateEvents.length} standard event${defaultRateEvents.length !== 1 ? 's' : ''} @ $${defaultPrice} each = $${defaultEventsTotal}</small>
+                    <small>${customRateEvents.length} custom event${customRateEvents.length !== 1 ? 's' : ''} = $${customEventsTotal}</small>
+                </div>`;
+            } else if (defaultRateEvents.length > 1) {
+                // Show bundle discount for default events
+                const defaultPrice = defaultRateEvents.length === 2 ? 175 : 150;
+                const savings = (190 * defaultRateEvents.length) - defaultEventsTotal;
+                pricingBreakdown = `<div class="pricing-breakdown">
+                    <small>Bundle discount: $${defaultPrice} per event (Save $${savings}!)</small>
+                </div>`;
+            }
+
+            selectionPanel.innerHTML = `
+                <div class="selection-header">
+                    <h4>${selectionCount} Event${selectionCount !== 1 ? 's' : ''} Selected</h4>
+                    <span class="selection-total">Total: $${totalCost.toFixed(2)} AUD per rider</span>
+                </div>
+                ${pricingBreakdown}
+                <div class="selection-actions">
+                    <button class="btn-clear-selection" onclick="calendar.clearSelection()">Clear All</button>
+                    <button class="btn-register-selected" onclick="calendar.proceedToRegistration()">Register for Selected Events</button>
+                </div>
+            `;
+        } else if (selectionPanel) {
+            selectionPanel.remove();
+        }
+    }
+
+    clearSelection() {
+        this.selectedEvents.clear();
+        this.updateSelectionUI();
+        this.updateEventPanel(); // Refresh to show updated button states
+    }
+
+    proceedToRegistration() {
+        if (this.selectedEvents.size === 0) {
+            alert('Please select at least one event to register for.');
+            return;
+        }
+
+        // Calculate pricing with bundle discounts
+        const events = Array.from(this.selectedEvents.values());
+        const defaultRateEvents = events.filter(event => event.ratePerRider === 190);
+        const customRateEvents = events.filter(event => event.ratePerRider !== 190);
+        
+        // Bundle pricing for default rate events
+        let defaultEventsTotal = 0;
+        let bundlePrice = 190;
+        if (defaultRateEvents.length > 0) {
+            if (defaultRateEvents.length === 1) {
+                bundlePrice = 190;
+            } else if (defaultRateEvents.length === 2) {
+                bundlePrice = 175; // $350 total / 2 events
+            } else {
+                bundlePrice = 150; // $450+ total / 3+ events
+            }
+            defaultEventsTotal = defaultRateEvents.length * bundlePrice;
+        }
+        
+        // Individual pricing for custom rate events
+        const customEventsTotal = customRateEvents.reduce((sum, event) => sum + event.ratePerRider, 0);
+        const totalCost = defaultEventsTotal + customEventsTotal;
+
+        // Create URL parameters for multiple events with pricing info
+        const eventData = events.map(event => ({
+            title: event.title,
+            date: event.dateString,
+            time: event.time,
+            location: event.location || '',
+            description: event.description || '',
+            rate: event.ratePerRider,
+            effectiveRate: event.ratePerRider === 190 ? bundlePrice : event.ratePerRider, // Rate after bundle discount
+            maxSpots: event.maxSpots || '',
+            remainingSpots: 'TBD' // Will be calculated on form page
+        }));
+
+        const pricingInfo = {
+            totalCost: totalCost,
+            defaultEventsCount: defaultRateEvents.length,
+            customEventsCount: customRateEvents.length,
+            bundlePrice: bundlePrice,
+            hasBundleDiscount: defaultRateEvents.length > 1
+        };
+
+        // Encode the event data and pricing info as JSON in URL
+        const encodedEvents = encodeURIComponent(JSON.stringify(eventData));
+        const encodedPricing = encodeURIComponent(JSON.stringify(pricingInfo));
+        window.location.href = `programs/track_reserve.html?multiEvents=${encodedEvents}&pricing=${encodedPricing}`;
     }
 
     async updateEventPanel() {
@@ -520,12 +720,30 @@ class MotoCoachCalendar {
                 remainingSpots = null; // No limit
             }
             
-            const registerButton = showRegisterButton ? 
-                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}&rate=${encodeURIComponent(event.ratePerRider)}&maxSpots=${encodeURIComponent(event.maxSpots || '')}&remainingSpots=${encodeURIComponent(remainingSpots || '')}" class="btn-register">Register</a>` : '';
+            // Check if this event is already selected
+            const isSelected = this.isEventSelected(event);
+            const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            
+            let registerButton = '';
+            if (showRegisterButton) {
+                if (isSelected) {
+                    registerButton = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${eventKey}')">Remove from Selection</button>`;
+                } else {
+                    // Store event data in a data attribute and use a simpler approach
+                    registerButton = `<button class="btn-add-selection" data-event-key="${eventKey}" onclick="calendar.addEventToSelectionByKey('${eventKey}', this)">Add to Selection</button>`;
+                }
+            }
+            
+            // Add single registration option
+            const singleRegisterButton = showRegisterButton ? 
+                `<a href="programs/track_reserve.html?event=${encodeURIComponent(event.title)}&date=${encodeURIComponent(eventDateStr)}&time=${encodeURIComponent(event.time)}&location=${encodeURIComponent(event.location || '')}&description=${encodeURIComponent(event.description || '')}&rate=${encodeURIComponent(event.ratePerRider)}&maxSpots=${encodeURIComponent(event.maxSpots || '')}&remainingSpots=${encodeURIComponent(remainingSpots || '')}" class="btn-register-single">Register for This Event Only</a>` : '';
             
             registerButtonStr = `
-                <div class="event-register">
-                    ${registerButton}
+                <div class="event-register ${isSelected ? 'event-selected' : ''}">
+                    <div class="register-options">
+                        ${registerButton}
+                        ${singleRegisterButton}
+                    </div>
                     ${spotsDisplay}
                 </div>`;
         }
@@ -614,9 +832,12 @@ class MotoCoachCalendar {
     }
 }
 
+// Global calendar instance for onclick handlers
+let calendar;
+
 // Initialize calendar when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('calendarDays')) {
-        new MotoCoachCalendar();
+        calendar = new MotoCoachCalendar();
     }
 });

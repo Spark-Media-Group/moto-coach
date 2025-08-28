@@ -144,10 +144,19 @@ body {
     align-items: center;
 }
 
+.logo a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    line-height: 0;
+    height: 100%;
+}
+
 .logo-img {
     height: clamp(30px, 6vw, 50px);
     width: auto;
     object-fit: contain;
+    display: block;
 }
 
 .nav-links {
@@ -1823,6 +1832,179 @@ footer {
     margin-top: 1rem;
 }
 
+/* Event Selection Styles */
+.selection-panel {
+    background: rgba(255, 107, 53, 0.1);
+    border: 2px solid #ff6b35;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    animation: slideUp 0.3s ease-out;
+}
+
+.selection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.selection-header h4 {
+    color: #ff6b35;
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.selection-total {
+    color: #fff;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.pricing-breakdown {
+    margin: 0.75rem 0;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+}
+
+.pricing-breakdown small {
+    display: block;
+    color: #ccc;
+    font-size: 0.85rem;
+    margin: 0.25rem 0;
+}
+
+.selection-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.btn-clear-selection {
+    background: transparent;
+    border: 1px solid #666;
+    color: #ccc;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.btn-clear-selection:hover {
+    border-color: #ff6b35;
+    color: #ff6b35;
+}
+
+.btn-register-selected {
+    background: #ff6b35;
+    border: none;
+    color: white;
+    padding: 0.75rem 2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+}
+
+.btn-register-selected:hover {
+    background: #e55a2b;
+    transform: translateY(-2px);
+}
+
+.btn-add-selection {
+    background: #ff6b35;
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-add-selection:hover {
+    background: #e55a2b;
+}
+
+.btn-remove-selection {
+    background: #666;
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-remove-selection:hover {
+    background: #555;
+}
+
+.btn-register-single {
+    display: inline-block;
+    background: transparent;
+    border: 1px solid #ff6b35;
+    color: #ff6b35;
+    padding: 0.4rem 0.8rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+}
+
+.btn-register-single:hover {
+    background: #ff6b35;
+    color: white;
+}
+
+.register-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.event-selected {
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile responsive for selection panel */
+@media (max-width: 768px) {
+    .selection-header {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+    }
+    
+    .selection-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .register-options {
+        align-items: center;
+    }
+}
+
 .btn-large {
     padding: 1rem 2.5rem;
     font-size: 1.1rem;
@@ -2017,7 +2199,7 @@ footer {
     max-width: 450px;
     opacity: 0;
     transform: translateY(20px);
-    animation: fadeInUp 2s ease-out .75s forwards;
+    animation: fadeInUp 2s ease-out .5s forwards;
     filter: brightness(1.1) contrast(1.1);
 }
 
@@ -2064,8 +2246,7 @@ footer {
 
 .overview-cta {
     opacity: 0;
-    transform: translateY(20px);
-    animation: fadeInCenter 2s ease-out .75s forwards;
+    animation: fadeIn 2s ease-out .5s forwards;
 }
 
 .pricing-details-btn {
@@ -2117,6 +2298,15 @@ footer {
     to {
         opacity: 1;
         transform: translateX(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
     }
 }
 
@@ -5331,6 +5521,22 @@ footer {
     margin-top: 2px;
 }
 
+.event-count {
+    background: #ff6b35;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    margin-top: 0.25rem;
+}
+
 .event-panel {
     background: #222;
     padding: 2rem;
@@ -5694,11 +5900,17 @@ button.btn-register:hover {
     .event-item {
         flex-direction: column;
         gap: 0.5rem;
+        text-align: center; /* Center all content on mobile */
+    }
+    
+    .event-details {
+        text-align: center; /* Center event details on mobile */
     }
     
     .event-register {
-        align-self: flex-end;
+        align-self: center; /* Center register button and spots info */
         margin-top: 0.5rem;
+        text-align: center;
     }
 }
 

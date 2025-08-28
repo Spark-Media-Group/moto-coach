@@ -207,8 +207,6 @@ function updatePricing() {
     const rateDisplay = document.getElementById('ratePerRider');
     const ridersDisplay = document.getElementById('numberOfRiders');
     const totalDisplay = document.getElementById('totalPrice');
-    const spotsLimitRow = document.getElementById('spotsLimitRow');
-    const spotsRemainingDisplay = document.getElementById('spotsRemaining');
     
     if (rateDisplay && ridersDisplay && totalDisplay) {
         const total = ratePerRider * riderCount;
@@ -216,22 +214,6 @@ function updatePricing() {
         rateDisplay.textContent = `$${ratePerRider.toFixed(2)} AUD`;
         ridersDisplay.textContent = riderCount;
         totalDisplay.textContent = `$${total.toFixed(2)} AUD`;
-    }
-    
-    // Show spots information if available
-    if (spotsLimitRow && spotsRemainingDisplay && remainingSpots !== null) {
-        spotsLimitRow.style.display = 'flex';
-        const currentRemaining = remainingSpots - (riderCount - 1); // Subtract additional riders beyond the first
-        spotsRemainingDisplay.textContent = Math.max(0, currentRemaining);
-        
-        // Add warning color if spots are low
-        if (currentRemaining <= 2 && currentRemaining > 0) {
-            spotsRemainingDisplay.style.color = '#ffa500'; // Orange for low spots
-        } else if (currentRemaining <= 0) {
-            spotsRemainingDisplay.style.color = '#ff4444'; // Red for no spots
-        } else {
-            spotsRemainingDisplay.style.color = '#ff6b35'; // Default orange
-        }
     }
 }
 
