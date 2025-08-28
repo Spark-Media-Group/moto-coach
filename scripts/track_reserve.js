@@ -246,6 +246,80 @@ function getUrlParameter(name) {
 
 // Populate event details from URL parameters
 function populateEventDetails() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const multiEventsParam = urlParams.get('multiEvents');
+    const pricingParam = urlParams.get('pricing');
+    
+    if (multiEventsParam && pricingParam) {
+        // Handle multi-event registration
+        try {
+            const events = JSON.parse(decodeURIComponent(multiEventsParam));
+            const pricingInfo = JSON.parse(decodeURIComponent(pricingParam));
+            
+            populateMultiEventDetails(events, pricingInfo);
+        } catch (error) {
+            console.error('Error parsing multi-event data:', error);
+            // Fallback to single event
+            populateSingleEventDetails();
+        }
+    } else {
+        // Handle single event registration
+        populateSingleEventDetails();
+    }
+}
+
+function populateMultiEventDetails(events, pricingInfo) {
+    // Display multiple events
+    const eventDisplay = document.getElementById('eventDisplay');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const locationDisplay = document.getElementById('locationDisplay');
+    const descriptionDisplay = document.getElementById('descriptionDisplay');
+    
+    if (eventDisplay) {
+        eventDisplay.innerHTML = `<strong>Multiple Events Registration (${events.length} events)</strong>`;
+    }
+    
+    // Create detailed event list
+    let eventDetailsHTML = '';
+    events.forEach((event, index) => {
+        eventDetailsHTML += `
+            <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; margin: 0.5rem 0; border-radius: 6px;">
+                <div style="font-weight: 600; color: #ff6b35; margin-bottom: 0.5rem;">${event.title}</div>
+                <div style="margin-bottom: 0.25rem;">📅 ${event.date}</div>
+                <div style="margin-bottom: 0.25rem;">🕒 ${event.time}</div>
+                ${event.location ? `<div style="margin-bottom: 0.25rem;">📍 ${event.location}</div>` : ''}
+                ${event.description ? `<div style="margin-bottom: 0.25rem; font-size: 0.9rem; opacity: 0.8;">${event.description}</div>` : ''}
+                <div style="color: #ff6b35; font-weight: 600;">Rate: $${event.effectiveRate} AUD per rider</div>
+            </div>
+        `;
+    });
+    
+    if (timeDisplay) {
+        timeDisplay.innerHTML = eventDetailsHTML;
+    }
+    
+    if (locationDisplay) {
+        locationDisplay.style.display = 'none'; // Hide since we're showing location per event
+    }
+    
+    if (descriptionDisplay) {
+        descriptionDisplay.style.display = 'none'; // Hide since we're showing description per event
+    }
+    
+    // Update pricing section for multi-events
+    updateMultiEventPricing(pricingInfo);
+    
+    // Set hidden field for form submission
+    const hiddenEventName = document.getElementById('eventName');
+    if (hiddenEventName) {
+        hiddenEventName.value = `Multi-Event Registration: ${events.map(e => e.title).join(', ')}`;
+    }
+    
+    // Store multi-event data for form submission
+    window.multiEventData = { events, pricingInfo };
+}
+
+function populateSingleEventDetails() {
     const eventName = getUrlParameter('event');
     const eventTime = getUrlParameter('time');
     const eventLocation = getUrlParameter('location');
@@ -270,6 +344,39 @@ function populateEventDetails() {
     
     if (eventDescription) {
         document.getElementById('descriptionDisplay').textContent = eventDescription;
+    }
+    
+    // Clear any multi-event data
+    window.multiEventData = null;
+}
+
+function updateMultiEventPricing(pricingInfo) {
+    const rateDisplay = document.getElementById('ratePerRider');
+    const ridersDisplay = document.getElementById('numberOfRiders');
+    const totalDisplay = document.getElementById('totalPrice');
+    
+    if (rateDisplay && ridersDisplay && totalDisplay) {
+        // Create a detailed pricing breakdown
+        let pricingHTML = '';
+        
+        if (pricingInfo.hasBundleDiscount) {
+            pricingHTML = `
+                <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 0.5rem;">
+                    ${pricingInfo.defaultEventsCount} event${pricingInfo.defaultEventsCount !== 1 ? 's' : ''} @ $${pricingInfo.bundlePrice} each
+                    ${pricingInfo.customEventsCount > 0 ? `<br>${pricingInfo.customEventsCount} custom event${pricingInfo.customEventsCount !== 1 ? 's' : ''} (individual pricing)` : ''}
+                </div>
+                <div style="color: #ff6b35; font-weight: 600;">$${pricingInfo.totalCost.toFixed(2)} AUD</div>
+            `;
+        } else {
+            pricingHTML = `$${pricingInfo.totalCost.toFixed(2)} AUD`;
+        }
+        
+        rateDisplay.innerHTML = pricingHTML;
+        ridersDisplay.textContent = 1; // Start with 1 rider
+        totalDisplay.textContent = `$${pricingInfo.totalCost.toFixed(2)} AUD`;
+        
+        // Update global rate for calculations
+        ratePerRider = pricingInfo.totalCost;
     }
 }
 
@@ -441,14 +548,24 @@ async function handleFormSubmission(event) {
         // Add reCAPTCHA response
         data.recaptchaToken = recaptchaToken;
         
-        // Add event details from URL parameters (use consistent naming)
-        const urlParams = new URLSearchParams(window.location.search);
-        data.eventName = urlParams.get('event') || data.eventName || '';
-        data.eventDate = urlParams.get('date') || '';
-        data.eventLocation = urlParams.get('location') || '';
-        data.eventTime = urlParams.get('time') || '';
-        data.ratePerRider = ratePerRider;
-        data.totalAmount = ratePerRider * riderCount;
+        // Handle multi-event vs single event data
+        if (window.multiEventData) {
+            // Multi-event registration
+            data.multiEventRegistration = true;
+            data.events = window.multiEventData.events;
+            data.pricingInfo = window.multiEventData.pricingInfo;
+            data.eventName = `Multi-Event Registration: ${window.multiEventData.events.map(e => e.title).join(', ')}`;
+            data.totalAmount = window.multiEventData.pricingInfo.totalCost * riderCount;
+        } else {
+            // Single event registration
+            const urlParams = new URLSearchParams(window.location.search);
+            data.eventName = urlParams.get('event') || data.eventName || '';
+            data.eventDate = urlParams.get('date') || '';
+            data.eventLocation = urlParams.get('location') || '';
+            data.eventTime = urlParams.get('time') || '';
+            data.ratePerRider = ratePerRider;
+            data.totalAmount = ratePerRider * riderCount;
+        }
         
         // Submit to API
         const response = await fetch('/api/track_reserve', {

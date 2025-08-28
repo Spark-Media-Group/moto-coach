@@ -473,7 +473,7 @@ class MotoCoachCalendar {
             dateString: `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`
         });
         this.updateSelectionUI();
-        this.updateEventPanel(); // Refresh to show updated button states
+        this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
     }
 
     addEventToSelectionByKey(eventKey, buttonElement) {
@@ -491,7 +491,7 @@ class MotoCoachCalendar {
     removeEventFromSelection(eventKey) {
         this.selectedEvents.delete(eventKey);
         this.updateSelectionUI();
-        this.updateEventPanel(); // Refresh to show updated button states
+        this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
     }
 
     isEventSelected(event) {
@@ -573,10 +573,42 @@ class MotoCoachCalendar {
         }
     }
 
+    updateButtonStatesOnly() {
+        // Update button states without refreshing all event content
+        const eventItems = document.querySelectorAll('.event-item');
+        eventItems.forEach(eventItem => {
+            const registerOptions = eventItem.querySelector('.register-options');
+            if (registerOptions) {
+                const addButton = registerOptions.querySelector('.btn-add-selection');
+                const removeButton = registerOptions.querySelector('.btn-remove-selection');
+                
+                if (addButton) {
+                    const eventKey = addButton.getAttribute('data-event-key');
+                    const isSelected = this.selectedEvents.has(eventKey);
+                    
+                    if (isSelected) {
+                        // Replace add button with remove button
+                        addButton.outerHTML = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${eventKey}')">Remove from Selection</button>`;
+                        eventItem.querySelector('.event-register').classList.add('event-selected');
+                    }
+                } else if (removeButton) {
+                    const eventKey = removeButton.getAttribute('onclick').match(/'([^']+)'/)[1];
+                    const isSelected = this.selectedEvents.has(eventKey);
+                    
+                    if (!isSelected) {
+                        // Replace remove button with add button
+                        removeButton.outerHTML = `<button class="btn-add-selection" data-event-key="${eventKey}" onclick="calendar.addEventToSelectionByKey('${eventKey}', this)">Add to Selection</button>`;
+                        eventItem.querySelector('.event-register').classList.remove('event-selected');
+                    }
+                }
+            }
+        });
+    }
+
     clearSelection() {
         this.selectedEvents.clear();
         this.updateSelectionUI();
-        this.updateEventPanel(); // Refresh to show updated button states
+        this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
     }
 
     proceedToRegistration() {
