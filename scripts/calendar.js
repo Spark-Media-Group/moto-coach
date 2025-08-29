@@ -524,13 +524,13 @@ class MotoCoachCalendar {
         
         if (selectionCount > 0) {
             if (!selectionPanel) {
-                // Create selection panel
+                // Create fixed selection panel
                 selectionPanel = document.createElement('div');
                 selectionPanel.id = 'selectionPanel';
-                selectionPanel.className = 'selection-panel';
+                selectionPanel.className = 'selection-panel fixed-selection-panel';
                 
-                const calendarWrapper = document.querySelector('.calendar-wrapper');
-                calendarWrapper.appendChild(selectionPanel);
+                // Append to body for fixed positioning
+                document.body.appendChild(selectionPanel);
             }
 
             // Calculate pricing with bundle discounts

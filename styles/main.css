@@ -1844,6 +1844,81 @@ footer {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
+/* Fixed Selection Panel for Corner Display */
+.fixed-selection-panel {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    z-index: 1000;
+    margin-top: 0;
+    max-width: 300px;
+    min-width: 250px;
+    animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Mobile responsive adjustments for fixed panel */
+@media (max-width: 768px) {
+    .fixed-selection-panel {
+        top: 80px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        min-width: auto;
+        width: calc(100% - 20px);
+    }
+}
+
+@media (max-width: 480px) {
+    .fixed-selection-panel {
+        top: 70px;
+        right: 5px;
+        left: 5px;
+        width: calc(100% - 10px);
+        padding: 1rem;
+    }
+    
+    .fixed-selection-panel .selection-header h4 {
+        font-size: 1rem;
+    }
+    
+    .fixed-selection-panel .selection-total {
+        font-size: 1.1rem;
+    }
+}
+
+/* Compact styling for fixed panel buttons */
+.fixed-selection-panel .selection-actions {
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.fixed-selection-panel .btn-clear-selection,
+.fixed-selection-panel .btn-register-selected {
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+}
+
+.fixed-selection-panel .selection-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+}
+
+.fixed-selection-panel .pricing-breakdown {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
 .selection-header {
     display: flex;
     justify-content: space-between;
