@@ -1977,14 +1977,49 @@ footer {
     box-shadow: 0 4px 12px rgba(102, 102, 102, 0.4);
 }
 
-/* Remove focus outline from buttons */
+/* Remove focus outline from buttons and elements */
 .btn-remove-selection:focus,
 .btn-register:focus,
 .btn-add-selection:focus,
 button.btn-register:focus,
-button:focus {
+button:focus,
+.spots-remaining:focus,
+.spots-remaining-low:focus,
+div:focus,
+*:focus {
     outline: none !important;
     box-shadow: none !important;
+}
+
+/* Additional focus removal for all interactive elements */
+.btn-remove-selection,
+.btn-register,
+.btn-add-selection,
+.spots-remaining,
+.spots-remaining-low {
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-focus-ring-color: transparent !important;
+    -moz-outline: none !important;
+}
+
+/* Remove focus from any div that might be focusable */
+div[tabindex]:focus,
+div:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Ensure spots remaining divs are not focusable */
+.spots-remaining,
+.spots-remaining-low,
+.spots-remaining.full {
+    pointer-events: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    outline: none !important;
 }
 
 .btn-register-single {

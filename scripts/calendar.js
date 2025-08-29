@@ -738,8 +738,34 @@ class MotoCoachCalendar {
                     <p style="color: #fff; font-weight: 600; margin: 0;">
                         Upcoming Events
                     </p>
-                    <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
-                        Page ${this.currentEventPage} of ${totalPages}
+                    <div class="top-pagination" style="display: flex; align-items: center; gap: 0.75rem;">
+                        <button class="pagination-btn prev-events-top" ${this.currentEventPage === 1 ? 'disabled' : ''} style="
+                            background: ${this.currentEventPage === 1 ? '#333' : '#ff6b35'}; 
+                            color: ${this.currentEventPage === 1 ? '#666' : '#fff'}; 
+                            border: none; 
+                            padding: 0.4rem 0.8rem; 
+                            border-radius: 4px; 
+                            cursor: ${this.currentEventPage === 1 ? 'not-allowed' : 'pointer'};
+                            font-size: 0.8rem;
+                            transition: background-color 0.3s ease;
+                        ">
+                            ← Prev
+                        </button>
+                        <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
+                            Page ${this.currentEventPage} of ${totalPages}
+                        </div>
+                        <button class="pagination-btn next-events-top" ${this.currentEventPage === totalPages ? 'disabled' : ''} style="
+                            background: ${this.currentEventPage === totalPages ? '#333' : '#ff6b35'}; 
+                            color: ${this.currentEventPage === totalPages ? '#666' : '#fff'}; 
+                            border: none; 
+                            padding: 0.4rem 0.8rem; 
+                            border-radius: 4px; 
+                            cursor: ${this.currentEventPage === totalPages ? 'not-allowed' : 'pointer'};
+                            font-size: 0.8rem;
+                            transition: background-color 0.3s ease;
+                        ">
+                            Next →
+                        </button>
                     </div>
                 </div>
             </div>
@@ -763,8 +789,34 @@ class MotoCoachCalendar {
                         <p style="color: #fff; font-weight: 600; margin: 0;">
                             Upcoming Events
                         </p>
-                        <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
-                            Page ${this.currentEventPage} of ${totalPages}
+                        <div class="top-pagination" style="display: flex; align-items: center; gap: 0.75rem;">
+                            <button class="pagination-btn prev-events-top" ${this.currentEventPage === 1 ? 'disabled' : ''} style="
+                                background: ${this.currentEventPage === 1 ? '#333' : '#ff6b35'}; 
+                                color: ${this.currentEventPage === 1 ? '#666' : '#fff'}; 
+                                border: none; 
+                                padding: 0.4rem 0.8rem; 
+                                border-radius: 4px; 
+                                cursor: ${this.currentEventPage === 1 ? 'not-allowed' : 'pointer'};
+                                font-size: 0.8rem;
+                                transition: background-color 0.3s ease;
+                            ">
+                                ← Prev
+                            </button>
+                            <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
+                                Page ${this.currentEventPage} of ${totalPages}
+                            </div>
+                            <button class="pagination-btn next-events-top" ${this.currentEventPage === totalPages ? 'disabled' : ''} style="
+                                background: ${this.currentEventPage === totalPages ? '#333' : '#ff6b35'}; 
+                                color: ${this.currentEventPage === totalPages ? '#666' : '#fff'}; 
+                                border: none; 
+                                padding: 0.4rem 0.8rem; 
+                                border-radius: 4px; 
+                                cursor: ${this.currentEventPage === totalPages ? 'not-allowed' : 'pointer'};
+                                font-size: 0.8rem;
+                                transition: background-color 0.3s ease;
+                            ">
+                                Next →
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -823,33 +875,44 @@ class MotoCoachCalendar {
     }
 
     setupPaginationListeners() {
+        // Bottom pagination buttons
         const prevBtn = document.querySelector('.prev-events');
         const nextBtn = document.querySelector('.next-events');
+        
+        // Top pagination buttons
+        const prevBtnTop = document.querySelector('.prev-events-top');
+        const nextBtnTop = document.querySelector('.next-events-top');
 
-        if (prevBtn && !prevBtn.disabled) {
-            prevBtn.addEventListener('click', () => {
-                if (this.currentEventPage > 1) {
-                    this.currentEventPage--;
-                    this.showAllUpcomingEvents();
-                }
-            });
-        }
+        // Previous button event listeners
+        [prevBtn, prevBtnTop].forEach(btn => {
+            if (btn && !btn.disabled) {
+                btn.addEventListener('click', () => {
+                    if (this.currentEventPage > 1) {
+                        this.currentEventPage--;
+                        this.showAllUpcomingEvents();
+                    }
+                });
+            }
+        });
 
-        if (nextBtn && !nextBtn.disabled) {
-            nextBtn.addEventListener('click', () => {
-                const totalEvents = this.events.filter(event => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return event.date >= today;
-                }).length;
-                const totalPages = Math.ceil(totalEvents / 5);
-                
-                if (this.currentEventPage < totalPages) {
-                    this.currentEventPage++;
-                    this.showAllUpcomingEvents();
-                }
-            });
-        }
+        // Next button event listeners
+        [nextBtn, nextBtnTop].forEach(btn => {
+            if (btn && !btn.disabled) {
+                btn.addEventListener('click', () => {
+                    const totalEvents = this.events.filter(event => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return event.date >= today;
+                    }).length;
+                    const totalPages = Math.ceil(totalEvents / 5);
+                    
+                    if (this.currentEventPage < totalPages) {
+                        this.currentEventPage++;
+                        this.showAllUpcomingEvents();
+                    }
+                });
+            }
+        });
     }
 
     async createEventHTML(event, showDate = false) {
