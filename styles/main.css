@@ -8,7 +8,7 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
     color: #333;
-    background-color: #f5f5f5;
+    background-color: #4a4a4a;
 }
 
 /* Utility Classes */
@@ -1847,7 +1847,7 @@ footer {
 /* Fixed Selection Panel for Corner Display */
 .fixed-selection-panel {
     position: fixed;
-    top: 100px;
+    bottom: 20px;
     right: 20px;
     z-index: 1000;
     margin-top: 0;
@@ -1870,7 +1870,7 @@ footer {
 /* Mobile responsive adjustments for fixed panel */
 @media (max-width: 768px) {
     .fixed-selection-panel {
-        top: 80px;
+        bottom: 10px;
         right: 10px;
         left: 10px;
         max-width: none;
@@ -1881,7 +1881,7 @@ footer {
 
 @media (max-width: 480px) {
     .fixed-selection-panel {
-        top: 70px;
+        bottom: 10px;
         right: 5px;
         left: 5px;
         width: calc(100% - 10px);
@@ -5432,7 +5432,7 @@ div:focus {
 
 /* ===== CALENDAR STYLES ===== */
 .calendar-hero {
-    background: #272727;
+    background: #4a4a4a;
     padding: 100px 0 4rem 0;
     text-align: center;
     color: #333;
@@ -5449,7 +5449,7 @@ div:focus {
 
 .calendar-hero p {
     font-size: 1.2rem;
-    color: #ccc;
+    color: #cccccc;
     max-width: 600px;
     margin: 0 auto;
     line-height: 1.6;
@@ -5463,48 +5463,60 @@ div:focus {
 .calendar-wrapper {
     max-width: 1200px;
     margin: 3rem auto 0 auto;
-    background: #525151;
+    background: #ffffff;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 .calendar-header {
-    background: linear-gradient(135deg, #ff6b35 0%, #e55a2b 100%);
+    background: linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%);
+    border-radius: 12px 12px 0 0;
     padding: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
     color: #fff;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .nav-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     color: #fff;
-    font-size: 1.5rem;
-    font-weight: bold;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
+    font-size: 1.2rem;
+    font-weight: 500;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
+    backdrop-filter: blur(10px);
 }
 
 .nav-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1);
+    background: rgba(255, 107, 53, 0.15);
+    border-color: rgba(255, 107, 53, 0.3);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+}
+
+.nav-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(255, 107, 53, 0.15);
 }
 
 .month-year h2 {
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.8rem;
+    font-weight: 600;
     margin: 0;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
+    color: #f5f5f5;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .calendar-grid {
@@ -5931,16 +5943,19 @@ button.btn-register:hover {
     
     .calendar-header {
         padding: 1rem 0.5rem;
+        border-radius: 8px 8px 0 0;
     }
     
     .month-year h2 {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
+        letter-spacing: 1px;
     }
     
     .nav-btn {
-        width: 40px;
-        height: 40px;
-        font-size: 1.2rem;
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+        border-radius: 6px;
     }
     
     .day-header {
@@ -6070,16 +6085,19 @@ button.btn-register:hover {
     
     .calendar-header {
         padding: 0.75rem 0.25rem;
+        border-radius: 6px 6px 0 0;
     }
     
     .month-year h2 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+        letter-spacing: 0.5px;
     }
     
     .nav-btn {
-        width: 35px;
-        height: 35px;
-        font-size: 1rem;
+        width: 34px;
+        height: 34px;
+        font-size: 0.9rem;
+        border-radius: 5px;
     }
     
     .day-header {
@@ -6168,16 +6186,19 @@ button.btn-register:hover {
     
     .calendar-header {
         padding: 0.5rem 0.25rem;
+        border-radius: 4px 4px 0 0;
     }
     
     .month-year h2 {
-        font-size: 1.1rem;
+        font-size: 1rem;
+        letter-spacing: 0.5px;
     }
     
     .nav-btn {
         width: 30px;
         height: 30px;
-        font-size: 0.9rem;
+        font-size: 0.8rem;
+        border-radius: 4px;
     }
     
     .day-header {
