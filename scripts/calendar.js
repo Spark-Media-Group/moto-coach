@@ -6,6 +6,7 @@ class MotoCoachCalendar {
         this.currentWeekStart = null; // For mobile weekly view
         this.isMobileView = false;
         this.selectedEvents = new Map(); // Store selected events for multi-registration
+        this.currentEventPage = 1; // For event panel pagination
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -689,50 +690,165 @@ class MotoCoachCalendar {
         const eventList = document.getElementById('eventList');
         if (!eventList) return;
 
-        if (this.selectedDate) {
-            const dayEvents = this.getEventsForDate(this.selectedDate);
-            
-            if (dayEvents.length > 0) {
-                // Show loading state
-                eventList.innerHTML = '<p class="loading-events">Loading event details...</p>';
-                
-                // Generate HTML for all events
-                const eventHTMLPromises = dayEvents.map(event => this.createEventHTML(event));
-                const eventHTMLs = await Promise.all(eventHTMLPromises);
-                eventList.innerHTML = eventHTMLs.join('');
-            } else {
-                eventList.innerHTML = '<p class="no-events">No events scheduled for this date</p>';
-            }
-        } else {
-            const monthEvents = this.getEventsForMonth(this.currentDate);
-            if (monthEvents.length > 0) {
-                // Show loading state
-                eventList.innerHTML = `
+        // Always show all upcoming events, regardless of selected date
+        await this.showAllUpcomingEvents();
+    }
+
+    async showAllUpcomingEvents() {
+        const eventList = document.getElementById('eventList');
+        if (!eventList) return;
+
+        // Get all upcoming events (from today onwards)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const allUpcomingEvents = this.events
+            .filter(event => event.date >= today)
+            .sort((a, b) => a.date - b.date);
+
+        if (allUpcomingEvents.length === 0) {
+            eventList.innerHTML = '<p class="no-events">No upcoming events scheduled</p>';
+            return;
+        }
+
+        // Initialize pagination if not already set
+        if (!this.currentEventPage) {
+            this.currentEventPage = 1;
+        }
+
+        const eventsPerPage = 5;
+        const totalPages = Math.ceil(allUpcomingEvents.length / eventsPerPage);
+        
+        // Ensure current page is valid
+        if (this.currentEventPage > totalPages) {
+            this.currentEventPage = 1;
+        }
+
+        const startIndex = (this.currentEventPage - 1) * eventsPerPage;
+        const endIndex = startIndex + eventsPerPage;
+        const currentPageEvents = allUpcomingEvents.slice(startIndex, endIndex);
+
+        // Show loading state
+        eventList.innerHTML = `
+            <div class="events-header">
+                <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
+                    Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
+                </p>
+                <div class="events-title-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <p style="color: #fff; font-weight: 600; margin: 0;">
+                        Upcoming Events
+                    </p>
+                    <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
+                        Page ${this.currentEventPage} of ${totalPages}
+                    </div>
+                </div>
+            </div>
+            <p class="loading-events">Loading event details...</p>
+        `;
+
+        try {
+            // Generate HTML for current page events
+            const eventHTMLPromises = currentPageEvents.map(event => this.createEventHTML(event, true));
+            const eventHTMLs = await Promise.all(eventHTMLPromises);
+
+            // Create pagination controls
+            const paginationHTML = this.createPaginationHTML(this.currentEventPage, totalPages);
+
+            eventList.innerHTML = `
+                <div class="events-header">
                     <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
                         Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
                     </p>
-                    <p style="color: #fff; font-weight: 600; margin-bottom: 1rem;">
-                        Upcoming events this month:
-                    </p>
-                    <p class="loading-events">Loading event details...</p>
-                `;
-                
-                // Generate HTML for events with spots info
-                const eventHTMLPromises = monthEvents.slice(0, 5).map(event => this.createEventHTML(event, true));
-                const eventHTMLs = await Promise.all(eventHTMLPromises);
-                
-                eventList.innerHTML = `
-                    <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
-                        Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
-                    </p>
-                    <p style="color: #fff; font-weight: 600; margin-bottom: 1rem;">
-                        Upcoming events this month:
-                    </p>
+                    <div class="events-title-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <p style="color: #fff; font-weight: 600; margin: 0;">
+                            Upcoming Events
+                        </p>
+                        <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
+                            Page ${this.currentEventPage} of ${totalPages}
+                        </div>
+                    </div>
+                </div>
+                <div class="events-list">
                     ${eventHTMLs.join('')}
-                `;
-            } else {
-                eventList.innerHTML = '<p class="no-events">No events scheduled this month</p>';
-            }
+                </div>
+                ${paginationHTML}
+            `;
+
+            // Add event listeners for pagination
+            this.setupPaginationListeners();
+
+        } catch (error) {
+            console.error('Error loading upcoming events:', error);
+            eventList.innerHTML = '<p class="no-events">Error loading events</p>';
+        }
+    }
+
+    createPaginationHTML(currentPage, totalPages) {
+        if (totalPages <= 1) return '';
+
+        const prevDisabled = currentPage === 1 ? 'disabled' : '';
+        const nextDisabled = currentPage === totalPages ? 'disabled' : '';
+
+        return `
+            <div class="events-pagination" style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #333;">
+                <button class="pagination-btn prev-events" ${prevDisabled} style="
+                    background: ${currentPage === 1 ? '#333' : '#ff6b35'}; 
+                    color: ${currentPage === 1 ? '#666' : '#fff'}; 
+                    border: none; 
+                    padding: 0.5rem 1rem; 
+                    border-radius: 4px; 
+                    cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'};
+                    font-size: 0.9rem;
+                    transition: background-color 0.3s ease;
+                ">
+                    ← Previous
+                </button>
+                <span style="color: #ccc; font-size: 0.9rem;">
+                    ${currentPage} of ${totalPages}
+                </span>
+                <button class="pagination-btn next-events" ${nextDisabled} style="
+                    background: ${currentPage === totalPages ? '#333' : '#ff6b35'}; 
+                    color: ${currentPage === totalPages ? '#666' : '#fff'}; 
+                    border: none; 
+                    padding: 0.5rem 1rem; 
+                    border-radius: 4px; 
+                    cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'};
+                    font-size: 0.9rem;
+                    transition: background-color 0.3s ease;
+                ">
+                    Next →
+                </button>
+            </div>
+        `;
+    }
+
+    setupPaginationListeners() {
+        const prevBtn = document.querySelector('.prev-events');
+        const nextBtn = document.querySelector('.next-events');
+
+        if (prevBtn && !prevBtn.disabled) {
+            prevBtn.addEventListener('click', () => {
+                if (this.currentEventPage > 1) {
+                    this.currentEventPage--;
+                    this.showAllUpcomingEvents();
+                }
+            });
+        }
+
+        if (nextBtn && !nextBtn.disabled) {
+            nextBtn.addEventListener('click', () => {
+                const totalEvents = this.events.filter(event => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return event.date >= today;
+                }).length;
+                const totalPages = Math.ceil(totalEvents / 5);
+                
+                if (this.currentEventPage < totalPages) {
+                    this.currentEventPage++;
+                    this.showAllUpcomingEvents();
+                }
+            });
         }
     }
 

@@ -1977,6 +1977,16 @@ footer {
     box-shadow: 0 4px 12px rgba(102, 102, 102, 0.4);
 }
 
+/* Remove focus outline from buttons */
+.btn-remove-selection:focus,
+.btn-register:focus,
+.btn-add-selection:focus,
+button.btn-register:focus,
+button:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
 .btn-register-single {
     display: inline-block;
     background: transparent;
@@ -5749,6 +5759,55 @@ button.btn-register:hover {
     border: 1px dashed #333;
 }
 
+/* Event Pagination Styles */
+.events-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #333;
+}
+
+.pagination-btn {
+    background: #ff6b35;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    font-weight: 500;
+}
+
+.pagination-btn:hover:not(:disabled) {
+    background: #e55a2b;
+    transform: translateY(-1px);
+}
+
+.pagination-btn:disabled {
+    background: #333;
+    color: #666;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.pagination-info {
+    color: #ccc;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.events-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
 /* Mobile Calendar Styles */
 @media (max-width: 768px) {
     .calendar-hero h1 {
@@ -5967,6 +6026,28 @@ button.btn-register:hover {
         flex-direction: column;
         align-items: center;
     }
+    
+    /* Mobile pagination styles */
+    .events-pagination {
+        gap: 0.5rem;
+        margin-top: 1rem;
+        padding-top: 0.75rem;
+    }
+    
+    .pagination-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .events-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .pagination-info {
+        font-size: 0.8rem;
+    }
 }
 
 /* Very Small Mobile Styles */
@@ -6006,6 +6087,25 @@ button.btn-register:hover {
     
     .event-preview {
         font-size: 0.45rem;
+    }
+    
+    /* Very small mobile pagination styles */
+    .events-pagination {
+        gap: 0.25rem;
+        margin-top: 0.75rem;
+    }
+    
+    .pagination-btn {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
+    
+    .pagination-info {
+        font-size: 0.75rem;
+    }
+    
+    .events-title-row {
+        gap: 0.25rem;
     }
     
     /* Mobile Event Panel Styles for very small screens */

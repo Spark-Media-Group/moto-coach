@@ -1,16 +1,5 @@
 // Kazzaz Motor Co. - Enhanced Homepage JavaScript
 
-// Initialize Vercel Analytics
-window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-
-// Load Vercel Analytics script
-(function() {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.vercel-analytics.com/v1/script.js';
-    script.defer = true;
-    document.head.appendChild(script);
-})();
-
 // Slideshow variables
 let currentSlideIndex = 0;
 const slides = document.querySelectorAll('.slide');
