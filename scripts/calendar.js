@@ -493,11 +493,6 @@ class MotoCoachCalendar {
         });
         this.updateSelectionUI();
         this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
-        
-        // Trigger availability check if we're on the track reserve page
-        if (typeof checkAvailabilityForCurrentSelection === 'function') {
-            checkAvailabilityForCurrentSelection();
-        }
     }
 
     addEventToSelectionByKey(eventKey, buttonElement) {
@@ -516,11 +511,6 @@ class MotoCoachCalendar {
         this.selectedEvents.delete(eventKey);
         this.updateSelectionUI();
         this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
-        
-        // Trigger availability check if we're on the track reserve page
-        if (typeof checkAvailabilityForCurrentSelection === 'function') {
-            checkAvailabilityForCurrentSelection();
-        }
     }
 
     isEventSelected(event) {

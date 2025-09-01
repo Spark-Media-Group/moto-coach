@@ -15,42 +15,6 @@ function getSelectedEvents() {
     return [];
 }
 
-// Function to check availability for current selection - called by calendar
-async function checkAvailabilityForCurrentSelection() {
-    const selectedEvents = getSelectedEvents();
-    if (selectedEvents.length === 0) {
-        // Reset any availability warnings
-        updateAddRiderButton();
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/track_reserve', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                checkAvailability: true,
-                events: selectedEvents,
-                riderCount: riderCount
-            })
-        });
-
-        const result = await response.json();
-        
-        if (!response.ok || !result.success) {
-            // Show availability warning but don't block selection
-            console.warn('Availability warning:', result.message);
-            updateAddRiderButton();
-        } else {
-            updateAddRiderButton();
-        }
-    } catch (error) {
-        console.error('Error checking availability:', error);
-    }
-}
-
 // Add rider functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Load configuration and initialize reCAPTCHA v3
@@ -60,43 +24,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initializePricing();
     
     // Set up add rider button event listener
-    document.getElementById('addRiderBtn').addEventListener('click', async function() {
-        // Check if we can add another rider based on availability
-        const selectedEvents = getSelectedEvents();
-        if (selectedEvents.length === 0) {
-            showErrorModal('Please select at least one event before adding riders.');
-            return;
-        }
-
-        // Check availability for current riders + 1
-        const newRiderCount = riderCount + 1;
-        
-        try {
-            const response = await fetch('/api/track_reserve', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    checkAvailability: true,
-                    events: selectedEvents,
-                    riderCount: newRiderCount
-                })
-            });
-
-            const result = await response.json();
-            
-            if (!response.ok || !result.success) {
-                showErrorModal(result.message || 'Cannot add another rider due to availability constraints.');
-                return;
-            }
-        } catch (error) {
-            console.error('Error checking availability:', error);
-            showErrorModal('Error checking availability. Please try again.');
-            return;
-        }
-
-        // Check if we've reached the maximum number of riders
+    document.getElementById('addRiderBtn').addEventListener('click', function() {
+        // Check if we've reached the maximum number of riders (simple UI limit)
         if (remainingSpots !== null && riderCount >= remainingSpots) {
             showErrorModal(`Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed for this event.`);
             return;
@@ -576,10 +505,55 @@ async function handleFormSubmission(event) {
         form.reportValidity();
         return;
     }
+
+    // Check if events are selected
+    const selectedEvents = getSelectedEvents();
+    if (selectedEvents.length === 0) {
+        showErrorModal('Please select at least one event before submitting your registration.');
+        return;
+    }
+
+    // Check availability for all selected events and riders before proceeding
+    submitButton.disabled = true;
+    submitButton.textContent = 'Checking availability...';
     
-    // Check if number of riders exceeds available spots
+    try {
+        const response = await fetch('/api/track_reserve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                checkAvailability: true,
+                events: selectedEvents,
+                riderCount: riderCount
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            showErrorModal(result.message || 'Registration failed due to availability constraints. Please select different events or reduce the number of riders.');
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking availability:', error);
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+        showErrorModal('Error checking availability. Please try again.');
+        return;
+    }
+
+    // Reset button text for the actual submission
+    submitButton.textContent = 'Submitting...';
+    
+    // Check if number of riders exceeds available spots (legacy check)
     if (remainingSpots !== null && riderCount > remainingSpots) {
-        alert(`Cannot register ${riderCount} rider${riderCount !== 1 ? 's' : ''}. Only ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''} remaining for this event.`);
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+        showErrorModal(`Cannot register ${riderCount} rider${riderCount !== 1 ? 's' : ''}. Only ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''} remaining for this event.`);
         return;
     }
     
@@ -601,21 +575,23 @@ async function handleFormSubmission(event) {
             });
         } catch (error) {
             console.error('reCAPTCHA execution failed:', error);
-            alert('Security verification failed. Please try again or contact us directly.');
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            showErrorModal('Security verification failed. Please try again or contact us directly.');
             return;
         }
         
         if (!recaptchaToken) {
-            alert('Security verification is required. Please try again.');
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            showErrorModal('Security verification is required. Please try again.');
             return;
         }
     } else {
         console.log('Development mode: skipping reCAPTCHA verification');
     }
     
-    // Show loading state
-    submitButton.disabled = true;
-    submitButton.textContent = 'Submitting...';
+    // Button is already disabled and showing "Submitting..." from availability check
     
     try {
         // Collect all form data
