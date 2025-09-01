@@ -656,7 +656,7 @@ async function handleFormSubmission(event) {
             // Don't set a combined eventName here - let the backend handle individual events
             data.totalAmount = window.multiEventData.pricingInfo.totalCost * riderCount;
         } else {
-            // Single event registration
+            // Single event registration - include the event info for availability checking
             const urlParams = new URLSearchParams(window.location.search);
             data.eventName = urlParams.get('event') || data.eventName || '';
             data.eventDate = urlParams.get('date') || '';
@@ -664,6 +664,15 @@ async function handleFormSubmission(event) {
             data.eventTime = urlParams.get('time') || '';
             data.ratePerRider = ratePerRider;
             data.totalAmount = ratePerRider * riderCount;
+            
+            // Also include the events array format for availability checking
+            data.events = [{
+                title: data.eventName,
+                dateString: data.eventDate,
+                time: data.eventTime,
+                location: data.eventLocation,
+                maxSpots: 10 // Default capacity - adjust as needed
+            }];
         }
         
         // Submit to API

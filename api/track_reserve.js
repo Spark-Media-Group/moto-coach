@@ -58,19 +58,20 @@ async function checkEventAvailability(formData, riderCount) {
         // Determine which events to check
         let eventsToCheck = [];
         
-        if (formData.multiEventRegistration && formData.events && Array.isArray(formData.events)) {
-            // Multi-event registration
+        if (formData.events && Array.isArray(formData.events)) {
+            // Events from frontend (URL parameters or calendar selection)
             eventsToCheck = formData.events.map(event => ({
-                title: event.title,
-                date: event.date,
-                maxSpots: event.maxSpots || null
+                title: event.title || event.eventName,
+                date: event.dateString || event.date,
+                // Default capacity if not specified - you can adjust this or get from calendar
+                maxSpots: event.maxSpots || 10 // Default to 10 spots per event
             }));
         } else {
-            // Single event registration
+            // Single event registration (legacy format)
             eventsToCheck = [{
                 title: formData.eventName,
                 date: formData.eventDate,
-                maxSpots: formData.maxSpots || null
+                maxSpots: formData.maxSpots || 10 // Default to 10 spots
             }];
         }
 
@@ -78,22 +79,21 @@ async function checkEventAvailability(formData, riderCount) {
         
         // Check each event
         for (const event of eventsToCheck) {
-            if (event.maxSpots === null || event.maxSpots === undefined) {
-                // No limit set for this event, skip check
-                continue;
-            }
-
-            // Count current registrations for this event
+            // Count current registrations for this event by matching event name and date
             const currentRegistrations = registrations.filter(row => {
-                const eventName = row[1] || ''; // Column B: Event Name
-                const eventDate = row[2] || ''; // Column C: Event Date
+                const registeredEventName = row[1] || ''; // Column B: Event Name
+                const registeredEventDate = row[2] || ''; // Column C: Event Date
                 
                 // Match by both event name and date for accuracy
-                return eventName.trim().toLowerCase() === event.title.trim().toLowerCase() &&
-                       eventDate === event.date;
+                const eventNameMatch = registeredEventName.trim().toLowerCase() === event.title.trim().toLowerCase();
+                const eventDateMatch = registeredEventDate === event.date;
+                
+                return eventNameMatch && eventDateMatch;
             }).length;
 
             const spotsRemaining = event.maxSpots - currentRegistrations;
+            
+            console.log(`Event: ${event.title}, Date: ${event.date}, Max: ${event.maxSpots}, Current: ${currentRegistrations}, Remaining: ${spotsRemaining}, Requested: ${riderCount}`);
             
             if (spotsRemaining < riderCount) {
                 unavailableEvents.push({
@@ -291,6 +291,7 @@ export default async function handler(req, res) {
 
         // Extract form data
         const formData = req.body;
+        console.log('Received form data:', JSON.stringify(formData, null, 2));
         
         // Collect all rider data
         const riders = [];
