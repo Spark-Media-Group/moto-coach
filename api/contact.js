@@ -54,6 +54,10 @@ export default async function handler(req, res) {
       subject: `New Contact Form Submission - ${subjectText}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #ff6b35 0%, #ff8a5c 100%); padding: 20px; text-align: center; margin-bottom: 20px;">
+            <img src="cid:moto-coach-logo" alt="Moto Coach" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
+          </div>
+          
           <h2 style="color: #ff6600; border-bottom: 2px solid #ff6600; padding-bottom: 10px;">
             New Contact Form Submission
           </h2>
@@ -91,7 +95,14 @@ ${message}
 
 ---
 This message was sent from the Moto Coach website contact form.
-      `
+      `,
+      attachments: [
+        {
+          path: 'https://motocoach.com.au/images/long%20logo.png',
+          filename: 'moto-coach-logo.png',
+          contentId: 'moto-coach-logo',
+        }
+      ]
     });
 
     if (error) {

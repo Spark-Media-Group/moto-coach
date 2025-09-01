@@ -58,7 +58,8 @@ class MotoCoachCalendar {
         const prevBtn = document.getElementById('prevMonth');
         const nextBtn = document.getElementById('nextMonth');
 
-        if (prevBtn) {
+        if (prevBtn && !prevBtn.hasAttribute('data-bound')) {
+            prevBtn.setAttribute('data-bound', 'true');
             prevBtn.addEventListener('click', () => {
                 if (this.isMobileView) {
                     this.previousWeek();
@@ -68,7 +69,8 @@ class MotoCoachCalendar {
             });
         }
         
-        if (nextBtn) {
+        if (nextBtn && !nextBtn.hasAttribute('data-bound')) {
+            nextBtn.setAttribute('data-bound', 'true');
             nextBtn.addEventListener('click', () => {
                 if (this.isMobileView) {
                     this.nextWeek();
@@ -249,14 +251,26 @@ class MotoCoachCalendar {
     }
 
     async previousMonth() {
-        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+        // Use a safer method to decrement month
+        const currentMonth = this.currentDate.getMonth();
+        const currentYear = this.currentDate.getFullYear();
+        
+        // Create a new date for the first day of the previous month
+        this.currentDate = new Date(currentYear, currentMonth - 1, 1);
+        
         await this.checkAndLoadEvents();
         this.renderCalendar();
         this.updateEventPanel();
     }
 
     async nextMonth() {
-        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+        // Use a safer method to increment month
+        const currentMonth = this.currentDate.getMonth();
+        const currentYear = this.currentDate.getFullYear();
+        
+        // Create a new date for the first day of the next month
+        this.currentDate = new Date(currentYear, currentMonth + 1, 1);
+        
         await this.checkAndLoadEvents();
         this.renderCalendar();
         this.updateEventPanel();
@@ -1083,7 +1097,7 @@ let calendar;
 
 // Initialize calendar when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    if (document.getElementById('calendarDays')) {
+    if (document.getElementById('calendarDays') && !calendar) {
         calendar = new MotoCoachCalendar();
         // Expose calendar globally for other scripts
         window.calendar = calendar;

@@ -544,8 +544,6 @@ async function sendIndividualConfirmationEmail(recipient, formData, riderNames, 
     try {
         console.log(`Sending confirmation email to: ${recipient.email}`);
         
-        const logoUrl = 'https://motocoach.com.au/images/long%20logo.png'; // URL encode the space
-        
         // Create a subject line that indicates multi-event if applicable
         const subjectLine = formData.multiEventRegistration && formData.events && formData.events.length > 1 
             ? `Track Reservation Confirmation - ${formData.events.length} Events` 
@@ -559,7 +557,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riderNames, 
                 <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
                     <!-- Header -->
                     <div style="background: linear-gradient(135deg, #ff6b35 0%, #ff8a5c 100%); padding: 40px 30px; text-align: center;">
-                        <img src="${logoUrl}" alt="Moto Coach" style="max-width: 250px; height: auto; margin-bottom: 20px;" />
+                        <img src="cid:moto-coach-logo" alt="Moto Coach" style="max-width: 250px; height: auto; margin-bottom: 20px;" />
                         <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 300; letter-spacing: 1px;">Registration Confirmed</h1>
                     </div>
                     
@@ -653,7 +651,14 @@ Questions? Contact us at leigh@motocoach.com.au
 
 ---
 Moto Coach Track Reservation System
-            `
+            `,
+            attachments: [
+                {
+                    path: 'https://motocoach.com.au/images/long%20logo.png',
+                    filename: 'moto-coach-logo.png',
+                    contentId: 'moto-coach-logo',
+                }
+            ]
         });
 
         if (error) {
