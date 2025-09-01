@@ -5,6 +5,52 @@ let ratePerRider = 190; // Default rate in AUD
 let maxSpots = null; // Maximum spots available for the event
 let remainingSpots = null; // Remaining spots available
 
+// Function to get selected events from the calendar
+function getSelectedEvents() {
+    // Try to access the global calendar variable or look for it on window
+    const calendarInstance = window.calendar || calendar;
+    if (calendarInstance && calendarInstance.selectedEvents) {
+        return Array.from(calendarInstance.selectedEvents.values());
+    }
+    return [];
+}
+
+// Function to check availability for current selection - called by calendar
+async function checkAvailabilityForCurrentSelection() {
+    const selectedEvents = getSelectedEvents();
+    if (selectedEvents.length === 0) {
+        // Reset any availability warnings
+        updateAddRiderButton();
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/track_reserve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                checkAvailability: true,
+                events: selectedEvents,
+                riderCount: riderCount
+            })
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+            // Show availability warning but don't block selection
+            console.warn('Availability warning:', result.message);
+            updateAddRiderButton();
+        } else {
+            updateAddRiderButton();
+        }
+    } catch (error) {
+        console.error('Error checking availability:', error);
+    }
+}
+
 // Add rider functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Load configuration and initialize reCAPTCHA v3
@@ -14,10 +60,45 @@ document.addEventListener('DOMContentLoaded', function() {
     initializePricing();
     
     // Set up add rider button event listener
-    document.getElementById('addRiderBtn').addEventListener('click', function() {
+    document.getElementById('addRiderBtn').addEventListener('click', async function() {
+        // Check if we can add another rider based on availability
+        const selectedEvents = getSelectedEvents();
+        if (selectedEvents.length === 0) {
+            showErrorModal('Please select at least one event before adding riders.');
+            return;
+        }
+
+        // Check availability for current riders + 1
+        const newRiderCount = riderCount + 1;
+        
+        try {
+            const response = await fetch('/api/track_reserve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    checkAvailability: true,
+                    events: selectedEvents,
+                    riderCount: newRiderCount
+                })
+            });
+
+            const result = await response.json();
+            
+            if (!response.ok || !result.success) {
+                showErrorModal(result.message || 'Cannot add another rider due to availability constraints.');
+                return;
+            }
+        } catch (error) {
+            console.error('Error checking availability:', error);
+            showErrorModal('Error checking availability. Please try again.');
+            return;
+        }
+
         // Check if we've reached the maximum number of riders
         if (remainingSpots !== null && riderCount >= remainingSpots) {
-            alert(`Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed for this event.`);
+            showErrorModal(`Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed for this event.`);
             return;
         }
         
@@ -578,16 +659,16 @@ async function handleFormSubmission(event) {
         });
         
         if (response.ok) {
-            // Success - show success message and reset form
+            // Success - show success modal
             submitButton.style.backgroundColor = '#28a745';
             submitButton.innerHTML = '✓ Submitted Successfully!';
             
             setTimeout(() => {
-                alert('Registration submitted successfully! We will contact you soon with confirmation details. A confirmation email has been sent to the appropriate email address(es).');
+                // Show the success modal
+                showSuccessModal();
                 form.reset();
                 // Reset reCAPTCHA
                 recaptchaToken = null;
-                // reCAPTCHA v3 doesn't need manual reset
                 // Reset button after success
                 submitButton.disabled = false;
                 submitButton.style.backgroundColor = '';
@@ -595,7 +676,14 @@ async function handleFormSubmission(event) {
             }, 1500);
         } else {
             const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to submit registration');
+            
+            // Check if this is an availability error with detailed information
+            if (errorData.details && errorData.unavailableEvents) {
+                showErrorModal(errorData.details);
+            } else {
+                throw new Error(errorData.error || 'Failed to submit registration');
+            }
+            return; // Don't continue to catch block for availability errors
         }
         
     } catch (error) {
@@ -606,14 +694,84 @@ async function handleFormSubmission(event) {
         submitButton.innerHTML = '✗ Submission Failed';
         
         setTimeout(() => {
-            alert('There was an error submitting your registration. Please try again or contact us directly.');
+            showErrorModal('There was an error submitting your registration. Please try again or contact us directly.');
             // Reset reCAPTCHA
             recaptchaToken = null;
-            // reCAPTCHA v3 doesn't need manual reset
             // Reset button state
             submitButton.disabled = false;
             submitButton.style.backgroundColor = '';
             submitButton.textContent = 'Confirm';
         }, 2000);
+    }
+}
+
+// Function to show success modal
+function showSuccessModal() {
+    const modal = document.getElementById('successModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        
+        // Blur the main content (excluding header and footer)
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+            mainContent.style.filter = 'blur(5px)';
+        }
+        
+        // Prevent body scrolling when modal is open
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Function to hide success modal (in case we need it)
+function hideSuccessModal() {
+    const modal = document.getElementById('successModal');
+    if (modal) {
+        modal.style.display = 'none';
+        
+        // Remove blur from main content
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+            mainContent.style.filter = 'none';
+        }
+        
+        // Restore body scrolling
+        document.body.style.overflow = 'auto';
+    }
+}
+
+// Function to show error modal
+function showErrorModal(message) {
+    const modal = document.getElementById('errorModal');
+    const errorDetails = document.getElementById('errorDetails');
+    
+    if (modal && errorDetails) {
+        errorDetails.textContent = message;
+        modal.style.display = 'flex';
+        
+        // Blur the main content (excluding header and footer)
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+            mainContent.style.filter = 'blur(5px)';
+        }
+        
+        // Prevent body scrolling when modal is open
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Function to hide error modal
+function hideErrorModal() {
+    const modal = document.getElementById('errorModal');
+    if (modal) {
+        modal.style.display = 'none';
+        
+        // Remove blur from main content
+        const mainContent = document.querySelector('main');
+        if (mainContent) {
+            mainContent.style.filter = 'none';
+        }
+        
+        // Restore body scrolling
+        document.body.style.overflow = 'auto';
     }
 }

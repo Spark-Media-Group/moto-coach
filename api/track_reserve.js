@@ -35,6 +35,107 @@ const fetchPolyfill = async (url, options) => {
     });
 };
 
+// Function to check event availability before registration
+async function checkEventAvailability(formData, riderCount) {
+    try {
+        // Initialize Google Sheets API
+        const auth = new google.auth.GoogleAuth({
+            credentials: JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS),
+            scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+        
+        const sheets = google.sheets({ version: 'v4', auth });
+        const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+
+        // Get current registration data
+        const sheetData = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: 'A3:C', // Get timestamps, event names, and dates
+        });
+
+        const registrations = sheetData.data.values || [];
+        
+        // Determine which events to check
+        let eventsToCheck = [];
+        
+        if (formData.multiEventRegistration && formData.events && Array.isArray(formData.events)) {
+            // Multi-event registration
+            eventsToCheck = formData.events.map(event => ({
+                title: event.title,
+                date: event.date,
+                maxSpots: event.maxSpots || null
+            }));
+        } else {
+            // Single event registration
+            eventsToCheck = [{
+                title: formData.eventName,
+                date: formData.eventDate,
+                maxSpots: formData.maxSpots || null
+            }];
+        }
+
+        const unavailableEvents = [];
+        
+        // Check each event
+        for (const event of eventsToCheck) {
+            if (event.maxSpots === null || event.maxSpots === undefined) {
+                // No limit set for this event, skip check
+                continue;
+            }
+
+            // Count current registrations for this event
+            const currentRegistrations = registrations.filter(row => {
+                const eventName = row[1] || ''; // Column B: Event Name
+                const eventDate = row[2] || ''; // Column C: Event Date
+                
+                // Match by both event name and date for accuracy
+                return eventName.trim().toLowerCase() === event.title.trim().toLowerCase() &&
+                       eventDate === event.date;
+            }).length;
+
+            const spotsRemaining = event.maxSpots - currentRegistrations;
+            
+            if (spotsRemaining < riderCount) {
+                unavailableEvents.push({
+                    eventName: event.title,
+                    date: event.date,
+                    maxSpots: event.maxSpots,
+                    currentRegistrations,
+                    spotsRemaining,
+                    ridersRequested: riderCount
+                });
+            }
+        }
+
+        if (unavailableEvents.length > 0) {
+            // Generate detailed error message
+            let message = `Registration failed due to insufficient availability:\n\n`;
+            
+            unavailableEvents.forEach(event => {
+                if (event.spotsRemaining === 0) {
+                    message += `• ${event.eventName} (${event.date}) is completely full (${event.currentRegistrations}/${event.maxSpots} spots taken)\n`;
+                } else {
+                    message += `• ${event.eventName} (${event.date}) only has ${event.spotsRemaining} spot${event.spotsRemaining !== 1 ? 's' : ''} remaining, but you're trying to register ${event.ridersRequested} rider${event.ridersRequested !== 1 ? 's' : ''}\n`;
+                }
+            });
+
+            return {
+                success: false,
+                message: message.trim(),
+                unavailableEvents
+            };
+        }
+
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error checking event availability:', error);
+        // If there's an error checking availability, allow the registration to proceed
+        // to avoid blocking legitimate registrations due to technical issues
+        return { success: true };
+    }
+}
+
 export default async function handler(req, res) {
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -51,6 +152,39 @@ export default async function handler(req, res) {
     }
 
     try {
+        // Check if this is an availability check request
+        if (req.body.checkAvailability) {
+            const { events, riderCount } = req.body;
+            
+            if (!events || events.length === 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'No events selected' 
+                });
+            }
+
+            if (!riderCount || riderCount < 1) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Invalid rider count' 
+                });
+            }
+
+            // Check availability for the selected events
+            const availabilityResult = await checkEventAvailability(req.body, riderCount);
+            
+            if (!availabilityResult.success) {
+                return res.status(200).json(availabilityResult);
+            }
+            
+            return res.status(200).json({ 
+                success: true, 
+                message: 'Availability confirmed',
+                availableSpots: availabilityResult.availableSpots 
+            });
+        }
+
+        // Continue with regular registration processing
         // Verify reCAPTCHA v3 (skip in development)
         const { recaptchaToken } = req.body;
         
@@ -283,6 +417,16 @@ export default async function handler(req, res) {
                 formData.contactPhone || '', // Column N: Parent/Contact Phone
             ];
             rows.push(rowData);
+        }
+
+        // **AVAILABILITY CHECK** - Check current registrations and availability before proceeding
+        const availabilityCheck = await checkEventAvailability(formData, riders.length);
+        if (!availabilityCheck.success) {
+            return res.status(400).json({ 
+                error: 'Registration failed due to insufficient availability',
+                details: availabilityCheck.message,
+                unavailableEvents: availabilityCheck.unavailableEvents
+            });
         }
 
         // Append all rows to the sheet
