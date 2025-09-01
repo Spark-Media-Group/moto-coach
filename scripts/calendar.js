@@ -1095,5 +1095,7 @@ let calendar;
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('calendarDays')) {
         calendar = new MotoCoachCalendar();
+        // Expose calendar globally for other scripts
+        window.calendar = calendar;
     }
 });

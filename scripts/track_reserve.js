@@ -7,8 +7,8 @@ let remainingSpots = null; // Remaining spots available
 
 // Function to get selected events from the calendar
 function getSelectedEvents() {
-    // Try to access the global calendar variable or look for it on window
-    const calendarInstance = window.calendar || calendar;
+    // Try to access the global calendar variable from window only
+    const calendarInstance = window.calendar;
     if (calendarInstance && calendarInstance.selectedEvents) {
         return Array.from(calendarInstance.selectedEvents.values());
     }
