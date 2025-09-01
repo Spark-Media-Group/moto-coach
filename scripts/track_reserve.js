@@ -15,6 +15,46 @@ function getSelectedEvents() {
     return [];
 }
 
+// Function to get events from URL parameters or calendar
+function getEventsForSubmission() {
+    // First try to get events from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const multiEventsParam = urlParams.get('multiEvents');
+    
+    if (multiEventsParam) {
+        try {
+            const events = JSON.parse(decodeURIComponent(multiEventsParam));
+            return events;
+        } catch (error) {
+            console.error('Error parsing URL events:', error);
+        }
+    }
+    
+    // Check for single event from URL parameters
+    const eventName = urlParams.get('event');
+    const eventDate = urlParams.get('date');
+    const eventTime = urlParams.get('time');
+    const eventLocation = urlParams.get('location');
+    
+    if (eventName && eventDate) {
+        return [{
+            title: eventName,
+            dateString: eventDate,
+            time: eventTime || '',
+            location: eventLocation || '',
+            eventKey: `${eventName}_${eventDate}`
+        }];
+    }
+    
+    // Finally try to get from calendar (for calendar-based selection)
+    const calendarEvents = getSelectedEvents();
+    if (calendarEvents.length > 0) {
+        return calendarEvents;
+    }
+    
+    return [];
+}
+
 // Add rider functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Load configuration and initialize reCAPTCHA v3
@@ -507,7 +547,8 @@ async function handleFormSubmission(event) {
     }
 
     // Check if events are selected
-    const selectedEvents = getSelectedEvents();
+    const selectedEvents = getEventsForSubmission();
+    
     if (selectedEvents.length === 0) {
         showErrorModal('Please select at least one event before submitting your registration.');
         return;
