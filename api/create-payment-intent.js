@@ -35,11 +35,12 @@ export default async function handler(req, res) {
                 source: 'moto_coach_track_reservation',
                 ...metadata
             },
+            // Option A: Let Stripe surface methods dynamically, including Afterpay
             automatic_payment_methods: {
                 enabled: true,
                 allow_redirects: 'always' // Enable redirects for Afterpay
-            },
-            payment_method_types: ['card', 'afterpay_clearpay'], // Explicitly enable card and Afterpay
+            }
+            // Note: Removed explicit payment_method_types to let Stripe handle dynamically
         });
 
         res.status(200).json({

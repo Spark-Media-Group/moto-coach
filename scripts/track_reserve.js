@@ -5,6 +5,40 @@ let ratePerRider = 190; // Default rate in AUD
 let maxSpots = null; // Maximum spots available for the event
 let remainingSpots = null; // Remaining spots available
 
+// Check if returning from payment redirect (for Afterpay, etc.)
+function checkPaymentStatus() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    const paymentIntent = urlParams.get('payment_intent');
+    const paymentIntentClientSecret = urlParams.get('payment_intent_client_secret');
+    
+    if (paymentStatus === 'success' && paymentIntent) {
+        // Handle successful payment return
+        console.log('Payment completed successfully:', paymentIntent);
+        
+        // Show success modal
+        showSuccessModal();
+        
+        // Clean up URL parameters
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        
+    } else if (paymentIntentClientSecret) {
+        // Handle other payment states if needed
+        stripe.retrievePaymentIntent(paymentIntentClientSecret).then(({ paymentIntent }) => {
+            if (paymentIntent.status === 'succeeded') {
+                showSuccessModal();
+            } else if (paymentIntent.status === 'processing') {
+                // Show processing message
+                showErrorModal('Payment is being processed. You will receive confirmation shortly.');
+            } else {
+                // Show error for failed payments
+                showErrorModal('Payment was not completed successfully. Please try again.');
+            }
+        });
+    }
+}
+
 // Function to get selected events from the calendar
 function getSelectedEvents() {
     // Try to access the global calendar variable from window only
@@ -57,6 +91,9 @@ function getEventsForSubmission() {
 
 // Add rider functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if returning from payment redirect
+    checkPaymentStatus();
+    
     // Load configuration and initialize reCAPTCHA v3
     initializeRecaptcha();
     
@@ -226,7 +263,8 @@ async function initializePaymentElements() {
         // Initialize Stripe
         stripe = Stripe(stripePublishableKey);
         
-        // Create elements immediately for better UX
+        // Create elements with basic configuration (no clientSecret yet)
+        // We'll update with clientSecret when creating payment intent
         elements = stripe.elements({
             mode: 'payment',
             currency: 'aud',
@@ -880,10 +918,14 @@ async function handleFormSubmission(event) {
 
         const { clientSecret, paymentIntentId } = await paymentResponse.json();
         
-        // Update existing elements with the client secret
+        // Update existing elements with the client secret for secure payment processing
         if (elements) {
             submitButton.textContent = 'Preparing payment...';
-            elements.update({ clientSecret });
+            // Update elements with clientSecret to enable all payment methods including Afterpay
+            elements.update({ 
+                clientSecret,
+                amount: Math.round(totalAmount * 100)
+            });
         } else {
             // Fallback: initialize elements if they weren't created
             submitButton.textContent = 'Preparing payment...';
@@ -921,25 +963,27 @@ async function processPayment(clientSecret) {
     try {
         let result;
         
-        if (currentPaymentMethod === 'apple-pay') {
-            // Handle Apple Pay
-            result = await stripe.confirmPayment({
-                elements,
-                confirmParams: {
-                    return_url: window.location.href,
-                },
-                redirect: 'if_required'
-            });
+        // Determine the correct return URL based on current domain
+        const currentDomain = window.location.hostname;
+        let returnUrl;
+        
+        if (currentDomain.includes('vercel.app')) {
+            returnUrl = 'https://smg-mc.vercel.app/programs/track_reserve.html?payment=success';
+        } else if (currentDomain.includes('motocoach.com.au')) {
+            returnUrl = 'https://motocoach.com.au/programs/track_reserve.html?payment=success';
         } else {
-            // Handle Card or other methods
-            result = await stripe.confirmPayment({
-                elements,
-                confirmParams: {
-                    return_url: window.location.href,
-                },
-                redirect: 'if_required'
-            });
+            // Fallback for local development
+            returnUrl = window.location.origin + '/programs/track_reserve.html?payment=success';
         }
+        
+        // Handle payment confirmation with proper return URL for Afterpay redirects
+        result = await stripe.confirmPayment({
+            elements,
+            confirmParams: {
+                return_url: returnUrl,
+            },
+            redirect: 'if_required'
+        });
         
         if (result.error) {
             if (errorDiv) {

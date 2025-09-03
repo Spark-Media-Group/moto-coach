@@ -1,0 +1,10 @@
+PLACEHOLDER - Replace this file with the actual verification file from Stripe Dashboard
+
+To get the real file:
+1. Go to Stripe Dashboard > Settings > Payment methods
+2. Find "Apple Pay" and click "Add domain"
+3. Enter your domain: smg-mc.vercel.app
+4. Download the verification file
+5. Replace this placeholder file with the downloaded file
+
+The file should contain Apple's verification content provided by Stripe.
