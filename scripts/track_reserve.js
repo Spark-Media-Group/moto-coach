@@ -888,6 +888,8 @@ async function handleFormSubmission(event) {
     // Start payment process
     submitButton.textContent = 'Creating payment...';
     
+    console.log('About to create payment intent with amount:', totalAmount);
+    
     try {
         // Create payment intent
         const paymentResponse = await fetch('/api/create-payment-intent', {
@@ -906,13 +908,23 @@ async function handleFormSubmission(event) {
             })
         });
 
+        console.log('Payment response status:', paymentResponse.status);
+
         if (!paymentResponse.ok) {
-            throw new Error('Failed to create payment intent');
+            const errorData = await paymentResponse.text();
+            console.error('Payment intent creation failed:', errorData);
+            throw new Error('Failed to create payment intent: ' + errorData);
         }
 
-        const { clientSecret, paymentIntentId } = await paymentResponse.json();
+        const paymentData = await paymentResponse.json();
+        console.log('Payment data received:', paymentData);
         
-        console.log('Payment intent created:', { clientSecret: clientSecret?.substring(0, 20) + '...', paymentIntentId });
+        const { clientSecret, paymentIntentId } = paymentData;
+        
+        console.log('Payment intent created:', { 
+            clientSecret: clientSecret ? clientSecret.substring(0, 20) + '...' : 'UNDEFINED', 
+            paymentIntentId 
+        });
         
         if (!clientSecret) {
             throw new Error('No client secret received from payment intent creation');
