@@ -912,6 +912,16 @@ async function processPayment(clientSecret) {
             returnUrl = window.location.origin + '/programs/track_reserve.html?payment=success';
         }
         
+        // Submit and validate the Elements form before confirming payment
+        const { error: submitError } = await elements.submit();
+        if (submitError) {
+            if (errorDiv) {
+                errorDiv.textContent = submitError.message;
+                errorDiv.style.display = 'block';
+            }
+            return { success: false, error: submitError.message };
+        }
+        
         // Pattern B: Elements created without clientSecret, so pass it to confirmPayment
         result = await stripe.confirmPayment({
             elements,
