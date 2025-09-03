@@ -293,6 +293,32 @@ async function initializePaymentElements() {
         });
         paymentElement.mount('#payment-element');
         
+        // Handle events from the Payment Element (including Apple Pay clicks)
+        paymentElement.on('ready', () => {
+            console.log('Payment element ready');
+        });
+        
+        paymentElement.on('change', (event) => {
+            if (event.error) {
+                console.error('Payment element error:', event.error);
+                const errorDiv = document.querySelector('#payment-errors');
+                if (errorDiv) {
+                    errorDiv.textContent = 'Payment method error: ' + event.error.message;
+                    errorDiv.style.display = 'block';
+                }
+            }
+        });
+        
+        // This handles Apple Pay, Link, and other express payment methods
+        paymentElement.on('click', (event) => {
+            console.log('Payment method clicked:', event);
+            // Clear any previous errors when user tries again
+            const errorDiv = document.querySelector('#payment-errors');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+        });
+        
         console.log('Payment element mounted successfully - Stripe will handle method detection');
         
     } catch (error) {
@@ -823,16 +849,20 @@ async function processPayment(clientSecret) {
         }
         
         // Submit and validate the Elements form before confirming payment
+        console.log('Submitting elements for validation...');
         const { error: submitError } = await elements.submit();
         if (submitError) {
+            console.error('Elements submission error:', submitError);
             if (errorDiv) {
                 errorDiv.textContent = submitError.message;
                 errorDiv.style.display = 'block';
             }
             return { success: false, error: submitError.message };
         }
+        console.log('Elements submitted successfully');
         
         // Pattern B: Elements created without clientSecret, so pass it to confirmPayment
+        console.log('Confirming payment with clientSecret...');
         result = await stripe.confirmPayment({
             elements,
             clientSecret,
