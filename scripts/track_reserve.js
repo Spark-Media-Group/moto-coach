@@ -226,9 +226,71 @@ async function initializePaymentElements() {
         // Initialize Stripe
         stripe = Stripe(stripePublishableKey);
         
-        // We'll create elements when we have a client secret during payment
-        // For now, just set up the payment method switching
+        // Create elements immediately for better UX
+        elements = stripe.elements({
+            mode: 'payment',
+            currency: 'aud',
+            amount: Math.round(190 * 100), // Default amount, will be updated
+            appearance: {
+                theme: 'night',
+                variables: {
+                    colorPrimary: '#ff6600',
+                    colorBackground: '#2a2a2a',
+                    colorText: '#ffffff',
+                    colorDanger: '#dc3545',
+                    fontFamily: '"Roboto Condensed", sans-serif',
+                    spacingUnit: '4px',
+                    borderRadius: '8px'
+                }
+            }
+        });
+        
+        // Create payment element for card payments
+        paymentElement = elements.create('payment', {
+            layout: 'tabs'
+        });
+        paymentElement.mount('#payment-element');
+        
+        // Calculate current total amount
+        const totalAmount = window.multiEventData 
+            ? window.multiEventData.pricingInfo.totalCost * riderCount
+            : ratePerRider * riderCount;
+        
+        // Check if Apple Pay is available
+        const applePayRequest = {
+            country: 'AU',
+            currency: 'aud',
+            total: {
+                label: 'Moto Coach Track Reservation',
+                amount: Math.round(totalAmount * 100)
+            },
+            requestPayerName: true,
+            requestPayerEmail: true,
+        };
+        
+        applePayButton = elements.create('paymentRequestButton', {
+            paymentRequest: applePayRequest
+        });
+        
+        // Check if Apple Pay is available and mount if supported
+        applePayButton.canMakePayment().then((result) => {
+            if (result && result.applePay) {
+                applePayButton.mount('#apple-pay-button');
+            } else {
+                // Hide Apple Pay option if not available
+                const applePayBtn = document.querySelector('[data-method="apple-pay"]');
+                if (applePayBtn) {
+                    applePayBtn.style.opacity = '0.5';
+                    applePayBtn.style.cursor = 'not-allowed';
+                    applePayBtn.disabled = true;
+                }
+            }
+        });
+        
+        // Set up payment method switching
         setupPaymentMethodSwitching();
+        
+        console.log('Payment elements initialized successfully');
         
     } catch (error) {
         console.error('Error initializing payment elements:', error);
@@ -365,8 +427,15 @@ function setupPaymentMethodSwitching() {
 
 // Update payment amount when pricing changes
 function updatePaymentAmount(amount) {
-    // Store the amount for when we initialize Stripe elements
+    // Store the amount for reference
     window.currentPaymentAmount = amount;
+    
+    if (elements && amount) {
+        // Update the elements with new amount
+        elements.update({
+            amount: Math.round(amount * 100)
+        });
+    }
     
     if (applePayButton && amount) {
         // Update Apple Pay amount if already initialized
@@ -394,7 +463,7 @@ function updatePaymentAmount(amount) {
                 }
             });
         } catch (error) {
-            console.log('Apple Pay not yet initialized, amount will be set during payment');
+            console.log('Error updating Apple Pay amount:', error);
         }
     }
 }
@@ -829,9 +898,15 @@ async function handleFormSubmission(event) {
 
         const { clientSecret, paymentIntentId } = await paymentResponse.json();
         
-        // Initialize Stripe elements with the client secret
-        submitButton.textContent = 'Preparing payment...';
-        await initializeStripeElements(clientSecret);
+        // Update existing elements with the client secret
+        if (elements) {
+            submitButton.textContent = 'Preparing payment...';
+            elements.update({ clientSecret });
+        } else {
+            // Fallback: initialize elements if they weren't created
+            submitButton.textContent = 'Preparing payment...';
+            await initializeStripeElements(clientSecret);
+        }
         
         // Process payment based on selected method
         submitButton.textContent = 'Processing payment...';
