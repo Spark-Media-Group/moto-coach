@@ -260,87 +260,13 @@ async function initializePaymentElements() {
         
         console.log('Initializing Stripe with key:', stripePublishableKey.substring(0, 12) + '...');
         
-        // Initialize Stripe
+        // Initialize Stripe (Elements will be created later with clientSecret)
         stripe = Stripe(stripePublishableKey);
         
-        // Create elements with basic configuration (no clientSecret yet)
-        // We'll update with clientSecret when creating payment intent
-        elements = stripe.elements({
-            mode: 'payment',
-            currency: 'aud',
-            amount: Math.round(190 * 100), // Default amount, will be updated
-            appearance: {
-                theme: 'night',
-                variables: {
-                    colorPrimary: '#ff6600',
-                    colorBackground: '#2a2a2a',
-                    colorText: '#ffffff',
-                    colorDanger: '#dc3545',
-                    fontFamily: '"Roboto Condensed", sans-serif',
-                    spacingUnit: '4px',
-                    borderRadius: '8px'
-                }
-            }
-        });
-        
-        // Create payment element for card payments
-        paymentElement = elements.create('payment', {
-            layout: 'tabs'
-        });
-        paymentElement.mount('#payment-element');
-        
-        // Calculate current total amount
-        const totalAmount = window.multiEventData 
-            ? window.multiEventData.pricingInfo.totalCost * riderCount
-            : ratePerRider * riderCount;
-        
-        // Create Apple Pay using stripe.paymentRequest
-        const paymentRequest = stripe.paymentRequest({
-            country: 'AU',
-            currency: 'aud',
-            total: {
-                label: 'Moto Coach Track Reservation',
-                amount: Math.round(totalAmount * 100)
-            },
-            requestPayerName: true,
-            requestPayerEmail: true,
-        });
-        
-        applePayButton = elements.create('paymentRequestButton', {
-            paymentRequest: paymentRequest
-        });
-        
-        // Check if Apple Pay is available and mount if supported
-        paymentRequest.canMakePayment().then((result) => {
-            if (result) {
-                applePayButton.mount('#apple-pay-button');
-            } else {
-                // Hide Apple Pay option if not available
-                const applePayBtn = document.querySelector('[data-method="apple-pay"]');
-                if (applePayBtn) {
-                    applePayBtn.style.opacity = '0.5';
-                    applePayBtn.style.cursor = 'not-allowed';
-                    applePayBtn.disabled = true;
-                }
-            }
-        }).catch((error) => {
-            console.log('Apple Pay not available:', error);
-            // Hide Apple Pay option if error
-            const applePayBtn = document.querySelector('[data-method="apple-pay"]');
-            if (applePayBtn) {
-                applePayBtn.style.opacity = '0.5';
-                applePayBtn.style.cursor = 'not-allowed';
-                applePayBtn.disabled = true;
-            }
-        });
-        
-        // Set up payment method switching
-        setupPaymentMethodSwitching();
-        
-        console.log('Payment elements initialized successfully');
+        console.log('Stripe initialized successfully - Elements will be created when payment is processed');
         
     } catch (error) {
-        console.error('Error initializing payment elements:', error);
+        console.error('Error initializing payment system:', error);
         
         // Hide payment section if initialization fails
         const paymentSection = document.querySelector('.payment-method-selector');
@@ -364,7 +290,12 @@ async function initializeStripeElements(clientSecret) {
             throw new Error('Stripe not initialized');
         }
         
-        // Create elements with appearance config and client secret
+        // Calculate current total amount
+        const totalAmount = window.multiEventData 
+            ? window.multiEventData.pricingInfo.totalCost * riderCount
+            : ratePerRider * riderCount;
+        
+        // Create elements with client secret and appearance config
         elements = stripe.elements({
             clientSecret,
             appearance: {
@@ -387,43 +318,62 @@ async function initializeStripeElements(clientSecret) {
         });
         paymentElement.mount('#payment-element');
         
-        // Calculate current total amount
-        const totalAmount = window.multiEventData 
-            ? window.multiEventData.pricingInfo.totalCost * riderCount
-            : ratePerRider * riderCount;
-        
-        // Check if Apple Pay is available
-        const applePayRequest = {
-            country: 'AU',
-            currency: 'aud',
-            total: {
-                label: 'Moto Coach Track Reservation',
-                amount: Math.round(totalAmount * 100)
-            },
-            requestPayerName: true,
-            requestPayerEmail: true,
-        };
-        
-        applePayButton = elements.create('paymentRequestButton', {
-            paymentRequest: applePayRequest
-        });
-        
-        // Check if Apple Pay is available and mount if supported
-        applePayButton.canMakePayment().then((result) => {
-            if (result && result.applePay) {
-                applePayButton.mount('#apple-pay-button');
-            } else {
-                // Hide Apple Pay option if not available
-                const applePayBtn = document.querySelector('[data-method="apple-pay"]');
-                if (applePayBtn) {
-                    applePayBtn.style.opacity = '0.5';
-                    applePayBtn.style.cursor = 'not-allowed';
-                    applePayBtn.disabled = true;
+        // Create Express Checkout element for Apple Pay/Google Pay
+        try {
+            const expressCheckoutElement = elements.create('expressCheckout', {
+                buttonType: {
+                    applePay: 'pay',
+                    googlePay: 'pay'
                 }
+            });
+            
+            // Check if any express payment methods are available
+            expressCheckoutElement.canMakePayment().then((result) => {
+                if (result) {
+                    expressCheckoutElement.mount('#apple-pay-button');
+                    console.log('Express checkout (Apple Pay/Google Pay) available');
+                } else {
+                    console.log('No express payment methods available');
+                    // Hide Apple Pay button if not available
+                    const applePayBtn = document.querySelector('[data-method="apple-pay"]');
+                    if (applePayBtn) {
+                        applePayBtn.style.opacity = '0.5';
+                        applePayBtn.style.cursor = 'not-allowed';
+                        applePayBtn.disabled = true;
+                    }
+                }
+            });
+            
+            // Handle express checkout confirmation
+            expressCheckoutElement.on('confirm', async (event) => {
+                const { error } = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        return_url: window.location.origin + '/programs/track_reserve.html?payment=success',
+                    },
+                });
+                
+                if (error) {
+                    console.error('Express payment failed:', error);
+                    showErrorModal('Payment failed: ' + error.message);
+                }
+            });
+            
+        } catch (expressError) {
+            console.log('Express checkout not available:', expressError);
+            // Hide Apple Pay button if express checkout fails
+            const applePayBtn = document.querySelector('[data-method="apple-pay"]');
+            if (applePayBtn) {
+                applePayBtn.style.opacity = '0.5';
+                applePayBtn.style.cursor = 'not-allowed';
+                applePayBtn.disabled = true;
             }
-        });
+        }
         
-        console.log('Stripe Elements initialized successfully');
+        // Set up payment method switching
+        setupPaymentMethodSwitching();
+        
+        console.log('Stripe Elements initialized successfully with clientSecret');
         
     } catch (error) {
         console.error('Error initializing Stripe Elements:', error);
@@ -930,18 +880,9 @@ async function handleFormSubmission(event) {
             throw new Error('No client secret received from payment intent creation');
         }
         
-        // Update existing elements with the client secret for secure payment processing
-        if (elements) {
-            submitButton.textContent = 'Preparing payment...';
-            // Update elements with clientSecret only (amount is handled by the payment intent)
-            elements.update({ 
-                clientSecret
-            });
-        } else {
-            // Fallback: initialize elements if they weren't created
-            submitButton.textContent = 'Preparing payment...';
-            await initializeStripeElements(clientSecret);
-        }
+        // Re-initialize Elements with the client secret (Stripe recommended approach)
+        submitButton.textContent = 'Preparing payment...';
+        await initializeStripeElements(clientSecret);
         
         // Process payment based on selected method
         submitButton.textContent = 'Processing payment...';
@@ -968,7 +909,7 @@ async function processPayment(clientSecret) {
     console.log('processPayment called with clientSecret:', clientSecret?.substring(0, 20) + '...');
     
     if (!clientSecret) {
-        throw new Error('You must pass in a clientSecret when calling stripe.confirmPayment().');
+        throw new Error('Client secret is required for payment processing');
     }
     
     const errorDiv = document.querySelector('#payment-errors');
@@ -993,7 +934,7 @@ async function processPayment(clientSecret) {
             returnUrl = window.location.origin + '/programs/track_reserve.html?payment=success';
         }
         
-        // Handle payment confirmation with proper return URL for Afterpay redirects
+        // Pattern A: Elements initialized with clientSecret, so don't pass it to confirmPayment
         result = await stripe.confirmPayment({
             elements,
             confirmParams: {
