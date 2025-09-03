@@ -6536,6 +6536,11 @@ input[placeholder="DD/MM/YYYY"]:valid {
     border: 1px solid #555;
 }
 
+.payment-element-container {
+    margin: 20px 0;
+    min-height: 60px;
+}
+
 #apple-pay-button {
     display: flex;
     justify-content: center;

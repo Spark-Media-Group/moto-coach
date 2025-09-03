@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize pricing from URL parameters
     initializePricing();
     
+    // Initialize payment elements
+    initializePaymentElements();
+    
     // Set up add rider button event listener
     document.getElementById('addRiderBtn').addEventListener('click', function() {
         // Check if we've reached the maximum number of riders (simple UI limit)
@@ -195,6 +198,155 @@ async function initializeRecaptcha() {
     }
 }
 
+// Global variables for Stripe
+let stripe = null;
+let elements = null;
+let paymentElement = null;
+let applePayButton = null;
+let currentPaymentMethod = 'card';
+
+// Initialize payment elements on page load
+async function initializePaymentElements() {
+    try {
+        // Get Stripe publishable key
+        const configResponse = await fetch('/api/stripe-config');
+        const config = await configResponse.json();
+        const stripePublishableKey = config.publishableKey;
+        
+        // Initialize Stripe
+        stripe = Stripe(stripePublishableKey);
+        
+        // Create elements with appearance config
+        elements = stripe.elements({
+            appearance: {
+                theme: 'night',
+                variables: {
+                    colorPrimary: '#ff6600',
+                    colorBackground: '#2a2a2a',
+                    colorText: '#ffffff',
+                    colorDanger: '#dc3545',
+                    fontFamily: '"Roboto Condensed", sans-serif',
+                    spacingUnit: '4px',
+                    borderRadius: '8px'
+                }
+            }
+        });
+        
+        // Create payment element for card payments
+        paymentElement = elements.create('payment', {
+            layout: 'tabs'
+        });
+        paymentElement.mount('#payment-element');
+        
+        // Check if Apple Pay is available
+        const applePayRequest = {
+            country: 'AU',
+            currency: 'aud',
+            total: {
+                label: 'Moto Coach Track Reservation',
+                amount: Math.round(190 * 100) // Default amount
+            },
+            requestPayerName: true,
+            requestPayerEmail: true,
+        };
+        
+        applePayButton = elements.create('paymentRequestButton', {
+            paymentRequest: applePayRequest
+        });
+        
+        // Check if Apple Pay is available and mount if supported
+        applePayButton.canMakePayment().then((result) => {
+            if (result && result.applePay) {
+                applePayButton.mount('#apple-pay-button');
+            } else {
+                // Hide Apple Pay option if not available
+                const applePayBtn = document.querySelector('[data-method="apple-pay"]');
+                if (applePayBtn) {
+                    applePayBtn.style.opacity = '0.5';
+                    applePayBtn.style.cursor = 'not-allowed';
+                    applePayBtn.disabled = true;
+                }
+            }
+        });
+        
+        // Set up payment method switching
+        setupPaymentMethodSwitching();
+        
+    } catch (error) {
+        console.error('Error initializing payment elements:', error);
+    }
+}
+
+// Setup payment method switching functionality
+function setupPaymentMethodSwitching() {
+    const methodButtons = document.querySelectorAll('.payment-method-btn');
+    const containers = {
+        'card': document.querySelector('#card-element-container'),
+        'apple-pay': document.querySelector('#apple-pay-container'),
+        'afterpay': document.querySelector('#afterpay-container')
+    };
+    
+    methodButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            
+            // Update button states
+            methodButtons.forEach(b => {
+                b.classList.remove('active');
+            });
+            
+            btn.classList.add('active');
+            
+            // Show/hide containers
+            Object.values(containers).forEach(container => {
+                if (container) container.style.display = 'none';
+            });
+            
+            const method = btn.dataset.method;
+            currentPaymentMethod = method;
+            
+            if (containers[method]) {
+                containers[method].style.display = 'block';
+            }
+            
+            // Clear any previous errors
+            const errorDiv = document.querySelector('#payment-errors');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+        });
+    });
+}
+
+// Update payment amount when pricing changes
+function updatePaymentAmount(amount) {
+    if (applePayButton && amount) {
+        // Update Apple Pay amount
+        const newRequest = {
+            country: 'AU',
+            currency: 'aud',
+            total: {
+                label: 'Moto Coach Track Reservation',
+                amount: Math.round(amount * 100)
+            },
+            requestPayerName: true,
+            requestPayerEmail: true,
+        };
+        
+        // Recreate Apple Pay button with new amount
+        applePayButton.unmount();
+        applePayButton = elements.create('paymentRequestButton', {
+            paymentRequest: newRequest
+        });
+        
+        applePayButton.canMakePayment().then((result) => {
+            if (result && result.applePay) {
+                applePayButton.mount('#apple-pay-button');
+            }
+        });
+    }
+}
+
 // Remove rider functionality
 function removeRider(riderId) {
     const riderElement = document.getElementById(riderId);
@@ -264,6 +416,9 @@ function updatePricing() {
         rateDisplay.textContent = `$${ratePerRider.toFixed(2)} AUD`;
         ridersDisplay.textContent = riderCount;
         totalDisplay.textContent = `$${total.toFixed(2)} AUD`;
+        
+        // Update payment amount
+        updatePaymentAmount(total);
     }
 }
 
@@ -596,7 +751,7 @@ async function handleFormSubmission(event) {
     }
 
     // Start payment process
-    submitButton.textContent = 'Processing payment...';
+    submitButton.textContent = 'Creating payment...';
     
     try {
         // Create payment intent
@@ -622,8 +777,14 @@ async function handleFormSubmission(event) {
 
         const { clientSecret, paymentIntentId } = await paymentResponse.json();
         
-        // Show payment modal and handle payment
-        const paymentResult = await showPaymentModal(clientSecret, totalAmount);
+        // Update elements with the client secret
+        if (elements) {
+            elements.update({ clientSecret });
+        }
+        
+        // Process payment based on selected method
+        submitButton.textContent = 'Processing payment...';
+        const paymentResult = await processPayment(clientSecret);
         
         if (paymentResult.success) {
             // Payment successful, now submit registration
@@ -640,8 +801,60 @@ async function handleFormSubmission(event) {
         showErrorModal('Payment failed: ' + error.message);
     }
 }
+
+// Process payment based on selected method
+async function processPayment(clientSecret) {
+    const errorDiv = document.querySelector('#payment-errors');
+    
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+    
+    try {
+        let result;
+        
+        if (currentPaymentMethod === 'apple-pay') {
+            // Handle Apple Pay
+            result = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: window.location.href,
+                },
+                redirect: 'if_required'
+            });
+        } else {
+            // Handle Card or other methods
+            result = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: window.location.href,
+                },
+                redirect: 'if_required'
+            });
+        }
+        
+        if (result.error) {
+            if (errorDiv) {
+                errorDiv.textContent = result.error.message;
+                errorDiv.style.display = 'block';
+            }
+            return { success: false, error: result.error.message };
+        } else {
+            return { success: true };
+        }
+        
+    } catch (error) {
+        if (errorDiv) {
+            errorDiv.textContent = error.message;
+            errorDiv.style.display = 'block';
+        }
+        return { success: false, error: error.message };
+    }
+}
         
 // Show payment modal with Stripe Elements and multiple payment methods
+// NOTE: This function is no longer used - payment is now inline
+/*
 async function showPaymentModal(clientSecret, amount) {
     return new Promise((resolve) => {
         // Get Stripe publishable key
@@ -884,6 +1097,7 @@ async function showPaymentModal(clientSecret, amount) {
         })(); // Close async IIFE
     });
 }
+*/
 
 // Complete registration after successful payment
 async function completeRegistration(form, paymentIntentId, totalAmount) {
