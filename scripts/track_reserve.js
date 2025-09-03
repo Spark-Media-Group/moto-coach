@@ -256,8 +256,8 @@ async function initializePaymentElements() {
             ? window.multiEventData.pricingInfo.totalCost * riderCount
             : ratePerRider * riderCount;
         
-        // Check if Apple Pay is available
-        const applePayRequest = {
+        // Create Apple Pay using stripe.paymentRequest
+        const paymentRequest = stripe.paymentRequest({
             country: 'AU',
             currency: 'aud',
             total: {
@@ -266,15 +266,15 @@ async function initializePaymentElements() {
             },
             requestPayerName: true,
             requestPayerEmail: true,
-        };
+        });
         
         applePayButton = elements.create('paymentRequestButton', {
-            paymentRequest: applePayRequest
+            paymentRequest: paymentRequest
         });
         
         // Check if Apple Pay is available and mount if supported
-        applePayButton.canMakePayment().then((result) => {
-            if (result && result.applePay) {
+        paymentRequest.canMakePayment().then((result) => {
+            if (result) {
                 applePayButton.mount('#apple-pay-button');
             } else {
                 // Hide Apple Pay option if not available
@@ -284,6 +284,15 @@ async function initializePaymentElements() {
                     applePayBtn.style.cursor = 'not-allowed';
                     applePayBtn.disabled = true;
                 }
+            }
+        }).catch((error) => {
+            console.log('Apple Pay not available:', error);
+            // Hide Apple Pay option if error
+            const applePayBtn = document.querySelector('[data-method="apple-pay"]');
+            if (applePayBtn) {
+                applePayBtn.style.opacity = '0.5';
+                applePayBtn.style.cursor = 'not-allowed';
+                applePayBtn.disabled = true;
             }
         });
         
@@ -437,35 +446,8 @@ function updatePaymentAmount(amount) {
         });
     }
     
-    if (applePayButton && amount) {
-        // Update Apple Pay amount if already initialized
-        const newRequest = {
-            country: 'AU',
-            currency: 'aud',
-            total: {
-                label: 'Moto Coach Track Reservation',
-                amount: Math.round(amount * 100)
-            },
-            requestPayerName: true,
-            requestPayerEmail: true,
-        };
-        
-        // Recreate Apple Pay button with new amount
-        try {
-            applePayButton.unmount();
-            applePayButton = elements.create('paymentRequestButton', {
-                paymentRequest: newRequest
-            });
-            
-            applePayButton.canMakePayment().then((result) => {
-                if (result && result.applePay) {
-                    applePayButton.mount('#apple-pay-button');
-                }
-            });
-        } catch (error) {
-            console.log('Error updating Apple Pay amount:', error);
-        }
-    }
+    // Note: Apple Pay button amount update requires recreating the paymentRequest
+    // This is handled during form submission when we have all the final details
 }
 
 // Remove rider functionality
