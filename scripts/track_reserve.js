@@ -912,6 +912,12 @@ async function handleFormSubmission(event) {
 
         const { clientSecret, paymentIntentId } = await paymentResponse.json();
         
+        console.log('Payment intent created:', { clientSecret: clientSecret?.substring(0, 20) + '...', paymentIntentId });
+        
+        if (!clientSecret) {
+            throw new Error('No client secret received from payment intent creation');
+        }
+        
         // Update existing elements with the client secret for secure payment processing
         if (elements) {
             submitButton.textContent = 'Preparing payment...';
@@ -947,6 +953,12 @@ async function handleFormSubmission(event) {
 
 // Process payment based on selected method
 async function processPayment(clientSecret) {
+    console.log('processPayment called with clientSecret:', clientSecret?.substring(0, 20) + '...');
+    
+    if (!clientSecret) {
+        throw new Error('You must pass in a clientSecret when calling stripe.confirmPayment().');
+    }
+    
     const errorDiv = document.querySelector('#payment-errors');
     
     if (errorDiv) {
