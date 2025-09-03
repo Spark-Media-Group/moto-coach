@@ -477,15 +477,9 @@ function updatePaymentAmount(amount) {
     // Store the amount for reference
     window.currentPaymentAmount = amount;
     
-    if (elements && amount) {
-        // Update the elements with new amount
-        elements.update({
-            amount: Math.round(amount * 100)
-        });
-    }
-    
-    // Note: Apple Pay button amount update requires recreating the paymentRequest
-    // This is handled during form submission when we have all the final details
+    // Note: Amount updates will be handled when creating the payment intent
+    // Stripe Elements created in 'payment' mode get their amount from the payment intent's client secret
+    // We don't need to update elements directly - the amount is embedded in the client secret
 }
 
 // Remove rider functionality
@@ -921,10 +915,9 @@ async function handleFormSubmission(event) {
         // Update existing elements with the client secret for secure payment processing
         if (elements) {
             submitButton.textContent = 'Preparing payment...';
-            // Update elements with clientSecret to enable all payment methods including Afterpay
+            // Update elements with clientSecret only (amount is handled by the payment intent)
             elements.update({ 
-                clientSecret,
-                amount: Math.round(totalAmount * 100)
+                clientSecret
             });
         } else {
             // Fallback: initialize elements if they weren't created
