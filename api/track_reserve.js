@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 import { Resend } from 'resend';
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -50,7 +51,7 @@ async function checkEventAvailability(formData, riderCount) {
         // Get current registration data
         const sheetData = await sheets.spreadsheets.values.get({
             spreadsheetId,
-            range: 'A3:C', // Get timestamps, event names, and dates
+            range: 'Event Registrations!A3:C', // Get timestamps, event names, and dates from Event Registrations sheet
         });
 
         const registrations = sheetData.data.values || [];
@@ -292,6 +293,44 @@ export default async function handler(req, res) {
         // Extract form data
         const formData = req.body;
         console.log('Received form data:', JSON.stringify(formData, null, 2));
+
+        // Verify payment before processing registration
+        if (!formData.paymentIntentId) {
+            return res.status(400).json({ 
+                error: 'Payment required',
+                details: 'Payment must be completed before registration can be processed.'
+            });
+        }
+
+        // Verify payment with Stripe
+        try {
+            const paymentIntent = await stripe.paymentIntents.retrieve(formData.paymentIntentId);
+            
+            if (paymentIntent.status !== 'succeeded') {
+                return res.status(400).json({ 
+                    error: 'Payment not completed',
+                    details: 'Payment must be completed successfully before registration can be processed.',
+                    paymentStatus: paymentIntent.status
+                });
+            }
+
+            // Verify payment amount matches expected amount
+            const expectedAmount = Math.round(parseFloat(formData.totalAmount) * 100); // Convert to cents
+            if (paymentIntent.amount !== expectedAmount) {
+                return res.status(400).json({ 
+                    error: 'Payment amount mismatch',
+                    details: 'Payment amount does not match registration total.'
+                });
+            }
+
+            console.log('Payment verified successfully:', paymentIntent.id);
+        } catch (paymentError) {
+            console.error('Payment verification error:', paymentError);
+            return res.status(400).json({ 
+                error: 'Payment verification failed',
+                details: 'Unable to verify payment. Please try again or contact support.'
+            });
+        }
         
         // Collect all rider data
         const riders = [];
@@ -344,6 +383,7 @@ export default async function handler(req, res) {
                         formData.contactLastName || '', // Column L: Parent/Contact Last Name
                         formData.contactEmail || '', // Column M: Parent/Contact Email
                         formData.contactPhone || '', // Column N: Parent/Contact Phone
+                        formData.comments || '', // Column O: Additional Comments
                     ];
                     rows.push(rowData);
                 }
@@ -398,6 +438,7 @@ export default async function handler(req, res) {
                     formData.contactLastName || '', // Column L: Parent/Contact Last Name
                     formData.contactEmail || '', // Column M: Parent/Contact Email
                     formData.contactPhone || '', // Column N: Parent/Contact Phone
+                    formData.comments || '', // Column O: Additional Comments
                 ];
                 rows.push(rowData);
             }
@@ -416,6 +457,7 @@ export default async function handler(req, res) {
                 formData.contactLastName || '', // Column L: Parent/Contact Last Name
                 formData.contactEmail || '', // Column M: Parent/Contact Email
                 formData.contactPhone || '', // Column N: Parent/Contact Phone
+                formData.comments || '', // Column O: Additional Comments
             ];
             rows.push(rowData);
         }
@@ -433,7 +475,7 @@ export default async function handler(req, res) {
         // Append all rows to the sheet
         const response = await sheets.spreadsheets.values.append({
             spreadsheetId,
-            range: 'A3:N', // Start from row 3, columns A through N
+            range: 'Event Registrations!A3:O', // Start from row 3, columns A through O in Event Registrations sheet
             valueInputOption: 'RAW',
             requestBody: {
                 values: rows, // Multiple rows for multiple riders

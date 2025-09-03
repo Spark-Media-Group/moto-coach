@@ -587,102 +587,59 @@ async function handleFormSubmission(event) {
         return;
     }
 
-    // Reset button text for the actual submission
-    submitButton.textContent = 'Submitting...';
-    
-    // Check if number of riders exceeds available spots (legacy check)
-    if (remainingSpots !== null && riderCount > remainingSpots) {
-        submitButton.disabled = false;
-        submitButton.textContent = originalButtonText;
-        showErrorModal(`Cannot register ${riderCount} rider${riderCount !== 1 ? 's' : ''}. Only ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''} remaining for this event.`);
-        return;
-    }
-    
-    // Check reCAPTCHA v3 verification
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
-    if (!isDev) {
-        // Execute reCAPTCHA v3 for this form submission
-        try {
-            console.log('Executing reCAPTCHA v3...');
-            await new Promise((resolve, reject) => {
-                grecaptcha.ready(function() {
-                    grecaptcha.execute(recaptchaSiteKey, {action: 'track_reservation'}).then(function(token) {
-                        console.log('reCAPTCHA v3 token received');
-                        recaptchaToken = token;
-                        resolve(token);
-                    }).catch(reject);
-                });
-            });
-        } catch (error) {
-            console.error('reCAPTCHA execution failed:', error);
-            submitButton.disabled = false;
-            submitButton.textContent = originalButtonText;
-            showErrorModal('Security verification failed. Please try again or contact us directly.');
-            return;
-        }
-        
-        if (!recaptchaToken) {
-            submitButton.disabled = false;
-            submitButton.textContent = originalButtonText;
-            showErrorModal('Security verification is required. Please try again.');
-            return;
-        }
+    // Calculate total amount
+    let totalAmount;
+    if (window.multiEventData) {
+        totalAmount = window.multiEventData.pricingInfo.totalCost * riderCount;
     } else {
-        console.log('Development mode: skipping reCAPTCHA verification');
+        totalAmount = ratePerRider * riderCount;
     }
-    
-    // Button is already disabled and showing "Submitting..." from availability check
+
+    // Start payment process
+    submitButton.textContent = 'Processing payment...';
     
     try {
-        // Collect all form data
-        const formData = new FormData(form);
-        const data = {};
-        
-        // Get basic form data
-        for (let [key, value] of formData.entries()) {
-            data[key] = value;
-        }
-        
-        // Add reCAPTCHA response
-        data.recaptchaToken = recaptchaToken;
-        
-        // Handle multi-event vs single event data
-        if (window.multiEventData) {
-            // Multi-event registration - create separate entries for each event-rider combination
-            data.multiEventRegistration = true;
-            data.events = window.multiEventData.events;
-            data.pricingInfo = window.multiEventData.pricingInfo;
-            // Don't set a combined eventName here - let the backend handle individual events
-            data.totalAmount = window.multiEventData.pricingInfo.totalCost * riderCount;
-        } else {
-            // Single event registration - include the event info for availability checking
-            const urlParams = new URLSearchParams(window.location.search);
-            data.eventName = urlParams.get('event') || data.eventName || '';
-            data.eventDate = urlParams.get('date') || '';
-            data.eventLocation = urlParams.get('location') || '';
-            data.eventTime = urlParams.get('time') || '';
-            data.ratePerRider = ratePerRider;
-            data.totalAmount = ratePerRider * riderCount;
-            
-            // Also include the events array format for availability checking
-            data.events = [{
-                title: data.eventName,
-                dateString: data.eventDate,
-                time: data.eventTime,
-                location: data.eventLocation,
-                maxSpots: 10 // Default capacity - adjust as needed
-            }];
-        }
-        
-        // Submit to API
-        const response = await fetch('/api/track_reserve', {
+        // Create payment intent
+        const paymentResponse = await fetch('/api/create-payment-intent', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(data)
+            body: JSON.stringify({
+                amount: totalAmount,
+                currency: 'aud',
+                metadata: {
+                    riderCount: riderCount,
+                    eventNames: selectedEvents.map(e => e.title).join(', '),
+                    registrationData: 'track_reservation'
+                }
+            })
         });
+
+        if (!paymentResponse.ok) {
+            throw new Error('Failed to create payment intent');
+        }
+
+        const { clientSecret, paymentIntentId } = await paymentResponse.json();
+        
+        // Show payment modal and handle payment
+        const paymentResult = await showPaymentModal(clientSecret, totalAmount);
+        
+        if (paymentResult.success) {
+            // Payment successful, now submit registration
+            submitButton.textContent = 'Completing registration...';
+            await completeRegistration(form, paymentIntentId, totalAmount);
+        } else {
+            throw new Error(paymentResult.error || 'Payment failed');
+        }
+        
+    } catch (error) {
+        console.error('Payment error:', error);
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+        showErrorModal('Payment failed: ' + error.message);
+    }
+}
         
         if (response.ok) {
             // Success - show success modal
@@ -712,22 +669,343 @@ async function handleFormSubmission(event) {
             return; // Don't continue to catch block for availability errors
         }
         
+// Show payment modal with Stripe Elements and multiple payment methods
+async function showPaymentModal(clientSecret, amount) {
+    return new Promise(async (resolve) => {
+        // Get Stripe publishable key
+        let stripePublishableKey;
+        try {
+            const configResponse = await fetch('/api/stripe-config');
+            const config = await configResponse.json();
+            stripePublishableKey = config.publishableKey;
+        } catch (error) {
+            console.error('Error getting Stripe config:', error);
+            resolve({ success: false, error: 'Payment configuration error' });
+            return;
+        }
+        
+        // Create payment modal
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.style.display = 'flex';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 600px; width: 95%;">
+                <div class="modal-header" style="text-align: center;">
+                    <h2>Complete Payment</h2>
+                    <p style="color: #ccc; margin: 10px 0;">Total: $${amount.toFixed(2)} AUD</p>
+                </div>
+                
+                <!-- Payment Method Selector -->
+                <div class="payment-method-selector" style="margin: 20px 0;">
+                    <h4 style="color: #fff; margin-bottom: 15px;">Choose Payment Method</h4>
+                    <div class="payment-methods" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button type="button" class="payment-method-btn active" data-method="card" style="
+                            flex: 1; padding: 12px; border: 2px solid #ff6600; background: #ff6600; color: white; 
+                            border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; 
+                            justify-content: center; gap: 8px; transition: all 0.3s ease;
+                        ">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                            </svg>
+                            Card
+                        </button>
+                        <button type="button" class="payment-method-btn" data-method="apple-pay" style="
+                            flex: 1; padding: 12px; border: 2px solid #555; background: #2a2a2a; color: #ccc; 
+                            border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; 
+                            justify-content: center; gap: 8px; transition: all 0.3s ease;
+                        ">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                            </svg>
+                            Apple Pay
+                        </button>
+                        <button type="button" class="payment-method-btn" data-method="afterpay" style="
+                            flex: 1; padding: 12px; border: 2px solid #555; background: #2a2a2a; color: #ccc; 
+                            border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; 
+                            justify-content: center; gap: 8px; transition: all 0.3s ease;
+                        ">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
+                            </svg>
+                            Afterpay
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Payment Elements Container -->
+                <div id="card-element-container" style="margin: 20px 0;">
+                    <div id="payment-element"></div>
+                </div>
+                
+                <div id="apple-pay-container" style="margin: 20px 0; display: none;">
+                    <div id="apple-pay-button"></div>
+                </div>
+                
+                <div id="afterpay-container" style="margin: 20px 0; display: none;">
+                    <div id="afterpay-element"></div>
+                </div>
+                
+                <div id="payment-errors" style="color: #dc3545; margin: 10px 0; display: none;"></div>
+                <div class="modal-actions" style="display: flex; gap: 15px; justify-content: center;">
+                    <button id="cancel-payment" type="button" class="btn-secondary">Cancel</button>
+                    <button id="submit-payment" type="button" class="btn-primary">Pay Now</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Initialize Stripe
+        const stripe = Stripe(stripePublishableKey);
+        const elements = stripe.elements({ 
+            clientSecret,
+            appearance: {
+                theme: 'night',
+                variables: {
+                    colorPrimary: '#ff6600',
+                    colorBackground: '#2a2a2a',
+                    colorText: '#ffffff',
+                    colorDanger: '#dc3545',
+                    fontFamily: '"Roboto Condensed", sans-serif',
+                    spacingUnit: '4px',
+                    borderRadius: '8px'
+                }
+            }
+        });
+        
+        // Create payment elements
+        const paymentElement = elements.create('payment', {
+            layout: 'tabs'
+        });
+        paymentElement.mount('#payment-element');
+        
+        // Check if Apple Pay is available
+        const applePayButton = elements.create('paymentRequestButton', {
+            paymentRequest: {
+                country: 'AU',
+                currency: 'aud',
+                total: {
+                    label: 'Moto Coach Track Reservation',
+                    amount: Math.round(amount * 100)
+                },
+                requestPayerName: true,
+                requestPayerEmail: true,
+            }
+        });
+        
+        // Check if Apple Pay is available and mount if supported
+        applePayButton.canMakePayment().then((result) => {
+            if (result && result.applePay) {
+                applePayButton.mount('#apple-pay-button');
+                // Enable Apple Pay button
+                modal.querySelector('[data-method="apple-pay"]').style.display = 'flex';
+            } else {
+                // Hide Apple Pay option if not available
+                modal.querySelector('[data-method="apple-pay"]').style.opacity = '0.5';
+                modal.querySelector('[data-method="apple-pay"]').style.cursor = 'not-allowed';
+                modal.querySelector('[data-method="apple-pay"]').disabled = true;
+            }
+        });
+        
+        // Payment method switching
+        const methodButtons = modal.querySelectorAll('.payment-method-btn');
+        const containers = {
+            'card': modal.querySelector('#card-element-container'),
+            'apple-pay': modal.querySelector('#apple-pay-container'),
+            'afterpay': modal.querySelector('#afterpay-container')
+        };
+        
+        let currentMethod = 'card';
+        
+        methodButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.disabled) return;
+                
+                // Update button states
+                methodButtons.forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = '#2a2a2a';
+                    b.style.borderColor = '#555';
+                    b.style.color = '#ccc';
+                });
+                
+                btn.classList.add('active');
+                btn.style.background = '#ff6600';
+                btn.style.borderColor = '#ff6600';
+                btn.style.color = 'white';
+                
+                // Show/hide containers
+                Object.values(containers).forEach(container => {
+                    container.style.display = 'none';
+                });
+                
+                const method = btn.dataset.method;
+                currentMethod = method;
+                
+                if (method === 'apple-pay') {
+                    containers['apple-pay'].style.display = 'block';
+                } else if (method === 'afterpay') {
+                    containers['afterpay'].style.display = 'block';
+                } else {
+                    containers['card'].style.display = 'block';
+                }
+            });
+        });
+        
+        const submitBtn = modal.querySelector('#submit-payment');
+        const cancelBtn = modal.querySelector('#cancel-payment');
+        const errorDiv = modal.querySelector('#payment-errors');
+        
+        // Handle Apple Pay payment
+        applePayButton.on('click', async (event) => {
+            const { error } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: window.location.href,
+                },
+                redirect: 'if_required'
+            });
+            
+            if (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            } else {
+                document.body.removeChild(modal);
+                resolve({ success: true });
+            }
+        });
+        
+        // Handle regular payment submission
+        submitBtn.addEventListener('click', async () => {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+            errorDiv.style.display = 'none';
+            
+            const { error } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: window.location.href,
+                },
+                redirect: 'if_required'
+            });
+            
+            if (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Pay Now';
+            } else {
+                document.body.removeChild(modal);
+                resolve({ success: true });
+            }
+        });
+        
+        // Handle cancel
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+            resolve({ success: false, error: 'Payment cancelled' });
+        });
+    });
+}
+
+// Complete registration after successful payment
+async function completeRegistration(form, paymentIntentId, totalAmount) {
+    // Check reCAPTCHA v3 verification
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    if (!isDev) {
+        // Execute reCAPTCHA v3 for this form submission
+        try {
+            console.log('Executing reCAPTCHA v3...');
+            await new Promise((resolve, reject) => {
+                grecaptcha.ready(function() {
+                    grecaptcha.execute(recaptchaSiteKey, {action: 'track_reservation'}).then(function(token) {
+                        console.log('reCAPTCHA v3 token received');
+                        recaptchaToken = token;
+                        resolve(token);
+                    }).catch(reject);
+                });
+            });
+        } catch (error) {
+            console.error('reCAPTCHA execution failed:', error);
+            throw new Error('Security verification failed. Please try again or contact us directly.');
+        }
+        
+        if (!recaptchaToken) {
+            throw new Error('Security verification is required. Please try again.');
+        }
+    } else {
+        console.log('Development mode: skipping reCAPTCHA verification');
+    }
+    
+    try {
+        // Collect all form data
+        const formData = new FormData(form);
+        const data = {};
+        
+        // Get basic form data
+        for (let [key, value] of formData.entries()) {
+            data[key] = value;
+        }
+        
+        // Add payment and security data
+        data.paymentIntentId = paymentIntentId;
+        data.totalAmount = totalAmount;
+        data.recaptchaToken = recaptchaToken;
+        
+        // Handle multi-event vs single event data
+        if (window.multiEventData) {
+            // Multi-event registration
+            data.multiEventRegistration = true;
+            data.events = window.multiEventData.events;
+            data.pricingInfo = window.multiEventData.pricingInfo;
+        } else {
+            // Single event registration
+            const urlParams = new URLSearchParams(window.location.search);
+            data.eventName = urlParams.get('event') || data.eventName || '';
+            data.eventDate = urlParams.get('date') || '';
+            data.eventLocation = urlParams.get('location') || '';
+            data.eventTime = urlParams.get('time') || '';
+            data.ratePerRider = ratePerRider;
+            
+            // Include events array format for availability checking
+            data.events = [{
+                title: data.eventName,
+                dateString: data.eventDate,
+                time: data.eventTime,
+                location: data.eventLocation,
+                maxSpots: 10 // Default capacity
+            }];
+        }
+        
+        // Submit to API
+        const response = await fetch('/api/track_reserve', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || errorData.error || 'Registration failed');
+        }
+        
+        const result = await response.json();
+        console.log('Registration submitted successfully:', result);
+        
+        // Show success modal
+        showSuccessModal();
+        
+        // Reset form state
+        const submitButton = form.querySelector('button[type="submit"]');
+        submitButton.disabled = false;
+        submitButton.textContent = 'Confirm';
+        
     } catch (error) {
-        console.error('Error submitting form:', error);
-        
-        // Show error state
-        submitButton.style.backgroundColor = '#dc3545';
-        submitButton.innerHTML = '✗ Submission Failed';
-        
-        setTimeout(() => {
-            showErrorModal('There was an error submitting your registration. Please try again or contact us directly.');
-            // Reset reCAPTCHA
-            recaptchaToken = null;
-            // Reset button state
-            submitButton.disabled = false;
-            submitButton.style.backgroundColor = '';
-            submitButton.textContent = 'Confirm';
-        }, 2000);
+        console.error('Error completing registration:', error);
+        throw error;
     }
 }
 

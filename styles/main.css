@@ -1679,6 +1679,13 @@ footer {
     box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1);
 }
 
+/* Style dropdown options */
+.form-group select option {
+    background: #ffffff;
+    color: #000000;
+    padding: 8px;
+}
+
 .form-group textarea {
     resize: vertical;
     min-height: 120px;
@@ -6459,6 +6466,104 @@ input[placeholder="DD/MM/YYYY"]:valid {
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+}
+
+/* Payment Method Selector Styles */
+.payment-method-selector {
+    margin: 20px 0;
+}
+
+.payment-method-selector h4 {
+    color: #fff;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.payment-methods {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.payment-method-btn {
+    flex: 1;
+    padding: 12px 8px;
+    border: 2px solid #555;
+    background: #2a2a2a;
+    color: #ccc;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    font-family: inherit;
+    font-weight: 500;
+}
+
+.payment-method-btn:hover:not(:disabled) {
+    border-color: #ff6600;
+    background: rgba(255, 102, 0, 0.1);
+    color: #ff6600;
+}
+
+.payment-method-btn.active {
+    background: #ff6600 !important;
+    border-color: #ff6600 !important;
+    color: white !important;
+}
+
+.payment-method-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.payment-method-btn svg {
+    flex-shrink: 0;
+}
+
+/* Stripe Elements Styling */
+#payment-element,
+#apple-pay-button,
+#afterpay-element {
+    background: #2a2a2a;
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid #555;
+}
+
+#apple-pay-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 56px;
+}
+
+/* Payment method container transitions */
+#card-element-container,
+#apple-pay-container,
+#afterpay-container {
+    transition: opacity 0.3s ease;
+}
+
+/* Mobile responsive for payment methods */
+@media (max-width: 480px) {
+    .payment-methods {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .payment-method-btn {
+        padding: 14px 12px;
+        font-size: 15px;
+    }
+    
+    .payment-method-selector h4 {
+        font-size: 1rem;
     }
 }
 
