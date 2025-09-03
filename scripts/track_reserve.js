@@ -641,51 +641,26 @@ async function handleFormSubmission(event) {
     }
 }
         
-        if (response.ok) {
-            // Success - show success modal
-            submitButton.style.backgroundColor = '#28a745';
-            submitButton.innerHTML = '✓ Submitted Successfully!';
-            
-            setTimeout(() => {
-                // Show the success modal
-                showSuccessModal();
-                form.reset();
-                // Reset reCAPTCHA
-                recaptchaToken = null;
-                // Reset button after success
-                submitButton.disabled = false;
-                submitButton.style.backgroundColor = '';
-                submitButton.textContent = 'Confirm';
-            }, 1500);
-        } else {
-            const errorData = await response.json();
-            
-            // Check if this is an availability error with detailed information
-            if (errorData.details && errorData.unavailableEvents) {
-                showErrorModal(errorData.details);
-            } else {
-                throw new Error(errorData.error || 'Failed to submit registration');
-            }
-            return; // Don't continue to catch block for availability errors
-        }
-        
 // Show payment modal with Stripe Elements and multiple payment methods
 async function showPaymentModal(clientSecret, amount) {
-    return new Promise(async (resolve) => {
+    return new Promise((resolve) => {
         // Get Stripe publishable key
         let stripePublishableKey;
-        try {
-            const configResponse = await fetch('/api/stripe-config');
-            const config = await configResponse.json();
-            stripePublishableKey = config.publishableKey;
-        } catch (error) {
-            console.error('Error getting Stripe config:', error);
-            resolve({ success: false, error: 'Payment configuration error' });
-            return;
-        }
         
-        // Create payment modal
-        const modal = document.createElement('div');
+        // Use async IIFE to handle async operations inside Promise
+        (async () => {
+            try {
+                const configResponse = await fetch('/api/stripe-config');
+                const config = await configResponse.json();
+                stripePublishableKey = config.publishableKey;
+            } catch (error) {
+                console.error('Error getting Stripe config:', error);
+                resolve({ success: false, error: 'Payment configuration error' });
+                return;
+            }
+            
+            // Create payment modal
+            const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.style.display = 'flex';
         modal.innerHTML = `
@@ -905,6 +880,8 @@ async function showPaymentModal(clientSecret, amount) {
             document.body.removeChild(modal);
             resolve({ success: false, error: 'Payment cancelled' });
         });
+        
+        })(); // Close async IIFE
     });
 }
 
