@@ -289,60 +289,11 @@ async function initializePaymentElements() {
         
         // Create and mount payment element for card input
         paymentElement = elements.create('payment', {
-            layout: 'tabs'
+            layout: 'tabs'  // This enables Stripe to show Card/Apple Pay/Link tabs automatically
         });
         paymentElement.mount('#payment-element');
         
-        // Try to set up Apple Pay/Express checkout
-        try {
-            const paymentRequest = stripe.paymentRequest({
-                country: 'AU',
-                currency: 'aud',
-                total: {
-                    label: 'Moto Coach Track Reservation',
-                    amount: Math.round(totalAmount * 100)
-                },
-                requestPayerName: true,
-                requestPayerEmail: true,
-            });
-            
-            const applePayButton = elements.create('paymentRequestButton', {
-                paymentRequest: paymentRequest
-            });
-            
-            // Check if Apple Pay is available and mount if supported
-            paymentRequest.canMakePayment().then((result) => {
-                if (result) {
-                    applePayButton.mount('#apple-pay-button');
-                    console.log('Apple Pay available');
-                } else {
-                    console.log('Apple Pay not available');
-                    // Hide Apple Pay option if not available
-                    const applePayBtn = document.querySelector('[data-method="apple-pay"]');
-                    if (applePayBtn) {
-                        applePayBtn.style.opacity = '0.5';
-                        applePayBtn.style.cursor = 'not-allowed';
-                        applePayBtn.disabled = true;
-                    }
-                }
-            }).catch((error) => {
-                console.log('Apple Pay check failed:', error);
-                // Hide Apple Pay option if error
-                const applePayBtn = document.querySelector('[data-method="apple-pay"]');
-                if (applePayBtn) {
-                    applePayBtn.style.opacity = '0.5';
-                    applePayBtn.style.cursor = 'not-allowed';
-                    applePayBtn.disabled = true;
-                }
-            });
-        } catch (applePayError) {
-            console.log('Apple Pay setup failed:', applePayError);
-        }
-        
-        // Set up payment method switching
-        setupPaymentMethodSwitching();
-        
-        console.log('Initial payment elements mounted successfully');
+        console.log('Payment element mounted successfully - Stripe will handle method detection');
         
     } catch (error) {
         console.error('Error initializing payment system:', error);
@@ -363,47 +314,6 @@ async function initializePaymentElements() {
 }
 
 // Initialize Stripe elements with client secret
-// Setup payment method switching functionality
-function setupPaymentMethodSwitching() {
-    const methodButtons = document.querySelectorAll('.payment-method-btn');
-    const containers = {
-        'card': document.querySelector('#card-element-container'),
-        'apple-pay': document.querySelector('#apple-pay-container'),
-        'afterpay': document.querySelector('#afterpay-container')
-    };
-    
-    methodButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            if (btn.disabled) return;
-            
-            // Update button states
-            methodButtons.forEach(b => {
-                b.classList.remove('active');
-            });
-            
-            btn.classList.add('active');
-            
-            // Show/hide containers
-            Object.values(containers).forEach(container => {
-                if (container) container.style.display = 'none';
-            });
-            
-            const method = btn.dataset.method;
-            currentPaymentMethod = method;
-            
-            if (containers[method]) {
-                containers[method].style.display = 'block';
-            }
-            
-            // Clear any previous errors
-            const errorDiv = document.querySelector('#payment-errors');
-            if (errorDiv) {
-                errorDiv.style.display = 'none';
-            }
-        });
-    });
-}
-
 // Update payment amount when pricing changes
 function updatePaymentAmount(amount) {
     // Store the amount for reference
