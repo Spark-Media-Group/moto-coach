@@ -623,10 +623,11 @@ class MotoCoachCalendar {
         // Update button states without refreshing all event content
         const eventItems = document.querySelectorAll('.event-item');
         eventItems.forEach(eventItem => {
-            const registerOptions = eventItem.querySelector('.register-options');
-            if (registerOptions) {
-                const addButton = registerOptions.querySelector('.btn-add-selection');
-                const removeButton = registerOptions.querySelector('.btn-remove-selection');
+            // Look for buttons in both old layout (.register-options) and new layout (.event-register-centered)
+            const registerContainer = eventItem.querySelector('.register-options') || eventItem.querySelector('.event-register-centered');
+            if (registerContainer) {
+                const addButton = registerContainer.querySelector('.btn-add-selection');
+                const removeButton = registerContainer.querySelector('.btn-remove-selection');
                 
                 if (addButton) {
                     const eventKey = addButton.getAttribute('data-event-key');
@@ -635,7 +636,11 @@ class MotoCoachCalendar {
                     if (isSelected) {
                         // Replace add button with remove button
                         addButton.outerHTML = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${eventKey}')">Remove from Selection</button>`;
-                        eventItem.querySelector('.event-register').classList.add('event-selected');
+                        // Update event item styling for selected state
+                        const eventRegister = eventItem.querySelector('.event-register') || eventItem.querySelector('.event-register-centered');
+                        if (eventRegister) {
+                            eventRegister.classList.add('event-selected');
+                        }
                     }
                 } else if (removeButton) {
                     const eventKey = removeButton.getAttribute('onclick').match(/'([^']+)'/)[1];
@@ -644,7 +649,11 @@ class MotoCoachCalendar {
                     if (!isSelected) {
                         // Replace remove button with add button
                         removeButton.outerHTML = `<button class="btn-add-selection" data-event-key="${eventKey}" onclick="calendar.addEventToSelectionByKey('${eventKey}', this)">Add to Selection</button>`;
-                        eventItem.querySelector('.event-register').classList.remove('event-selected');
+                        // Update event item styling for unselected state
+                        const eventRegister = eventItem.querySelector('.event-register') || eventItem.querySelector('.event-register-centered');
+                        if (eventRegister) {
+                            eventRegister.classList.remove('event-selected');
+                        }
                     }
                 }
             }
