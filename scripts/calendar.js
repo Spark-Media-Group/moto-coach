@@ -395,6 +395,11 @@ class MotoCoachCalendar {
                 currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
             }
             
+            // Check if this day is in the past (before today)
+            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const currentDayMidnight = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
+            const isPastDay = currentDayMidnight < todayMidnight;
+            
             if (this.isSameDay(currentDay, today)) {
                 dayElement.classList.add('today');
             }
@@ -402,6 +407,11 @@ class MotoCoachCalendar {
             const dayEvents = this.getEventsForDate(currentDay);
             if (dayEvents.length > 0) {
                 dayElement.classList.add('has-events');
+                
+                // Add past-event class if this day is in the past
+                if (isPastDay) {
+                    dayElement.classList.add('past-event');
+                }
                 
                 if (this.isMobileView) {
                     // Mobile: Show just the number of events
@@ -454,6 +464,9 @@ class MotoCoachCalendar {
                     
                     dayElement.appendChild(eventsContainer);
                 }
+            } else if (isPastDay) {
+                // Add past-event class even if no events, for visual consistency
+                dayElement.classList.add('past-event');
             }
 
             dayElement.addEventListener('click', () => {
@@ -1048,21 +1061,10 @@ class MotoCoachCalendar {
     }
 
     getEventsForDate(date) {
-        // Get today's date in Sydney timezone
-        const todaySydney = new Date().toLocaleDateString('en-AU', {
-            timeZone: 'Australia/Sydney',
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-        });
-        const [dayToday, monthToday, yearToday] = todaySydney.split('/');
-        const today = new Date(yearToday, monthToday - 1, dayToday);
-        
-        // Only return events from today onwards
+        // Return all events for the date, regardless of whether they're past or future
+        // The visual styling will handle showing past events differently
         return this.events.filter(event => {
-            const isSameDay = this.isSameDay(event.date, date);
-            const isDateTodayOrFuture = date >= today;
-            return isSameDay && isDateTodayOrFuture;
+            return this.isSameDay(event.date, date);
         });
     }
 

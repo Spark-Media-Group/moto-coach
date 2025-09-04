@@ -8,7 +8,7 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
     color: #333;
-    background-color: #4a4a4a;
+    background-color: #1a1a1a; /* Back to dark background */
 }
 
 /* Utility Classes */
@@ -5463,29 +5463,60 @@ div:focus {
 }
 
 .calendar-wrapper {
-    max-width: 1200px;
-    margin: 3rem auto 0 auto;
-    background: #ffffff;
-    border-radius: 12px;
+    width: 100%;
+    margin: 0;
+    margin-top: 80px; /* Add space for the fixed header */
+    background: #1a1a1a; /* Back to dark background */
+    border-radius: 0; /* Remove border radius for full-width */
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    box-shadow: none; /* Remove shadow for cleaner full-width look */
+}
+
+/* Main container for side-by-side layout */
+.calendar-main-container {
+    display: flex;
+    min-height: 600px; /* Back to min-height for flexibility */
+    width: 100%;
+    max-width: none; /* Remove any width constraints */
+    background: #1a1a1a; /* Back to dark background */
+}
+
+/* Event panel on the left */
+.calendar-main-container .event-panel {
+    flex: 0 0 350px; /* Fixed width for event panel */
+    background: #222; /* Back to dark background */
+    padding: 2rem;
+    border-right: 1px solid #333; /* Dark border */
+    min-height: 600px; /* Back to min-height */
+    overflow-y: auto;
+    margin: 0; /* Remove any default margins */
+}
+
+/* Calendar section on the right */
+.calendar-main-container .calendar-section {
+    flex: 1;
+    background: #1a1a1a; /* Back to dark background */
+    display: flex;
+    flex-direction: column;
+    min-height: 600px; /* Back to min-height for flexibility */
+    padding: 0; /* Override any default padding */
 }
 
 .calendar-header {
-    background: linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%);
-    border-radius: 12px 12px 0 0;
+    background: linear-gradient(135deg, #2a2a2a 0%, #1e1e1e 100%); /* Back to dark gradient */
     padding: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    color: #fff;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    color: #fff; /* White text */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); /* Dark shadow */
+    flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .nav-btn {
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.08); /* Back to dark theme buttons */
     border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff;
+    color: #fff; /* White text */
     font-size: 1.2rem;
     font-weight: 500;
     width: 44px;
@@ -5517,31 +5548,29 @@ div:focus {
     margin: 0;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: #f5f5f5;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.calendar-grid {
-    background: #1a1a1a;
+    color: #f5f5f5; /* Back to light text */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); /* Add shadow back */
 }
 
 .calendar-grid {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
-    background: #333;
+    background: #333; /* Back to dark grid */
+    height: 100%; /* Fill the container height */
+    padding: 2rem; /* Increased padding for better spacing */
 }
 
 .day-header {
-    background: #2a2a2a;
-    color: #ff6b35;
+    background: #2a2a2a; /* Back to dark background */
+    color: #ff6b35; /* Keep the orange accent color */
     padding: 1rem;
     text-align: center;
     font-weight: 700;
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid #333; /* Dark border */
 }
 
 .calendar-days {
@@ -5549,11 +5578,11 @@ div:focus {
 }
 
 .calendar-day {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05); /* Back to dark theme */
     padding: 0.5rem;
     min-height: 100px;
     border: none;
-    color: #fff;
+    color: #fff; /* White text */
     cursor: pointer;
     position: relative;
     transition: all 0.3s ease;
@@ -5565,23 +5594,23 @@ div:focus {
 }
 
 .calendar-day:hover {
-    background: #2a2a2a;
+    background: #2a2a2a; /* Back to dark hover */
     color: #ff6b35;
 }
 
 .calendar-day.other-month {
-    color: #666;
-    background: #161616;
+    color: #666; /* Back to muted gray */
+    background: #161616; /* Dark background */
 }
 
 .calendar-day.other-month:hover {
-    background: #222;
+    background: #222; /* Dark hover */
     color: #888;
 }
 
 .calendar-day.today {
-    background: #ff6b35;
-    color: #fff;
+    background: #ff6b35; /* Back to bright orange background */
+    color: #fff; /* White text */
     font-weight: 700;
 }
 
@@ -5590,17 +5619,49 @@ div:focus {
 }
 
 .calendar-day.has-events {
-    background: #1a1a1a;
+    background: #1a1a1a; /* Back to dark background */
 }
 
 .calendar-day.has-events:hover {
-    background: #2a2a2a;
+    background: #2a2a2a; /* Dark hover */
 }
 
 .calendar-day.selected {
-    background: #2a2a2a;
+    background: #2a2a2a; /* Dark background */
     border: 2px solid #ff6b35;
     color: #ff6b35;
+}
+
+/* Past events styling */
+.calendar-day.past-event {
+    opacity: 0.6;
+    color: #888;
+}
+
+.calendar-day.past-event .day-number {
+    text-decoration: line-through;
+}
+
+.calendar-day.past-event .event-preview {
+    text-decoration: line-through;
+    background: rgba(255, 107, 53, 0.4);
+    opacity: 0.7;
+}
+
+.calendar-day.past-event .event-title-small,
+.calendar-day.past-event .event-time-small,
+.calendar-day.past-event .event-location-small {
+    text-decoration: line-through;
+}
+
+.calendar-day.past-event:hover {
+    background: #1a1a1a;
+    opacity: 0.8;
+}
+
+.calendar-day.past-event.today {
+    background: rgba(255, 107, 53, 0.5);
+    opacity: 0.8;
 }
 
 .day-number {
@@ -5714,13 +5775,21 @@ div:focus {
     border-top: 1px solid #333;
 }
 
+/* Override for side-by-side layout */
+.calendar-main-container .event-panel {
+    border-top: none;
+}
+
 .event-panel h3 {
-    color: #fff;
+    color: #fff; /* Back to white text */
     font-size: 1.5rem;
     font-weight: 700;
     margin-bottom: 1.5rem;
     text-transform: uppercase;
     letter-spacing: 1px;
+    border-bottom: 2px solid #ff6b35;
+    padding-bottom: 0.5rem;
+    text-align: center;
 }
 
 .event-list {
@@ -5874,13 +5943,13 @@ button.btn-register:hover {
 }
 
 .no-events {
-    color: #666;
+    color: #666; /* Back to original gray */
     font-style: italic;
     text-align: center;
     padding: 2rem;
-    background: #1a1a1a;
+    background: #1a1a1a; /* Back to dark background */
     border-radius: 8px;
-    border: 1px dashed #333;
+    border: 1px dashed #333; /* Dark border */
 }
 
 /* Event Pagination Styles */
@@ -6001,12 +6070,32 @@ button.btn-register:hover {
     
     .event-panel h3 {
         font-size: 1.2rem;
+        text-align: center;
     }
     
     .calendar-wrapper {
-        margin: 0 0.5rem;
-        border-radius: 8px;
+        margin: 0; /* Full width on mobile */
+        border-radius: 0; /* Remove border radius for full-width */
         overflow: hidden;
+    }
+
+    /* Mobile: Stack event panel on top, calendar below */
+    .calendar-main-container {
+        flex-direction: column;
+    }
+    
+    .calendar-main-container .event-panel {
+        flex: 0 0 auto;
+        max-height: 300px;
+        border-right: none;
+        border-bottom: 1px solid #333;
+        padding: 2rem;
+    }
+    
+    .calendar-main-container .calendar-section {
+        flex: 1;
+        min-height: 500px;
+        padding: 0;
     }
 
     /* Ensure calendar grid fits properly on mobile */
@@ -6017,6 +6106,7 @@ button.btn-register:hover {
         width: 100% !important;
         max-width: 100% !important;
         overflow: hidden !important;
+        padding: 1rem !important;
     }
     
     .mobile-week-view .calendar-day {
@@ -6082,12 +6172,12 @@ button.btn-register:hover {
 /* Extra Small Mobile Styles */
 @media (max-width: 480px) {
     .calendar-wrapper {
-        margin: 0 0.25rem;
+        margin: 0; /* Full width on extra small mobile */
     }
     
     .calendar-header {
-        padding: 0.75rem 0.25rem;
-        border-radius: 6px 6px 0 0;
+        padding: 0.75rem 1rem;
+        border-radius: 0;
     }
     
     .month-year h2 {
