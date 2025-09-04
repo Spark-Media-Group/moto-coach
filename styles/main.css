@@ -6022,8 +6022,6 @@ button.btn-register:hover {
     background: transparent;
     color: #ff6b35;
     border-color: #ff6b35;
-    transform: translateY(-1px);
-    box-shadow: 0 5px 15px rgba(255, 107, 53, 0.3);
 }
 
 .event-register-centered .btn-remove-selection {
@@ -6034,6 +6032,18 @@ button.btn-register:hover {
 .event-register-centered .btn-remove-selection:hover {
     background: transparent;
     color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Remove any focus states and outlines for centered buttons */
+.event-register-centered .btn-add-selection:focus,
+.event-register-centered .btn-remove-selection:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: #ff6b35;
+}
+
+.event-register-centered .btn-remove-selection:focus {
     border-color: #dc3545;
 }
 
