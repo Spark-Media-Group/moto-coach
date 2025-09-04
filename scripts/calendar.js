@@ -761,10 +761,7 @@ class MotoCoachCalendar {
                 <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
                     Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
                 </p>
-                <div class="events-title-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <p style="color: #fff; font-weight: 600; margin: 0;">
-                        Upcoming Events
-                    </p>
+                <div class="events-title-row" style="display: flex; justify-content: center; align-items: center; margin-bottom: 1rem;">
                     <div class="top-pagination" style="display: flex; align-items: center; gap: 0.75rem;">
                         <button class="pagination-btn prev-events-top" ${this.currentEventPage === 1 ? 'disabled' : ''} style="
                             background: ${this.currentEventPage === 1 ? '#333' : '#ff6b35'}; 
@@ -812,10 +809,7 @@ class MotoCoachCalendar {
                     <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
                         Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
                     </p>
-                    <div class="events-title-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <p style="color: #fff; font-weight: 600; margin: 0;">
-                            Upcoming Events
-                        </p>
+                    <div class="events-title-row" style="display: flex; justify-content: center; align-items: center; margin-bottom: 1rem;">
                         <div class="top-pagination" style="display: flex; align-items: center; gap: 0.75rem;">
                             <button class="pagination-btn prev-events-top" ${this.currentEventPage === 1 ? 'disabled' : ''} style="
                                 background: ${this.currentEventPage === 1 ? '#333' : '#ff6b35'}; 
@@ -944,28 +938,28 @@ class MotoCoachCalendar {
 
     async createEventHTML(event, showDate = false) {
         const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
-        const locationStr = event.location ? `<div class="event-location">📍 ${event.location}</div>` : '';
-        const descriptionStr = event.description ? `<div class="event-description">${event.description}</div>` : '';
+        const locationStr = event.location ? `📍 ${event.location}` : '';
+        const descriptionStr = event.description || '';
         
         // Rate display logic
         let rateStr = '';
         if (event.hasRegistration) {
             if (event.ratePerRider === 190) {
                 // Standard rate - show "Standard Rates Apply"
-                rateStr = `<div class="event-rate">Standard Rates Apply</div>`;
+                rateStr = `Standard Rates Apply`;
             } else {
                 // Custom rate - show simplified format
-                rateStr = `<div class="event-rate">$${event.ratePerRider} AUD/rider</div>`;
+                rateStr = `$${event.ratePerRider} AUD/rider`;
             }
         }
         
         // Add register button and spots info if event has registration enabled
         let registerButtonStr = '';
+        let spotsDisplayStr = '';
         if (event.hasRegistration) {
             const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
             
             // Get registration count for this event
-            let spotsDisplay = '';
             let showRegisterButton = true;
             let remainingSpots = null; // Initialize remainingSpots variable
             
@@ -976,20 +970,20 @@ class MotoCoachCalendar {
                     
                     if (remainingSpots > 0) {
                         const lowSpotsClass = remainingSpots < 5 ? ' low' : '';
-                        spotsDisplay = `<div class="spots-remaining${lowSpotsClass}">${remainingSpots} spots remaining</div>`;
+                        spotsDisplayStr = `<div class="spots-remaining${lowSpotsClass}">${remainingSpots} spots remaining</div>`;
                         showRegisterButton = true;
                     } else {
-                        spotsDisplay = `<div class="spots-remaining full">Event is full</div>`;
+                        spotsDisplayStr = `<div class="spots-remaining full">Event is full</div>`;
                         showRegisterButton = false;
                     }
                 } catch (error) {
                     console.error('Error getting registration count:', error);
                     remainingSpots = event.maxSpots; // Fallback to max spots if error
-                    spotsDisplay = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
+                    spotsDisplayStr = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
                     showRegisterButton = true;
                 }
             } else {
-                spotsDisplay = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
+                spotsDisplayStr = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
                 showRegisterButton = true;
                 remainingSpots = null; // No limit
             }
@@ -998,38 +992,27 @@ class MotoCoachCalendar {
             const isSelected = this.isEventSelected(event);
             const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
             
-            let registerButton = '';
             if (showRegisterButton) {
                 if (isSelected) {
-                    registerButton = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${eventKey}')">Remove from Selection</button>`;
+                    registerButtonStr = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${eventKey}')">Remove from Selection</button>`;
                 } else {
                     // Store event data in a data attribute and use a simpler approach
-                    registerButton = `<button class="btn-add-selection" data-event-key="${eventKey}" onclick="calendar.addEventToSelectionByKey('${eventKey}', this)">Add to Selection</button>`;
+                    registerButtonStr = `<button class="btn-add-selection" data-event-key="${eventKey}" onclick="calendar.addEventToSelectionByKey('${eventKey}', this)">Add to Selection</button>`;
                 }
             }
-            
-            // Add single registration option - REMOVED per user request
-            // Users can add to selection then register for just 1 event if needed
-            
-            registerButtonStr = `
-                <div class="event-register ${isSelected ? 'event-selected' : ''}">
-                    <div class="register-options">
-                        ${registerButton}
-                    </div>
-                    ${spotsDisplay}
-                </div>`;
         }
         
         return `
-            <div class="event-item">
-                <div class="event-details">
-                    <div class="event-time">${dateStr}${event.time}</div>
-                    <div class="event-title">${event.title}</div>
-                    ${locationStr}
-                    ${descriptionStr}
-                    ${rateStr}
+            <div class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''}">
+                <div class="event-details-centered">
+                    <div class="event-time-centered">${dateStr}${event.time}</div>
+                    <div class="event-title-centered">${event.title}</div>
+                    ${locationStr ? `<div class="event-location-centered">${locationStr}</div>` : ''}
+                    ${descriptionStr ? `<div class="event-description-centered">${descriptionStr}</div>` : ''}
+                    ${rateStr ? `<div class="event-rate-centered">${rateStr}</div>` : ''}
                 </div>
-                ${registerButtonStr}
+                ${registerButtonStr ? `<div class="event-register-centered">${registerButtonStr}</div>` : ''}
+                ${spotsDisplayStr ? `<div class="event-spots-centered">${spotsDisplayStr}</div>` : ''}
             </div>
         `;
     }
