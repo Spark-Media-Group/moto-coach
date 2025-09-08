@@ -160,8 +160,17 @@ class MotoCoachCalendar {
             let timeString = 'All Day';
 
             if (event.start.dateTime) {
+                // Parse date in Sydney timezone to match backend
                 eventDate = new Date(event.start.dateTime);
-                const startTime = this.formatTime(eventDate);
+                // Ensure we're using Sydney time for date calculations
+                const sydneyDateStr = eventDate.toLocaleDateString('en-AU', {
+                    timeZone: 'Australia/Sydney'
+                });
+                // Create a new date object that represents the Sydney date
+                const [day, month, year] = sydneyDateStr.split('/');
+                eventDate = new Date(year, month - 1, day); // month is 0-indexed in JS Date
+                
+                const startTime = this.formatTime(new Date(event.start.dateTime));
                 
                 if (event.end.dateTime) {
                     const endDate = new Date(event.end.dateTime);
