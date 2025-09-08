@@ -547,10 +547,14 @@ export default async function handler(req, res) {
                     if (formData.eventDate.includes('/') && formData.eventDate.split('/').length === 3) {
                         formattedEventDate = formData.eventDate; // Already in DD/MM/YYYY format
                     } else {
-                        // Convert from ISO or other format to non-padded format to match sheet
+                        // Convert from ISO or other format to DD/MM/YYYY
                         const eventDate = new Date(formData.eventDate);
                         if (!isNaN(eventDate.getTime())) {
-                            formattedEventDate = `${eventDate.getDate()}/${eventDate.getMonth() + 1}/${eventDate.getFullYear()}`;
+                            formattedEventDate = eventDate.toLocaleDateString('en-AU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric'
+                            });
                         } else {
                             formattedEventDate = formData.eventDate; // Use as-is if parsing fails
                         }
