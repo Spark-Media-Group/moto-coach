@@ -36,6 +36,125 @@ const fetchPolyfill = async (url, options) => {
     });
 };
 
+// Function to validate event details against Google Calendar
+async function validateEventDetails(eventData) {
+    try {
+        console.log('Validating event details against Google Calendar...');
+        
+        // Get environment variables
+        const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
+        const calendarId = process.env.GOOGLE_CALENDAR_ID;
+
+        if (!apiKey || !calendarId) {
+            console.warn('Google Calendar API not configured, skipping event validation');
+            return { success: true }; // Allow through if calendar not configured
+        }
+
+        // Get calendar events for validation
+        const now = new Date();
+        const sixMonthsFromNow = new Date();
+        sixMonthsFromNow.setMonth(now.getMonth() + 6);
+
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
+            `key=${apiKey}&` +
+            `timeMin=${now.toISOString()}&` +
+            `timeMax=${sixMonthsFromNow.toISOString()}&` +
+            `maxResults=250&` +
+            `singleEvents=true&` +
+            `orderBy=startTime`;
+
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            console.warn(`Google Calendar API error: ${response.status}, skipping validation`);
+            return { success: true }; // Allow through if API fails
+        }
+
+        const data = await response.json();
+        const calendarEvents = data.items || [];
+
+        // Validate each event in the submission
+        const eventsToValidate = eventData.events || [{
+            title: eventData.eventName,
+            dateString: eventData.eventDate,
+            location: eventData.eventLocation,
+            time: eventData.eventTime
+        }];
+
+        const invalidEvents = [];
+
+        for (const submittedEvent of eventsToValidate) {
+            // Find matching event in Google Calendar
+            const foundEvent = calendarEvents.find(calEvent => {
+                if (!calEvent.summary || !calEvent.start?.dateTime) return false;
+                
+                const calEventTitle = calEvent.summary.trim();
+                const calEventStartDate = new Date(calEvent.start.dateTime);
+                const calEventDateString = calEventStartDate.toLocaleDateString('en-AU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric'
+                });
+                
+                return calEventTitle === submittedEvent.title?.trim() && 
+                       calEventDateString === submittedEvent.dateString?.trim();
+            });
+
+            if (!foundEvent) {
+                invalidEvents.push({
+                    eventName: submittedEvent.title,
+                    date: submittedEvent.dateString,
+                    reason: 'Event not found in calendar'
+                });
+                continue;
+            }
+
+            // Validate pricing if provided
+            if (eventData.ratePerRider) {
+                const description = foundEvent.description || '';
+                const defaultRate = 190;
+                
+                let actualRate = defaultRate;
+                const rateMatch = description.match(/rate\s*[=:]\s*\$?(\d+)/i) || description.match(/\$(\d+)/);
+                if (rateMatch) {
+                    actualRate = parseInt(rateMatch[1]);
+                }
+
+                // For multi-event, check if the submitted rate makes sense
+                const submittedRate = parseFloat(eventData.ratePerRider);
+                const tolerance = 50; // Allow some variance for bundling/discounts
+                
+                if (Math.abs(submittedRate - actualRate) > tolerance && !eventData.multiEventRegistration) {
+                    invalidEvents.push({
+                        eventName: submittedEvent.title,
+                        date: submittedEvent.dateString,
+                        reason: `Rate mismatch: submitted $${submittedRate}, actual $${actualRate}`
+                    });
+                }
+            }
+
+            console.log(`Event validated: ${submittedEvent.title} on ${submittedEvent.dateString}`);
+        }
+
+        if (invalidEvents.length > 0) {
+            console.warn('Event validation failed:', invalidEvents);
+            return {
+                success: false,
+                message: 'Event validation failed',
+                invalidEvents: invalidEvents
+            };
+        }
+
+        console.log('All events validated successfully');
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error validating event details:', error);
+        // Don't block registration for validation errors, just log them
+        return { success: true };
+    }
+}
+
 // Function to check event availability before registration
 async function checkEventAvailability(formData, riderCount) {
     try {
@@ -171,6 +290,16 @@ export default async function handler(req, res) {
                 });
             }
 
+            // Validate event details before checking availability
+            const eventValidation = await validateEventDetails({ events });
+            if (!eventValidation.success) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Event validation failed: ' + eventValidation.message,
+                    invalidEvents: eventValidation.invalidEvents
+                });
+            }
+
             // Check availability for the selected events
             const availabilityResult = await checkEventAvailability(req.body, riderCount);
             
@@ -293,6 +422,16 @@ export default async function handler(req, res) {
         // Extract form data
         const formData = req.body;
         console.log('Received form data:', JSON.stringify(formData, null, 2));
+
+        // **EVENT VALIDATION** - Validate event details against Google Calendar
+        const eventValidation = await validateEventDetails(formData);
+        if (!eventValidation.success) {
+            return res.status(400).json({ 
+                error: 'Event validation failed',
+                details: eventValidation.message,
+                invalidEvents: eventValidation.invalidEvents
+            });
+        }
 
         // Verify payment before processing registration
         if (!formData.paymentIntentId) {

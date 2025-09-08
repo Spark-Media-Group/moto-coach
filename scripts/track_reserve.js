@@ -992,7 +992,18 @@ async function handleFormSubmission(event) {
         if (!response.ok || !result.success) {
             submitButton.disabled = false;
             submitButton.textContent = originalButtonText;
-            showErrorModal(result.message || 'Registration failed due to availability constraints. Please select different events or reduce the number of riders.');
+            
+            // Handle specific validation errors
+            if (result.invalidEvents && result.invalidEvents.length > 0) {
+                let errorMessage = 'Event validation failed:\n\n';
+                result.invalidEvents.forEach(event => {
+                    errorMessage += `• ${event.eventName} (${event.date}): ${event.reason}\n`;
+                });
+                errorMessage += '\nPlease return to the calendar and select valid events.';
+                showErrorModal(errorMessage);
+            } else {
+                showErrorModal(result.message || 'Registration failed due to availability constraints. Please select different events or reduce the number of riders.');
+            }
             return;
         }
     } catch (error) {
@@ -1477,7 +1488,18 @@ async function completeRegistration(form, paymentIntentId, totalAmount) {
         
         if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.details || errorData.error || 'Registration failed');
+            
+            // Handle specific validation errors
+            if (errorData.invalidEvents && errorData.invalidEvents.length > 0) {
+                let errorMessage = 'Registration failed - Event validation error:\n\n';
+                errorData.invalidEvents.forEach(event => {
+                    errorMessage += `• ${event.eventName} (${event.date}): ${event.reason}\n`;
+                });
+                errorMessage += '\nPlease return to the calendar and select valid events.';
+                throw new Error(errorMessage);
+            } else {
+                throw new Error(errorData.details || errorData.error || 'Registration failed');
+            }
         }
         
         const result = await response.json();

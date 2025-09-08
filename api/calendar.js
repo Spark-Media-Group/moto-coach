@@ -94,17 +94,21 @@ async function handleGetEvents(req, res) {
 // Handle single event validation for track reservation
 async function handleSingleEventValidation(req, res, eventName, eventDate) {
     try {
+        console.log(`Single event validation requested for: "${eventName}" on "${eventDate}"`);
+        
         // Get environment variables
         const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
         const calendarId = process.env.GOOGLE_CALENDAR_ID;
 
         if (!apiKey || !calendarId) {
-            console.error('Missing environment variables');
+            console.error('Missing environment variables for single event validation');
             return res.status(500).json({ 
                 success: false,
-                error: 'Server configuration error'
+                error: 'Server configuration error - missing calendar credentials'
             });
         }
+
+        console.log('Using calendar ID:', calendarId.substring(0, 10) + '...');
 
         // Get calendar events for a reasonable time range to find the specific event
         const now = new Date();
@@ -121,11 +125,15 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
         const response = await fetch(url);
         
+        console.log(`Google Calendar API response: ${response.status} ${response.statusText}`);
+        
         if (!response.ok) {
             console.error(`Google Calendar API error: ${response.status} ${response.statusText}`);
+            const errorText = await response.text();
+            console.error('Error details:', errorText);
             return res.status(response.status).json({
                 success: false,
-                error: `Google Calendar API error: ${response.status}`
+                error: `Google Calendar API error: ${response.status} - ${response.statusText}`
             });
         }
 
@@ -144,8 +152,22 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
                 year: 'numeric'
             });
             
+            console.log(`Comparing: "${eventTitle}" vs "${eventName.trim()}" and "${eventDateString}" vs "${eventDate.trim()}"`);
+            
             return eventTitle === eventName.trim() && eventDateString === eventDate.trim();
         });
+
+        console.log(`Found ${events.length} calendar events, looking for: "${eventName}" on "${eventDate}"`);
+        if (!foundEvent) {
+            console.log('Available events:', events.map(e => ({
+                title: e.summary,
+                date: e.start?.dateTime ? new Date(e.start.dateTime).toLocaleDateString('en-AU', {
+                    day: '2-digit',
+                    month: '2-digit', 
+                    year: 'numeric'
+                }) : 'No date'
+            })));
+        }
 
         if (!foundEvent) {
             return res.status(404).json({
@@ -184,8 +206,6 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
         try {
             // Get registration count from Google Sheets API
-            const { google } = require('googleapis');
-            
             // Get Google Sheets credentials
             const credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
             const auth = new google.auth.GoogleAuth({
