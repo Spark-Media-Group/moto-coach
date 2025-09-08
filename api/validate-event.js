@@ -1,4 +1,6 @@
 // Dedicated API endpoint for validating single events
+const { google } = require('googleapis');
+
 export default async function handler(req, res) {
     // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -73,7 +75,7 @@ export default async function handler(req, res) {
         const foundEvent = events.find(event => {
             if (!event.summary || !event.start?.dateTime) return false;
             
-            const eventTitle = event.summary.trim().toLowerCase();
+            const eventTitle = event.summary.trim();
             const eventStartDate = new Date(event.start.dateTime);
             const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
                 day: '2-digit',
@@ -81,7 +83,7 @@ export default async function handler(req, res) {
                 year: 'numeric'
             });
             
-            const searchTitle = eventName.trim().toLowerCase();
+            const searchTitle = eventName.trim();
             const searchDate = eventDate.trim();
             
             console.log(`Comparing: "${eventTitle}" vs "${searchTitle}" and "${eventDateString}" vs "${searchDate}"`);
@@ -126,44 +128,40 @@ export default async function handler(req, res) {
             maxSpots = parseInt(spotsMatch[1]);
         }
 
-        // Calculate remaining spots (simplified - you can enhance this later)
+        // Calculate remaining spots using Google Sheets
+        const eventStartDate = new Date(foundEvent.start.dateTime);
+        const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+
         let remainingSpots = maxSpots;
 
         try {
-            // Get Google Sheets registration count if configured
-            if (process.env.GOOGLE_SHEETS_ID && process.env.GOOGLE_SHEETS_CREDENTIALS) {
-                const { google } = require('googleapis');
-                
-                const credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
-                const auth = new google.auth.GoogleAuth({
-                    credentials,
-                    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
-                });
+            // Get registration count from Google Sheets API using the same method as calendar.js
+            const credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
+            const auth = new google.auth.GoogleAuth({
+                credentials,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+            });
 
-                const sheets = google.sheets({ version: 'v4', auth });
-                const sheetData = await sheets.spreadsheets.values.get({
-                    spreadsheetId: process.env.GOOGLE_SHEETS_ID,
-                    range: 'Event Registrations!A3:C',
-                });
+            const sheets = google.sheets({ version: 'v4', auth });
+            const sheetData = await sheets.spreadsheets.values.get({
+                spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+                range: 'Event Registrations!A3:C',
+            });
 
-                const registrations = sheetData.data.values || [];
-                const eventStartDate = new Date(foundEvent.start.dateTime);
-                const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
+            const registrations = sheetData.data.values || [];
+            const registrationCount = registrations.filter(row => {
+                const registeredEventName = row[1] || '';
+                const registeredEventDate = row[2] || '';
+                return registeredEventName.trim().toLowerCase() === eventName.trim().toLowerCase() &&
+                       registeredEventDate === eventDateString;
+            }).length;
 
-                const registrationCount = registrations.filter(row => {
-                    const registeredEventName = row[1] || '';
-                    const registeredEventDate = row[2] || '';
-                    return registeredEventName.trim().toLowerCase() === eventName.trim().toLowerCase() &&
-                           registeredEventDate === eventDateString;
-                }).length;
-
-                remainingSpots = Math.max(0, maxSpots - registrationCount);
-                console.log(`Registration count: ${registrationCount}, Remaining spots: ${remainingSpots}`);
-            }
+            remainingSpots = Math.max(0, maxSpots - registrationCount);
+            console.log(`Registration count: ${registrationCount}, Remaining spots: ${remainingSpots}`);
         } catch (sheetsError) {
             console.error('Error getting registration count:', sheetsError);
             // Continue with default remainingSpots
@@ -175,11 +173,7 @@ export default async function handler(req, res) {
             success: true,
             event: {
                 name: foundEvent.summary,
-                date: new Date(foundEvent.start.dateTime).toLocaleDateString('en-AU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                }),
+                date: eventDateString,
                 rate: rate,
                 maxSpots: maxSpots,
                 remainingSpots: remainingSpots,

@@ -153,6 +153,8 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             });
             
             console.log(`Comparing: "${eventTitle}" vs "${eventName.trim()}" and "${eventDateString}" vs "${eventDate.trim()}"`);
+            console.log(`Title match: ${eventTitle === eventName.trim()}`);
+            console.log(`Date match: ${eventDateString === eventDate.trim()}`);
             
             return eventTitle === eventName.trim() && eventDateString === eventDate.trim();
         });

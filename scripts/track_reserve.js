@@ -418,7 +418,7 @@ async function initializePricing() {
             for (const event of events) {
                 try {
                     // Fetch real-time data for each event
-                    const response = await fetch(`/api/validate-event?eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
+                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
                     
                     if (response.ok) {
                         const serverData = await response.json();
@@ -517,7 +517,7 @@ async function initializePricing() {
     if (eventName && eventDate) {
         try {
             // Fetch real-time event data from server
-            const response = await fetch(`/api/validate-event?eventName=${encodeURIComponent(eventName)}&eventDate=${encodeURIComponent(eventDate)}`);
+            const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(eventName)}&eventDate=${encodeURIComponent(eventDate)}`);
             
             if (response.ok) {
                 const serverData = await response.json();
@@ -952,7 +952,7 @@ async function handleFormSubmission(event) {
                 let minAvailableSpots = Infinity;
                 
                 for (const event of events) {
-                    const response = await fetch(`/api/validate-event?eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
+                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
                     
                     if (response.ok) {
                         const serverData = await response.json();

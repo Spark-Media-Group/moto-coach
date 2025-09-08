@@ -512,11 +512,11 @@ class MotoCoachCalendar {
 
     // Event selection methods for multi-registration
     addEventToSelection(event) {
-        const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+        const eventKey = `${event.title}_${String(event.date.getDate()).padStart(2, '0')}/${String(event.date.getMonth() + 1).padStart(2, '0')}/${event.date.getFullYear()}`;
         this.selectedEvents.set(eventKey, {
             ...event,
             eventKey: eventKey,
-            dateString: `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`
+            dateString: `${String(event.date.getDate()).padStart(2, '0')}/${String(event.date.getMonth() + 1).padStart(2, '0')}/${event.date.getFullYear()}`
         });
         this.updateSelectionUI();
         this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
@@ -525,7 +525,7 @@ class MotoCoachCalendar {
     addEventToSelectionByKey(eventKey, buttonElement) {
         // Find the event by key from our current events
         const targetEvent = this.events.find(event => {
-            const key = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const key = `${event.title}_${String(event.date.getDate()).padStart(2, '0')}/${String(event.date.getMonth() + 1).padStart(2, '0')}/${event.date.getFullYear()}`;
             return key === eventKey;
         });
         
@@ -541,7 +541,7 @@ class MotoCoachCalendar {
     }
 
     isEventSelected(event) {
-        const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+        const eventKey = `${event.title}_${String(event.date.getDate()).padStart(2, '0')}/${String(event.date.getMonth() + 1).padStart(2, '0')}/${event.date.getFullYear()}`;
         return this.selectedEvents.has(eventKey);
     }
 
@@ -946,7 +946,7 @@ class MotoCoachCalendar {
     }
 
     async createEventHTML(event, showDate = false) {
-        const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
+        const dateStr = showDate ? `${String(event.date.getDate()).padStart(2, '0')}/${String(event.date.getMonth() + 1).padStart(2, '0')} - ` : '';
         const locationStr = event.location ? `📍 ${event.location}` : '';
         const descriptionStr = event.description || '';
         
@@ -966,7 +966,7 @@ class MotoCoachCalendar {
         let registerButtonStr = '';
         let spotsDisplayStr = '';
         if (event.hasRegistration) {
-            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const eventDateStr = `${String(event.date.getDate()).padStart(2, '0')}/${String(event.date.getMonth() + 1).padStart(2, '0')}/${event.date.getFullYear()}`;
             
             // Get registration count for this event
             let showRegisterButton = true;
@@ -999,7 +999,7 @@ class MotoCoachCalendar {
             
             // Check if this event is already selected
             const isSelected = this.isEventSelected(event);
-            const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const eventKey = `${event.title}_${String(event.date.getDate()).padStart(2, '0')}/${String(event.date.getMonth() + 1).padStart(2, '0')}/${event.date.getFullYear()}`;
             
             if (showRegisterButton) {
                 if (isSelected) {
