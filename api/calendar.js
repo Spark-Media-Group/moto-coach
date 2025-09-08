@@ -145,16 +145,20 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             if (!event.summary || !event.start?.dateTime) return false;
             
             const eventTitle = event.summary.trim();
+            // Parse the date using the actual ISO string with timezone offset, not the timezone field
             const eventStartDate = new Date(event.start.dateTime);
+            // Use Sydney timezone for date formatting to match local registrations
             const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric'
+                day: 'numeric',
+                month: 'numeric', 
+                year: 'numeric',
+                timeZone: 'Australia/Sydney'
             });
             
             console.log(`Comparing: "${eventTitle}" vs "${eventName.trim()}" and "${eventDateString}" vs "${eventDate.trim()}"`);
             console.log(`Title match: ${eventTitle === eventName.trim()}`);
             console.log(`Date match: ${eventDateString === eventDate.trim()}`);
+            console.log(`Event raw date: ${event.start.dateTime}, parsed: ${eventStartDate}, formatted: ${eventDateString}`);
             
             return eventTitle === eventName.trim() && eventDateString === eventDate.trim();
         });
@@ -198,10 +202,12 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
         // Calculate remaining spots using registration data
         const eventStartDate = new Date(foundEvent.start.dateTime);
+        // Use Sydney timezone and non-padded date format to match Google Sheets
         const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
+            day: 'numeric',
+            month: 'numeric',
+            year: 'numeric',
+            timeZone: 'Australia/Sydney'
         });
 
         let remainingSpots = maxSpots;
@@ -317,14 +323,29 @@ async function handleGetRegistrationCount(req, res) {
 
         const rows = response.data.values || [];
         
+        console.log(`=== DEBUG: Google Sheets Registration Count ===`);
+        console.log(`Looking for: "${eventName}" on "${eventDate}"`);
+        console.log(`Found ${rows.length} rows in sheet`);
+        console.log('Sheet data:');
+        rows.forEach((row, index) => {
+            console.log(`Row ${index + 3}: [${row[0] || 'empty'}, "${row[1] || 'empty'}", "${row[2] || 'empty'}"]`);
+        });
+        
         // Count matching registrations (eventName in column B, eventDate in column C)
         const registrationCount = rows.filter(row => {
             const sheetEventName = row[1] || ''; // Column B
             const sheetEventDate = row[2] || '';  // Column C
             
-            return sheetEventName.trim() === eventName.trim() && 
-                   sheetEventDate.trim() === eventDate.trim();
+            const nameMatch = sheetEventName.trim() === eventName.trim();
+            const dateMatch = sheetEventDate.trim() === eventDate.trim();
+            
+            console.log(`Comparing row: "${sheetEventName}" vs "${eventName}" (name: ${nameMatch}) and "${sheetEventDate}" vs "${eventDate}" (date: ${dateMatch})`);
+            
+            return nameMatch && dateMatch;
         }).length;
+
+        console.log(`Final registration count: ${registrationCount}`);
+        console.log(`=== END DEBUG ===`);
 
         res.status(200).json({
             success: true,
