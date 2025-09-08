@@ -700,6 +700,7 @@ class MotoCoachCalendar {
         const eventData = events.map(event => ({
             title: event.title,
             date: event.dateString,
+            dateString: event.dateString,  // Add this field for backend compatibility
             time: event.time,
             location: event.location || '',
             description: event.description || '',
