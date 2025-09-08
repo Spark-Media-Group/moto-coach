@@ -105,9 +105,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up add rider button event listener
     document.getElementById('addRiderBtn').addEventListener('click', function() {
-        // Check if we've reached the maximum number of riders (simple UI limit)
+        // Check if we've reached the maximum number of riders based on server-validated spots
         if (remainingSpots !== null && riderCount >= remainingSpots) {
-            showErrorModal(`Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed for this event.`);
+            const urlParams = new URLSearchParams(window.location.search);
+            const multiEventsParam = urlParams.get('multiEvents');
+            
+            if (multiEventsParam) {
+                showErrorModal(`Cannot add more riders. One of your selected events only has ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''} remaining.`);
+            } else {
+                showErrorModal(`Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed for this event.`);
+            }
             return;
         }
         
@@ -395,32 +402,115 @@ async function initializePricing() {
     const urlMaxSpots = urlParams.get('maxSpots');
     const urlRemainingSpots = urlParams.get('remainingSpots');
     
-    // For multi-event registration, skip real-time validation (already validated in calendar)
+    // Handle multi-event registration with real-time validation
     const multiEventsParam = urlParams.get('multiEvents');
     if (multiEventsParam) {
-        // Update validation text for multi-event
-        const validationText = document.getElementById('pricingValidationText');
-        if (validationText) {
-            validationText.textContent = '✓ Multi-event pricing validated from calendar';
-            validationText.style.color = '#28a745';
+        try {
+            const events = JSON.parse(decodeURIComponent(multiEventsParam));
+            
+            // Validate each event against server data and find minimum availability
+            let minRemainingSpots = Infinity;
+            let validatedEvents = [];
+            let totalRate = 0;
+            
+            console.log('Validating multi-event registration:', events);
+            
+            for (const event of events) {
+                try {
+                    // Fetch real-time data for each event
+                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
+                    
+                    if (response.ok) {
+                        const serverData = await response.json();
+                        
+                        if (serverData.success && serverData.event) {
+                            const validatedEvent = {
+                                ...event,
+                                serverRate: serverData.event.rate,
+                                serverMaxSpots: serverData.event.maxSpots,
+                                serverRemainingSpots: serverData.event.remainingSpots
+                            };
+                            
+                            validatedEvents.push(validatedEvent);
+                            totalRate += serverData.event.rate;
+                            
+                            // Track the minimum remaining spots across all events
+                            minRemainingSpots = Math.min(minRemainingSpots, serverData.event.remainingSpots);
+                            
+                            console.log(`Event "${event.title}" validated: ${serverData.event.remainingSpots} spots remaining`);
+                        } else {
+                            console.warn(`Could not validate event: ${event.title}`);
+                            // Fallback to URL data for this event
+                            validatedEvents.push(event);
+                            totalRate += event.effectiveRate || 190;
+                            minRemainingSpots = Math.min(minRemainingSpots, event.remainingSpots || 0);
+                        }
+                    } else {
+                        console.warn(`Server validation failed for event: ${event.title}`);
+                        // Fallback to URL data
+                        validatedEvents.push(event);
+                        totalRate += event.effectiveRate || 190;
+                        minRemainingSpots = Math.min(minRemainingSpots, event.remainingSpots || 0);
+                    }
+                } catch (error) {
+                    console.error(`Error validating event ${event.title}:`, error);
+                    // Fallback to URL data
+                    validatedEvents.push(event);
+                    totalRate += event.effectiveRate || 190;
+                    minRemainingSpots = Math.min(minRemainingSpots, event.remainingSpots || 0);
+                }
+            }
+            
+            // Use server-validated data
+            ratePerRider = totalRate;
+            remainingSpots = minRemainingSpots === Infinity ? 0 : minRemainingSpots;
+            maxSpots = Math.max(...validatedEvents.map(e => e.serverMaxSpots || e.maxSpots || 10));
+            
+            // Update validation text
+            const validationText = document.getElementById('pricingValidationText');
+            if (validationText) {
+                if (validatedEvents.some(e => e.serverRate !== undefined)) {
+                    validationText.textContent = `✓ Multi-event pricing validated (min ${remainingSpots} spots available)`;
+                    validationText.style.color = '#28a745';
+                } else {
+                    validationText.textContent = '⚠️ Using cached multi-event pricing (server validation failed)';
+                    validationText.style.color = '#ffc107';
+                }
+            }
+            
+            console.log('Multi-event validation complete:', {
+                totalRate: ratePerRider,
+                minRemainingSpots: remainingSpots,
+                validatedEvents: validatedEvents.length
+            });
+            
+            updatePricing();
+            updateAddRiderButton();
+            return;
+            
+        } catch (error) {
+            console.error('Error validating multi-event data:', error);
+            
+            // Fallback to URL parameters
+            const validationText = document.getElementById('pricingValidationText');
+            if (validationText) {
+                validationText.textContent = '⚠️ Using cached multi-event pricing (validation error)';
+                validationText.style.color = '#ffc107';
+            }
+            
+            // Use URL parameters as fallback
+            if (urlRate && !isNaN(urlRate)) {
+                ratePerRider = parseInt(urlRate);
+            }
+            
+            if (urlRemainingSpots && urlRemainingSpots !== '' && !isNaN(urlRemainingSpots)) {
+                remainingSpots = parseInt(urlRemainingSpots);
+            }
+            
+            updatePricing();
+            updateAddRiderButton();
+            return;
         }
-        
-        // Use URL parameters for multi-event (already validated)
-        if (urlRate && !isNaN(urlRate)) {
-            ratePerRider = parseInt(urlRate);
-        }
-        
-        if (urlMaxSpots && urlMaxSpots !== '' && !isNaN(urlMaxSpots)) {
-            maxSpots = parseInt(urlMaxSpots);
-        }
-        
-        if (urlRemainingSpots && urlRemainingSpots !== '' && !isNaN(urlRemainingSpots)) {
-            remainingSpots = parseInt(urlRemainingSpots);
-        }
-        
-        updatePricing();
-        updateAddRiderButton();
-        return;
     }
     
     // For single events, validate against server data
@@ -504,6 +594,7 @@ function updatePricing() {
     const ridersDisplay = document.getElementById('numberOfRiders');
     const totalDisplay = document.getElementById('totalPrice');
     const spotsDisplay = document.getElementById('spotsRemaining');
+    const availabilityNote = document.getElementById('availabilityNote');
     
     if (rateDisplay && ridersDisplay && totalDisplay) {
         const total = ratePerRider * riderCount;
@@ -523,6 +614,26 @@ function updatePricing() {
             }
         }
         
+        // Show availability note for multi-events
+        if (availabilityNote) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const multiEventsParam = urlParams.get('multiEvents');
+            
+            if (multiEventsParam && remainingSpots !== null) {
+                try {
+                    const events = JSON.parse(decodeURIComponent(multiEventsParam));
+                    if (events.length > 1) {
+                        availabilityNote.style.display = 'block';
+                    }
+                } catch (error) {
+                    // Hide note if can't parse events
+                    availabilityNote.style.display = 'none';
+                }
+            } else {
+                availabilityNote.style.display = 'none';
+            }
+        }
+        
         // Update payment amount
         updatePaymentAmount(total);
     }
@@ -535,7 +646,17 @@ function updateAddRiderButton() {
     if (addRiderBtn && remainingSpots !== null) {
         if (riderCount >= remainingSpots) {
             addRiderBtn.disabled = true;
-            addRiderBtn.textContent = `Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed`;
+            
+            // Check if this is multi-event to show helpful message
+            const urlParams = new URLSearchParams(window.location.search);
+            const multiEventsParam = urlParams.get('multiEvents');
+            
+            if (multiEventsParam) {
+                addRiderBtn.textContent = `Limited by event with ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''}`;
+            } else {
+                addRiderBtn.textContent = `Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed`;
+            }
+            
             addRiderBtn.style.opacity = '0.5';
             addRiderBtn.style.cursor = 'not-allowed';
         } else {
@@ -820,6 +941,40 @@ async function handleFormSubmission(event) {
     submitButton.textContent = 'Checking availability...';
     
     try {
+        // For multi-event, validate against the minimum spots across all events
+        const urlParams = new URLSearchParams(window.location.search);
+        const multiEventsParam = urlParams.get('multiEvents');
+        
+        if (multiEventsParam) {
+            // Re-validate all events to ensure availability hasn't changed
+            try {
+                const events = JSON.parse(decodeURIComponent(multiEventsParam));
+                let minAvailableSpots = Infinity;
+                
+                for (const event of events) {
+                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
+                    
+                    if (response.ok) {
+                        const serverData = await response.json();
+                        if (serverData.success && serverData.event) {
+                            minAvailableSpots = Math.min(minAvailableSpots, serverData.event.remainingSpots);
+                        }
+                    }
+                }
+                
+                if (minAvailableSpots < riderCount) {
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalButtonText;
+                    showErrorModal(`Availability has changed. Only ${minAvailableSpots} spot${minAvailableSpots !== 1 ? 's' : ''} remaining across your selected events. Please reduce the number of riders or refresh the page.`);
+                    return;
+                }
+            } catch (error) {
+                console.error('Error re-validating multi-event availability:', error);
+                // Continue with normal validation as fallback
+            }
+        }
+        
+        // Standard availability check via API
         const response = await fetch('/api/track_reserve', {
             method: 'POST',
             headers: {
