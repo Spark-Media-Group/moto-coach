@@ -23,9 +23,13 @@ export default async function handler(req, res) {
 
 // Handle GET requests for calendar events
 async function handleGetEvents(req, res) {
-
     try {
-        const { timeMin, timeMax, maxResults = 50 } = req.query;
+        const { mode, eventName, eventDate, timeMin, timeMax, maxResults = 50 } = req.query;
+
+        // Handle single event validation request
+        if (mode === 'single' && eventName && eventDate) {
+            return handleSingleEventValidation(req, res, eventName, eventDate);
+        }
 
         // Get environment variables (these are secure on the server)
         const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
@@ -39,7 +43,7 @@ async function handleGetEvents(req, res) {
             });
         }
 
-        // Validate required parameters
+        // Validate required parameters for normal calendar requests
         if (!timeMin || !timeMax) {
             return res.status(400).json({ 
                 error: 'timeMin and timeMax parameters are required' 
@@ -83,6 +87,152 @@ async function handleGetEvents(req, res) {
         res.status(500).json({
             error: 'Internal server error',
             fallback: true
+        });
+    }
+}
+
+// Handle single event validation for track reservation
+async function handleSingleEventValidation(req, res, eventName, eventDate) {
+    try {
+        // Get environment variables
+        const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
+        const calendarId = process.env.GOOGLE_CALENDAR_ID;
+
+        if (!apiKey || !calendarId) {
+            console.error('Missing environment variables');
+            return res.status(500).json({ 
+                success: false,
+                error: 'Server configuration error'
+            });
+        }
+
+        // Get calendar events for a reasonable time range to find the specific event
+        const now = new Date();
+        const sixMonthsFromNow = new Date();
+        sixMonthsFromNow.setMonth(now.getMonth() + 6);
+
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
+            `key=${apiKey}&` +
+            `timeMin=${now.toISOString()}&` +
+            `timeMax=${sixMonthsFromNow.toISOString()}&` +
+            `maxResults=250&` +
+            `singleEvents=true&` +
+            `orderBy=startTime`;
+
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            console.error(`Google Calendar API error: ${response.status} ${response.statusText}`);
+            return res.status(response.status).json({
+                success: false,
+                error: `Google Calendar API error: ${response.status}`
+            });
+        }
+
+        const data = await response.json();
+        const events = data.items || [];
+
+        // Find the specific event
+        const foundEvent = events.find(event => {
+            if (!event.summary || !event.start?.dateTime) return false;
+            
+            const eventTitle = event.summary.trim();
+            const eventStartDate = new Date(event.start.dateTime);
+            const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+            
+            return eventTitle === eventName.trim() && eventDateString === eventDate.trim();
+        });
+
+        if (!foundEvent) {
+            return res.status(404).json({
+                success: false,
+                error: 'Event not found'
+            });
+        }
+
+        // Parse event details
+        const description = foundEvent.description || '';
+        const defaultRate = 190;
+
+        // Extract pricing from description (look for "rate = $X" or "$X")
+        let rate = defaultRate;
+        const rateMatch = description.match(/rate\s*[=:]\s*\$?(\d+)/i) || description.match(/\$(\d+)/);
+        if (rateMatch) {
+            rate = parseInt(rateMatch[1]);
+        }
+
+        // Extract max spots from description (look for "spots = X")
+        let maxSpots = 10; // Default capacity
+        const spotsMatch = description.match(/spots\s*[=:]\s*(\d+)/i);
+        if (spotsMatch) {
+            maxSpots = parseInt(spotsMatch[1]);
+        }
+
+        // Calculate remaining spots using registration data
+        const eventStartDate = new Date(foundEvent.start.dateTime);
+        const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+
+        let remainingSpots = maxSpots;
+
+        try {
+            // Get registration count from Google Sheets API
+            const { google } = require('googleapis');
+            
+            // Get Google Sheets credentials
+            const credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
+            const auth = new google.auth.GoogleAuth({
+                credentials,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+            });
+
+            const sheets = google.sheets({ version: 'v4', auth });
+            const sheetData = await sheets.spreadsheets.values.get({
+                spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+                range: 'Event Registrations!A3:C',
+            });
+
+            const registrations = sheetData.data.values || [];
+            const registrationCount = registrations.filter(row => {
+                const registeredEventName = row[1] || '';
+                const registeredEventDate = row[2] || '';
+                return registeredEventName.trim().toLowerCase() === eventName.trim().toLowerCase() &&
+                       registeredEventDate === eventDateString;
+            }).length;
+
+            remainingSpots = Math.max(0, maxSpots - registrationCount);
+            
+            console.log(`Event validation: ${eventName} on ${eventDate} - ${registrationCount}/${maxSpots} registered, ${remainingSpots} remaining`);
+            
+        } catch (sheetsError) {
+            console.error('Error getting registration count:', sheetsError);
+            // Continue with default remainingSpots = maxSpots
+        }
+
+        return res.status(200).json({
+            success: true,
+            event: {
+                name: foundEvent.summary,
+                date: eventDateString,
+                rate: rate,
+                maxSpots: maxSpots,
+                remainingSpots: remainingSpots,
+                description: description
+            }
+        });
+
+    } catch (error) {
+        console.error('Error validating single event:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to validate event data'
         });
     }
 }

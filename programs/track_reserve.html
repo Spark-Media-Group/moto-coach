@@ -51,7 +51,7 @@
                         </ul>
                     </li>
                     <li><a href="../index.html#about">About</a></li>
-                    <li><a href="../calendar.html">Schedule</a></li>
+                    <li><a href="../calendar.html">Register</a></li>
                     <li><a href="../shop.html">Shop</a></li>
                     <li><a href="../contact.html">Contact</a></li>
                 </ul>
@@ -223,7 +223,8 @@
 
                     <!-- Pricing Summary -->
                     <div class="form-section-header">
-                        <h3>Pricing Summary (excluding additional requests)</h3>
+                        <h3>Pricing Summary</h3>
+                        <p style="color: #ccc; margin: 0; font-size: 0.9em;" id="pricingValidationText">Pricing validated from server</p>
                     </div>
                     <div class="pricing-summary">
                         <div class="pricing-row">
@@ -233,6 +234,10 @@
                         <div class="pricing-row">
                             <span class="pricing-label">Number of riders:</span>
                             <span class="pricing-value" id="numberOfRiders">1</span>
+                        </div>
+                        <div class="pricing-row">
+                            <span class="pricing-label">Spots remaining:</span>
+                            <span class="pricing-value" id="spotsRemaining" style="color: #ff6b35; font-weight: 600;">Loading...</span>
                         </div>
                         <div class="pricing-row total">
                             <span class="pricing-label">Total:</span>

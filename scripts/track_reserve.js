@@ -384,12 +384,103 @@ function renumberRiders() {
     updateAddRiderButton(); // Update add rider button state when removing riders
 }
 
-// Initialize pricing from URL parameters
-function initializePricing() {
+// Initialize pricing and validate against server data
+async function initializePricing() {
     const urlParams = new URLSearchParams(window.location.search);
+    const eventName = urlParams.get('event');
+    const eventDate = urlParams.get('date');
+    
+    // Get URL parameters for fallback
     const urlRate = urlParams.get('rate');
     const urlMaxSpots = urlParams.get('maxSpots');
     const urlRemainingSpots = urlParams.get('remainingSpots');
+    
+    // For multi-event registration, skip real-time validation (already validated in calendar)
+    const multiEventsParam = urlParams.get('multiEvents');
+    if (multiEventsParam) {
+        // Update validation text for multi-event
+        const validationText = document.getElementById('pricingValidationText');
+        if (validationText) {
+            validationText.textContent = '✓ Multi-event pricing validated from calendar';
+            validationText.style.color = '#28a745';
+        }
+        
+        // Use URL parameters for multi-event (already validated)
+        if (urlRate && !isNaN(urlRate)) {
+            ratePerRider = parseInt(urlRate);
+        }
+        
+        if (urlMaxSpots && urlMaxSpots !== '' && !isNaN(urlMaxSpots)) {
+            maxSpots = parseInt(urlMaxSpots);
+        }
+        
+        if (urlRemainingSpots && urlRemainingSpots !== '' && !isNaN(urlRemainingSpots)) {
+            remainingSpots = parseInt(urlRemainingSpots);
+        }
+        
+        updatePricing();
+        updateAddRiderButton();
+        return;
+    }
+    
+    // For single events, validate against server data
+    if (eventName && eventDate) {
+        try {
+            // Fetch real-time event data from server
+            const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(eventName)}&eventDate=${encodeURIComponent(eventDate)}`);
+            
+            if (response.ok) {
+                const serverData = await response.json();
+                
+                if (serverData.success && serverData.event) {
+                    // Use server-validated data instead of URL parameters
+                    ratePerRider = serverData.event.rate || 190; // Default rate
+                    maxSpots = serverData.event.maxSpots || 10;
+                    remainingSpots = serverData.event.remainingSpots || 0;
+                    
+                    console.log('Event data validated from server:', {
+                        rate: ratePerRider,
+                        maxSpots: maxSpots,
+                        remainingSpots: remainingSpots
+                    });
+                    
+                    // Update validation text
+                    const validationText = document.getElementById('pricingValidationText');
+                    if (validationText) {
+                        validationText.textContent = '✓ Pricing and availability validated from server';
+                        validationText.style.color = '#28a745';
+                    }
+                    
+                    // Update display with validated data
+                    updatePricing();
+                    updateAddRiderButton();
+                    
+                    // Show warning if URL data doesn't match server data
+                    if (urlRate && parseInt(urlRate) !== ratePerRider) {
+                        console.warn('URL rate parameter doesn\'t match server data. Using server rate:', ratePerRider);
+                    }
+                    
+                    if (urlRemainingSpots && parseInt(urlRemainingSpots) !== remainingSpots) {
+                        console.warn('URL remaining spots doesn\'t match server data. Using server data:', remainingSpots);
+                    }
+                    
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Failed to validate event data from server:', error);
+        }
+    }
+    
+    // Fallback to URL parameters if server validation fails
+    console.warn('Using URL parameters as fallback (server validation failed)');
+    
+    // Update validation text to show fallback mode
+    const validationText = document.getElementById('pricingValidationText');
+    if (validationText) {
+        validationText.textContent = '⚠️ Using cached pricing (server validation unavailable)';
+        validationText.style.color = '#ffc107';
+    }
     
     if (urlRate && !isNaN(urlRate)) {
         ratePerRider = parseInt(urlRate);
@@ -412,6 +503,7 @@ function updatePricing() {
     const rateDisplay = document.getElementById('ratePerRider');
     const ridersDisplay = document.getElementById('numberOfRiders');
     const totalDisplay = document.getElementById('totalPrice');
+    const spotsDisplay = document.getElementById('spotsRemaining');
     
     if (rateDisplay && ridersDisplay && totalDisplay) {
         const total = ratePerRider * riderCount;
@@ -419,6 +511,17 @@ function updatePricing() {
         rateDisplay.textContent = `$${ratePerRider.toFixed(2)} AUD`;
         ridersDisplay.textContent = riderCount;
         totalDisplay.textContent = `$${total.toFixed(2)} AUD`;
+        
+        // Update spots remaining display
+        if (spotsDisplay) {
+            if (remainingSpots !== null) {
+                spotsDisplay.textContent = remainingSpots;
+                spotsDisplay.style.color = remainingSpots > 0 ? '#ff6b35' : '#dc3545';
+            } else {
+                spotsDisplay.textContent = 'Unknown';
+                spotsDisplay.style.color = '#ccc';
+            }
+        }
         
         // Update payment amount
         updatePaymentAmount(total);

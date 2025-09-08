@@ -6000,39 +6000,48 @@ button.btn-register:hover {
 
 .event-register-centered .btn-add-selection,
 .event-register-centered .btn-remove-selection {
-    display: inline-block;
-    padding: 10px 24px;
-    background: #ff6b35;
-    color: white;
-    text-decoration: none;
-    border-radius: 25px;
-    font-family: 'Oswald', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    transition: all 0.3s ease;
-    border: 2px solid #ff6b35;
-    cursor: pointer;
-    min-width: 150px;
+    display: inline-block !important;
+    padding: 10px 24px !important;
+    background: #ff6b35 !important;
+    color: white !important;
+    text-decoration: none !important;
+    border-radius: 25px !important;
+    font-family: 'Oswald', sans-serif !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    transition: all 0.3s ease !important;
+    border: 2px solid #ff6b35 !important;
+    cursor: pointer !important;
+    min-width: 150px !important;
+    box-shadow: none !important;
+    outline: none !important;
+    transform: none !important;
 }
 
 .event-register-centered .btn-add-selection:hover,
 .event-register-centered .btn-remove-selection:hover {
-    background: transparent;
-    color: #ff6b35;
-    border-color: #ff6b35;
+    background: transparent !important;
+    color: #ff6b35 !important;
+    border-color: #ff6b35 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    outline: none !important;
 }
 
 .event-register-centered .btn-remove-selection {
-    background: #dc3545;
-    border-color: #dc3545;
+    background: #dc3545 !important;
+    border-color: #dc3545 !important;
 }
 
 .event-register-centered .btn-remove-selection:hover {
-    background: transparent;
-    color: #dc3545;
-    border-color: #dc3545;
+    background: transparent !important;
+    color: #dc3545 !important;
+    border-color: #dc3545 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    outline: none !important;
 }
 
 /* Remove any focus states and outlines for centered buttons */
@@ -6040,11 +6049,12 @@ button.btn-register:hover {
 .event-register-centered .btn-remove-selection:focus {
     outline: none !important;
     box-shadow: none !important;
-    border-color: #ff6b35;
+    border-color: #ff6b35 !important;
+    transform: none !important;
 }
 
 .event-register-centered .btn-remove-selection:focus {
-    border-color: #dc3545;
+    border-color: #dc3545 !important;
 }
 
 .event-spots-centered {
