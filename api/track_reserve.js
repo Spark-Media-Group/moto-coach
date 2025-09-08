@@ -90,11 +90,10 @@ async function validateEventDetails(eventData) {
                 
                 const calEventTitle = calEvent.summary.trim();
                 const calEventStartDate = new Date(calEvent.start.dateTime);
-                const calEventDateString = calEventStartDate.toLocaleDateString('en-AU', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric'
-                });
+                // Use same non-padded format as calendar.js
+                const calEventDateString = `${calEventStartDate.getDate()}/${calEventStartDate.getMonth() + 1}/${calEventStartDate.getFullYear()}`;
+                
+                console.log(`Track reserve validation: "${calEventTitle}" vs "${submittedEvent.title?.trim()}" and "${calEventDateString}" vs "${submittedEvent.dateString?.trim()}"`);
                 
                 return calEventTitle === submittedEvent.title?.trim() && 
                        calEventDateString === submittedEvent.dateString?.trim();
@@ -548,14 +547,10 @@ export default async function handler(req, res) {
                     if (formData.eventDate.includes('/') && formData.eventDate.split('/').length === 3) {
                         formattedEventDate = formData.eventDate; // Already in DD/MM/YYYY format
                     } else {
-                        // Convert from ISO or other format to DD/MM/YYYY
+                        // Convert from ISO or other format to non-padded format to match sheet
                         const eventDate = new Date(formData.eventDate);
                         if (!isNaN(eventDate.getTime())) {
-                            formattedEventDate = eventDate.toLocaleDateString('en-AU', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                            });
+                            formattedEventDate = `${eventDate.getDate()}/${eventDate.getMonth() + 1}/${eventDate.getFullYear()}`;
                         } else {
                             formattedEventDate = formData.eventDate; // Use as-is if parsing fails
                         }
