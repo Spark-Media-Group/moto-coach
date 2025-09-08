@@ -145,15 +145,9 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             if (!event.summary || !event.start?.dateTime) return false;
             
             const eventTitle = event.summary.trim();
-            // Parse the date using the actual ISO string with timezone offset, not the timezone field
+            // Use the calendar date exactly as it appears, no timezone conversion
             const eventStartDate = new Date(event.start.dateTime);
-            // Use Sydney timezone for date formatting to match local registrations
-            const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
-                day: 'numeric',
-                month: 'numeric', 
-                year: 'numeric',
-                timeZone: 'Australia/Sydney'
-            });
+            const eventDateString = `${eventStartDate.getDate()}/${eventStartDate.getMonth() + 1}/${eventStartDate.getFullYear()}`;
             
             console.log(`Comparing: "${eventTitle}" vs "${eventName.trim()}" and "${eventDateString}" vs "${eventDate.trim()}"`);
             console.log(`Title match: ${eventTitle === eventName.trim()}`);
@@ -202,13 +196,8 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
         // Calculate remaining spots using registration data
         const eventStartDate = new Date(foundEvent.start.dateTime);
-        // Use Sydney timezone and non-padded date format to match Google Sheets
-        const eventDateString = eventStartDate.toLocaleDateString('en-AU', {
-            day: 'numeric',
-            month: 'numeric',
-            year: 'numeric',
-            timeZone: 'Australia/Sydney'
-        });
+        // Use calendar date exactly as it appears, no timezone conversion
+        const eventDateString = `${eventStartDate.getDate()}/${eventStartDate.getMonth() + 1}/${eventStartDate.getFullYear()}`;
 
         let remainingSpots = maxSpots;
 
