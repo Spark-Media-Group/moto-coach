@@ -19,12 +19,45 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { firstName, lastName, email, phone, subject, message } = req.body;
+    const { firstName, lastName, email, phone, subject, message, recaptchaToken } = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !email || !subject || !message) {
       return res.status(400).json({ 
         error: 'Missing required fields. Please fill in all required fields.' 
+      });
+    }
+
+    // Validate reCAPTCHA
+    if (!recaptchaToken) {
+      return res.status(400).json({ 
+        error: 'Please complete the reCAPTCHA verification.' 
+      });
+    }
+
+    // Verify reCAPTCHA with Google
+    const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
+    if (!recaptchaSecretKey) {
+      console.error('Missing RECAPTCHA_SECRET_KEY environment variable');
+      return res.status(500).json({ 
+        error: 'Server configuration error. Please try again later.' 
+      });
+    }
+
+    const recaptchaVerifyResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: `secret=${recaptchaSecretKey}&response=${recaptchaToken}`
+    });
+
+    const recaptchaResult = await recaptchaVerifyResponse.json();
+    
+    if (!recaptchaResult.success) {
+      console.error('reCAPTCHA verification failed:', recaptchaResult);
+      return res.status(400).json({ 
+        error: 'reCAPTCHA verification failed. Please try again.' 
       });
     }
 

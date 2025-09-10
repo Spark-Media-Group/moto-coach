@@ -426,9 +426,12 @@ async function initializePricing() {
                         if (serverData.success && serverData.event) {
                             const validatedEvent = {
                                 ...event,
+                                // SECURITY: Use server data to override URL manipulation
+                                title: serverData.event.name,  // Override with server name
                                 serverRate: serverData.event.rate,
                                 serverMaxSpots: serverData.event.maxSpots,
-                                serverRemainingSpots: serverData.event.remainingSpots
+                                serverRemainingSpots: serverData.event.remainingSpots,
+                                validated: true
                             };
                             
                             validatedEvents.push(validatedEvent);
@@ -437,7 +440,7 @@ async function initializePricing() {
                             // Track the minimum remaining spots across all events
                             minRemainingSpots = Math.min(minRemainingSpots, serverData.event.remainingSpots);
                             
-                            console.log(`Event "${event.title}" validated: ${serverData.event.remainingSpots} spots remaining`);
+                            console.log(`Event "${serverData.event.name}" validated: ${serverData.event.remainingSpots} spots remaining`);
                         } else {
                             console.warn(`Could not validate event: ${event.title}`);
                             // Fallback to URL data for this event
@@ -527,6 +530,14 @@ async function initializePricing() {
                     ratePerRider = serverData.event.rate || 190; // Default rate
                     maxSpots = serverData.event.maxSpots || 10;
                     remainingSpots = serverData.event.remainingSpots || 0;
+                    
+                    // SECURITY: Update display with server-validated event name
+                    const eventDisplayElement = document.getElementById('eventDisplay');
+                    if (eventDisplayElement) {
+                        eventDisplayElement.textContent = serverData.event.name;
+                    }
+                    
+                    console.log(`Event security validation: "${serverData.event.name}" (overrode URL: "${eventName}")`);
                     
                     console.log('Event data validated from server:', {
                         rate: ratePerRider,
@@ -934,6 +945,53 @@ async function handleFormSubmission(event) {
     if (selectedEvents.length === 0) {
         showErrorModal('Please select at least one event before submitting your registration.');
         return;
+    }
+
+    // SECURITY: Check if all events have been server-validated (URL manipulation protection)
+    const urlParams = new URLSearchParams(window.location.search);
+    const multiEventsParam = urlParams.get('multiEvents');
+    
+    if (multiEventsParam) {
+        try {
+            const urlEvents = JSON.parse(decodeURIComponent(multiEventsParam));
+            
+            // Verify each event still exists in calendar (prevent URL manipulation)
+            for (const urlEvent of urlEvents) {
+                const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(urlEvent.title)}&eventDate=${encodeURIComponent(urlEvent.dateString)}`);
+                
+                if (!response.ok) {
+                    showErrorModal('⚠️ Security validation failed: Unable to verify event data. Please return to the calendar and select events again.');
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalButtonText;
+                    return;
+                }
+                
+                const serverData = await response.json();
+                if (!serverData.success || !serverData.event) {
+                    showErrorModal('⚠️ Security validation failed: Selected events could not be verified. This may indicate URL manipulation. Please return to the calendar.');
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalButtonText;
+                    return;
+                }
+                
+                // Check if event name was tampered with
+                if (serverData.event.name !== urlEvent.title) {
+                    console.warn(`🔒 SECURITY ALERT: Event name tampering detected. Server: "${serverData.event.name}", URL: "${urlEvent.title}"`);
+                    showErrorModal('⚠️ Security validation failed: Event data has been tampered with. Please return to the calendar and select events properly.');
+                    submitButton.disabled = false;
+                    submitButton.textContent = originalButtonText;
+                    return;
+                }
+            }
+            
+            console.log('✓ Security validation passed: All events verified against server');
+        } catch (error) {
+            console.error('Security validation error:', error);
+            showErrorModal('⚠️ Security validation failed: Unable to verify event data. Please try again.');
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+            return;
+        }
     }
 
     // Check availability for all selected events and riders before proceeding

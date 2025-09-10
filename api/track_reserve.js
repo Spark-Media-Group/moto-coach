@@ -95,8 +95,17 @@ async function validateEventDetails(eventData) {
                 
                 console.log(`Track reserve validation: "${calEventTitle}" vs "${submittedEvent.title?.trim()}" and "${calEventDateString}" vs "${submittedEvent.dateString?.trim()}"`);
                 
-                return calEventTitle === submittedEvent.title?.trim() && 
-                       calEventDateString === submittedEvent.dateString?.trim();
+                const titleMatch = calEventTitle === submittedEvent.title?.trim();
+                const dateMatch = calEventDateString === submittedEvent.dateString?.trim();
+                
+                if (!titleMatch) {
+                    console.warn(`⚠️  SECURITY: Event title mismatch detected - Calendar: "${calEventTitle}" vs Submitted: "${submittedEvent.title?.trim()}"`);
+                }
+                if (!dateMatch) {
+                    console.warn(`⚠️  SECURITY: Event date mismatch detected - Calendar: "${calEventDateString}" vs Submitted: "${submittedEvent.dateString?.trim()}"`);
+                }
+                
+                return titleMatch && dateMatch;
             });
 
             if (!foundEvent) {

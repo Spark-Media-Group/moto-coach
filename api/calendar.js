@@ -307,7 +307,7 @@ async function handleGetRegistrationCount(req, res) {
         // Get all data from the sheet (starting from row 3 where data begins)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId,
-            range: 'A3:C', // Get columns A (timestamp), B (event name), C (event date)
+            range: 'Event Registrations!A3:C', // Get columns A (timestamp), B (event name), C (event date)
         });
 
         const rows = response.data.values || [];
