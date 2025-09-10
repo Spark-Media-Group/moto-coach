@@ -1,7 +1,6 @@
 class MotoCoachCalendar {
     constructor() {
         this.currentDate = new Date();
-        this.selectedDate = null;
         this.events = [];
         this.currentWeekStart = null; // For mobile weekly view
         this.isMobileView = false;
@@ -80,28 +79,7 @@ class MotoCoachCalendar {
             });
         }
 
-        // Add click listener to document to deselect date when clicking outside calendar
-        document.addEventListener('click', (e) => {
-            // Only deselect if there's actually a date selected
-            if (!this.selectedDate) {
-                return; // No date selected, nothing to deselect
-            }
-            
-            // Check if click was outside the calendar area entirely
-            const calendarWrapper = document.querySelector('.calendar-wrapper');
-            const selectionPanel = document.querySelector('.selection-panel');
-            
-            // Don't deselect if clicking within:
-            // - Calendar wrapper (calendar grid, headers, navigation, EVENT PANEL)
-            // - Selection panel (multi-event selection UI)
-            // - Any buttons or interactive elements
-            if (calendarWrapper && !calendarWrapper.contains(e.target) && 
-                (!selectionPanel || !selectionPanel.contains(e.target)) &&
-                !e.target.closest('button') &&
-                !e.target.closest('a')) {
-                this.deselectDate();
-            }
-        });
+        // Note: Date selection removed - calendar is now view-only with hover interactions
     }
 
     async previousWeek() {
@@ -470,46 +448,13 @@ class MotoCoachCalendar {
                 dayElement.classList.add('past-event');
             }
 
-            dayElement.addEventListener('click', () => {
-                this.selectDate(currentDay);
-            });
+            // Remove click event - calendar dates are now view-only (hover only)
         }
 
         return dayElement;
     }
 
-    selectDate(date) {
-        // If clicking the same date that's already selected, deselect it
-        if (this.selectedDate && this.isSameDay(this.selectedDate, date)) {
-            this.deselectDate();
-            return;
-        }
-
-        const previousSelected = document.querySelector('.calendar-day.selected');
-        if (previousSelected) {
-            previousSelected.classList.remove('selected');
-        }
-
-        const dayElements = document.querySelectorAll('.calendar-day:not(.other-month)');
-        dayElements.forEach(element => {
-            if (parseInt(element.textContent) === date.getDate()) {
-                element.classList.add('selected');
-            }
-        });
-
-        this.selectedDate = date;
-        this.updateEventPanel();
-    }
-
-    deselectDate() {
-        const previousSelected = document.querySelector('.calendar-day.selected');
-        if (previousSelected) {
-            previousSelected.classList.remove('selected');
-        }
-
-        this.selectedDate = null;
-        this.updateEventPanel();
-    }
+    // Date selection methods removed - calendar is now view-only
 
     // Event selection methods for multi-registration
     addEventToSelection(event) {
@@ -728,7 +673,7 @@ class MotoCoachCalendar {
         const eventList = document.getElementById('eventList');
         if (!eventList) return;
 
-        // Always show all upcoming events, regardless of selected date
+        // Show all upcoming events (no date selection)
         await this.showAllUpcomingEvents();
     }
 

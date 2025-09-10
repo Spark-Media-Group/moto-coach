@@ -11,6 +11,11 @@ body {
     background-color: #1a1a1a; /* Back to dark background */
 }
 
+/* Ensure calendar page takes full viewport height but allows scrolling */
+.calendar-page {
+    margin-top: 80px; /* Push content below fixed header */
+}
+
 /* Utility Classes */
 .flex-center {
     display: flex;
@@ -481,6 +486,11 @@ body {
 /* Main Content */
 main {
     background: #f8f9fa;
+}
+
+/* Calendar page specific main styling */
+.calendar-page main {
+    background: #1a1a1a;
 }
 /* Creative About Us Section */
 .about-section {
@@ -2127,12 +2137,6 @@ div:focus {
     flex-direction: column;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
-}
-
-.event-selected {
-    background: rgba(255, 107, 53, 0.1);
-    border-radius: 8px;
-    padding: 0.5rem;
 }
 
 @keyframes slideUp {
@@ -5520,31 +5524,28 @@ div:focus {
 .calendar-wrapper {
     width: 100%;
     margin: 0;
-    margin-top: 80px; /* Add space for the fixed header */
-    background: #1a1a1a; /* Back to dark background */
-    border-radius: 0; /* Remove border radius for full-width */
-    overflow: hidden;
-    box-shadow: none; /* Remove shadow for cleaner full-width look */
+    background: #1a1a1a;
+    border-radius: 0;
+    box-shadow: none;
+    /* Simple - let content determine height naturally */
 }
 
 /* Main container for side-by-side layout */
 .calendar-main-container {
     display: flex;
-    min-height: 600px; /* Back to min-height for flexibility */
     width: 100%;
-    max-width: none; /* Remove any width constraints */
-    background: #1a1a1a; /* Back to dark background */
+    max-width: none;
+    background: #1a1a1a;
 }
 
 /* Event panel on the left */
 .calendar-main-container .event-panel {
     flex: 0 0 350px; /* Fixed width for event panel */
-    background: #222; /* Back to dark background */
+    background: #222;
     padding: 2rem;
-    border-right: 1px solid #333; /* Dark border */
-    min-height: 600px; /* Back to min-height */
+    border-right: 1px solid #333;
     overflow-y: auto;
-    margin: 0; /* Remove any default margins */
+    margin: 0;
 }
 
 /* Calendar section on the right */
@@ -5553,7 +5554,6 @@ div:focus {
     background: #1a1a1a; /* Back to dark background */
     display: flex;
     flex-direction: column;
-    min-height: 600px; /* Back to min-height for flexibility */
     padding: 0; /* Override any default padding */
 }
 
@@ -5612,8 +5612,8 @@ div:focus {
     grid-template-columns: repeat(7, 1fr);
     gap: 1px;
     background: #333; /* Back to dark grid */
-    height: 100%; /* Fill the container height */
     padding: 2rem; /* Increased padding for better spacing */
+    min-height: 500px; /* Simple minimum height for usability */
 }
 
 .day-header {
@@ -5635,10 +5635,12 @@ div:focus {
 .calendar-day {
     background: rgba(255, 255, 255, 0.05); /* Back to dark theme */
     padding: 0.5rem;
-    min-height: 100px;
+    height: 12vh; /* Fixed percentage height - scales with screen size */
+    min-height: 80px; /* Minimum for very small screens */
+    max-height: 150px; /* Maximum for very large screens */
     border: none;
     color: #fff; /* White text */
-    cursor: pointer;
+    cursor: default; /* Not clickable - view only */
     position: relative;
     transition: all 0.3s ease;
     display: flex;
@@ -5646,11 +5648,13 @@ div:focus {
     align-items: flex-start;
     font-size: 1rem;
     font-weight: 500;
+    overflow: hidden; /* Hide content that doesn't fit */
 }
 
 .calendar-day:hover {
-    background: #2a2a2a; /* Back to dark hover */
+    background: #2a2a2a; /* Subtle hover feedback */
     color: #ff6b35;
+    cursor: default; /* No pointer cursor - not clickable */
 }
 
 .calendar-day.other-month {
@@ -5664,13 +5668,15 @@ div:focus {
 }
 
 .calendar-day.today {
-    background: #ff6b35; /* Back to bright orange background */
+    background: rgba(255, 255, 255, 0.05); /* Same as default calendar-day background */
     color: #fff; /* White text */
     font-weight: 700;
+    border: 2px solid #ff6b35; /* Orange border to highlight today */
 }
 
 .calendar-day.today:hover {
-    background: #e55a2b;
+    background: #2a2a2a; /* Same as default hover */
+    border: 2px solid #e55a2b; /* Slightly darker orange border on hover */
 }
 
 .calendar-day.has-events {
@@ -5679,12 +5685,6 @@ div:focus {
 
 .calendar-day.has-events:hover {
     background: #2a2a2a; /* Dark hover */
-}
-
-.calendar-day.selected {
-    background: #2a2a2a; /* Dark background */
-    border: 2px solid #ff6b35;
-    color: #ff6b35;
 }
 
 /* Past events styling */
@@ -5715,7 +5715,8 @@ div:focus {
 }
 
 .calendar-day.past-event.today {
-    background: rgba(255, 107, 53, 0.5);
+    background: rgba(255, 255, 255, 0.05); /* Same as default background */
+    border: 2px solid rgba(255, 107, 53, 0.6); /* Muted orange border for past today */
     opacity: 0.8;
 }
 
@@ -5730,7 +5731,9 @@ div:focus {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    flex-grow: 1;
+    flex: 1; /* Take remaining space after day number */
+    overflow-y: auto; /* Allow scrolling if too many events */
+    overflow-x: hidden; /* Prevent horizontal scroll */
 }
 
 .event-preview {
