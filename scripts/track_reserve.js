@@ -441,6 +441,7 @@ async function initializePricing() {
                             minRemainingSpots = Math.min(minRemainingSpots, serverData.event.remainingSpots);
                             
                             console.log(`Event "${serverData.event.name}" validated: ${serverData.event.remainingSpots} spots remaining`);
+                            console.log(`🔍 MIN SPOTS TRACKING: minRemainingSpots = ${minRemainingSpots} (after processing ${serverData.event.name})`);
                         } else {
                             console.warn(`Could not validate event: ${event.title}`);
                             // Fallback to URL data for this event
@@ -486,6 +487,11 @@ async function initializePricing() {
                 minRemainingSpots: remainingSpots,
                 validatedEvents: validatedEvents.length
             });
+            
+            // DEBUG: Log remaining spots calculation
+            console.log(`🔍 RIDER LIMIT DEBUG: remainingSpots = ${remainingSpots}, riderCount = ${riderCount}`);
+            console.log(`🔍 Current rider limit: ${remainingSpots} total riders allowed`);
+            console.log(`🔍 Can add ${Math.max(0, remainingSpots - riderCount)} more riders`);
             
             updatePricing();
             updateAddRiderButton();
@@ -654,6 +660,9 @@ function updatePricing() {
 function updateAddRiderButton() {
     const addRiderBtn = document.getElementById('addRiderBtn');
     
+    // DEBUG: Log button update values
+    console.log(`🔍 ADD RIDER BUTTON DEBUG: remainingSpots = ${remainingSpots}, riderCount = ${riderCount}`);
+    
     if (addRiderBtn && remainingSpots !== null) {
         if (riderCount >= remainingSpots) {
             addRiderBtn.disabled = true;
@@ -670,11 +679,15 @@ function updateAddRiderButton() {
             
             addRiderBtn.style.opacity = '0.5';
             addRiderBtn.style.cursor = 'not-allowed';
+            
+            console.log(`🔍 Button DISABLED: ${riderCount} >= ${remainingSpots}`);
         } else {
             addRiderBtn.disabled = false;
             addRiderBtn.textContent = '+ Add Another Rider';
             addRiderBtn.style.opacity = '1';
             addRiderBtn.style.cursor = 'pointer';
+            
+            console.log(`🔍 Button ENABLED: Can add ${remainingSpots - riderCount} more riders`);
         }
     }
 }
