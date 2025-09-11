@@ -983,16 +983,20 @@ class MotoCoachCalendar {
         
         return `
             <div class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
-                <div class="event-details-centered">
-                    <div class="event-time-centered">${dateStr}${event.time}</div>
-                    <div class="event-title-centered">${event.title}</div>
-                    ${locationStr ? `<div class="event-location-centered">${locationStr}</div>` : ''}
-                    ${descriptionStr ? `<div class="event-description-centered">${descriptionStr}</div>` : ''}
-                    ${rateStr ? `<div class="event-rate-centered">${rateStr}</div>` : ''}
-                    ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
+                <div class="event-content-layout">
+                    <div class="event-details-left">
+                        <div class="event-title-main">${event.title}</div>
+                        <div class="event-info-row">
+                            <span class="event-time-small">${dateStr}${event.time}</span>
+                            ${rateStr ? `<span class="event-rate-small">${rateStr}</span>` : ''}
+                        </div>
+                        ${descriptionStr ? `<div class="event-description-small">${descriptionStr}</div>` : ''}
+                        ${locationStr ? `<div class="event-location-small">${locationStr}</div>` : ''}
+                        ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
+                        ${spotsDisplayStr ? `<div class="event-spots-inline">${spotsDisplayStr.replace('<div class="spots-remaining', '<span class="spots-remaining').replace('</div>', '</span>')}</div>` : ''}
+                    </div>
+                    ${registerButtonStr ? `<div class="event-register-right">${registerButtonStr}</div>` : ''}
                 </div>
-                ${registerButtonStr ? `<div class="event-register-centered">${registerButtonStr}</div>` : ''}
-                ${spotsDisplayStr ? `<div class="event-spots-centered">${spotsDisplayStr}</div>` : ''}
             </div>
         `;
     }
@@ -1057,42 +1061,56 @@ class MotoCoachCalendar {
     }
 
     calculateEventsPerPage() {
-        // Get the event panel container
+        // Get the event panel container and calendar wrapper
         const eventPanel = document.getElementById('eventPanel');
-        if (!eventPanel) return 5; // Fallback to default
+        const calendarWrapper = document.querySelector('.calendar-wrapper');
+        if (!eventPanel || !calendarWrapper) return 3; // Conservative fallback
 
-        // Get viewport height and event panel position
+        // Get the actual dimensions
         const viewportHeight = window.innerHeight;
+        const calendarWrapperRect = calendarWrapper.getBoundingClientRect();
         const eventPanelRect = eventPanel.getBoundingClientRect();
         
-        // Calculate available height for events
-        // Account for header, footer, and panel padding
-        const headerHeight = document.querySelector('.main-header')?.offsetHeight || 80;
-        const footerHeight = document.querySelector('footer')?.offsetHeight || 60;
+        // Calculate the bottom boundary (footer top or calendar wrapper bottom)
+        const footer = document.querySelector('footer');
+        const bottomBoundary = footer ? footer.getBoundingClientRect().top : calendarWrapperRect.bottom;
+        
+        // Find the events list container to measure actual space
+        const eventList = document.getElementById('eventList');
+        const eventsHeader = eventList?.querySelector('.events-header');
+        const eventsPagination = eventList?.querySelector('.events-pagination');
+        
+        // Measure actual heights instead of estimating
+        const eventsHeaderHeight = eventsHeader?.offsetHeight || 120; // Actual measured header
+        const paginationHeight = eventsPagination?.offsetHeight || 70; // Actual measured pagination
+        
+        // Calculate available height for event items more precisely
         const eventPanelTop = eventPanelRect.top;
+        const availableHeight = bottomBoundary - eventPanelTop - eventsHeaderHeight - paginationHeight - 60; // 60px buffer
         
-        // Calculate space for pagination and event list headers
-        const paginationHeight = 80; // Space for pagination controls (top + bottom)
-        const eventsHeaderHeight = 100; // Space for pricing info and title
-        const panelPadding = 40; // Internal padding
+        // More accurate event height estimation based on actual event items
+        // Look at existing event items to get real height
+        const existingEventItem = eventList?.querySelector('.event-item');
+        let estimatedEventHeight = 160; // Conservative default
         
-        // Available height for actual event items
-        const availableHeight = viewportHeight - headerHeight - footerHeight - paginationHeight - eventsHeaderHeight - panelPadding;
+        if (existingEventItem) {
+            const eventItemRect = existingEventItem.getBoundingClientRect();
+            estimatedEventHeight = eventItemRect.height + 10; // Add some margin
+        }
         
-        // Estimate height per event item
-        // This includes: event details, spacing, register button, spots info
-        const estimatedEventHeight = 140; // Approximate height per event in pixels
-        
-        // Calculate how many events can fit
+        // Calculate how many events can fit with a buffer
         const calculatedEventsPerPage = Math.floor(availableHeight / estimatedEventHeight);
         
-        // Set reasonable bounds: minimum 3, maximum 10
-        const minEvents = 3;
-        const maxEvents = 10;
-        const eventsPerPage = Math.max(minEvents, Math.min(maxEvents, calculatedEventsPerPage));
+        // Apply more conservative bounds and subtract 1 for safety
+        const safeEventsPerPage = Math.max(1, calculatedEventsPerPage - 1);
+        const minEvents = 2;
+        const maxEvents = 8; // Reduced max to be safer
+        const eventsPerPage = Math.max(minEvents, Math.min(maxEvents, safeEventsPerPage));
         
-        // For debugging - you can remove this console.log later
-        console.log(`Viewport: ${viewportHeight}px, Available: ${availableHeight}px, Calculated: ${calculatedEventsPerPage}, Final: ${eventsPerPage}`);
+        // Enhanced debugging
+        console.log(`Viewport: ${viewportHeight}px, Panel Top: ${eventPanelTop}px, Bottom: ${bottomBoundary}px`);
+        console.log(`Header: ${eventsHeaderHeight}px, Pagination: ${paginationHeight}px, Available: ${availableHeight}px`);
+        console.log(`Event Height: ${estimatedEventHeight}px, Calculated: ${calculatedEventsPerPage}, Safe: ${safeEventsPerPage}, Final: ${eventsPerPage}`);
         
         return eventsPerPage;
     }
