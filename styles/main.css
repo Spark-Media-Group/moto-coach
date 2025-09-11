@@ -5893,6 +5893,33 @@ div:focus {
     color: #ccc;
 }
 
+/* Scrollable Events List */
+.events-list-scrollable {
+    max-height: calc(100vh - 300px); /* Adjust based on header/footer heights */
+    overflow-y: auto;
+    padding-right: 10px;
+    margin-top: 1rem;
+}
+
+/* Custom scrollbar styling */
+.events-list-scrollable::-webkit-scrollbar {
+    width: 8px;
+}
+
+.events-list-scrollable::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+.events-list-scrollable::-webkit-scrollbar-thumb {
+    background: #ff6b35;
+    border-radius: 4px;
+}
+
+.events-list-scrollable::-webkit-scrollbar-thumb:hover {
+    background: #e55a2b;
+}
+
 /* OLD EVENT STYLES - COMMENTED OUT FOR CENTERED LAYOUT
 .event-item {
     background: #1a1a1a;

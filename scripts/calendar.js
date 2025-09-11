@@ -720,203 +720,36 @@ class MotoCoachCalendar {
             return;
         }
 
-        // Initialize pagination if not already set
-        if (!this.currentEventPage) {
-            this.currentEventPage = 1;
-        }
-
-        const eventsPerPage = this.calculateEventsPerPage();
-        const totalPages = Math.ceil(allUpcomingEvents.length / eventsPerPage);
-        
-        // Ensure current page is valid
-        if (this.currentEventPage > totalPages) {
-            this.currentEventPage = 1;
-        }
-
-        const startIndex = (this.currentEventPage - 1) * eventsPerPage;
-        const endIndex = startIndex + eventsPerPage;
-        const currentPageEvents = allUpcomingEvents.slice(startIndex, endIndex);
-
         // Show loading state
         eventList.innerHTML = `
             <div class="events-header">
                 <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
                     Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
                 </p>
-                <div class="events-title-row" style="display: flex; justify-content: center; align-items: center; margin-bottom: 1rem;">
-                    <div class="top-pagination" style="display: flex; align-items: center; gap: 0.75rem;">
-                        <button class="pagination-btn prev-events-top" ${this.currentEventPage === 1 ? 'disabled' : ''} style="
-                            background: ${this.currentEventPage === 1 ? '#333' : '#ff6b35'}; 
-                            color: ${this.currentEventPage === 1 ? '#666' : '#fff'}; 
-                            border: none; 
-                            padding: 0.4rem 0.8rem; 
-                            border-radius: 4px; 
-                            cursor: ${this.currentEventPage === 1 ? 'not-allowed' : 'pointer'};
-                            font-size: 0.8rem;
-                            transition: background-color 0.3s ease;
-                        ">
-                            ← Prev
-                        </button>
-                        <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
-                            Page ${this.currentEventPage} of ${totalPages}
-                        </div>
-                        <button class="pagination-btn next-events-top" ${this.currentEventPage === totalPages ? 'disabled' : ''} style="
-                            background: ${this.currentEventPage === totalPages ? '#333' : '#ff6b35'}; 
-                            color: ${this.currentEventPage === totalPages ? '#666' : '#fff'}; 
-                            border: none; 
-                            padding: 0.4rem 0.8rem; 
-                            border-radius: 4px; 
-                            cursor: ${this.currentEventPage === totalPages ? 'not-allowed' : 'pointer'};
-                            font-size: 0.8rem;
-                            transition: background-color 0.3s ease;
-                        ">
-                            Next →
-                        </button>
-                    </div>
-                </div>
             </div>
             <p class="loading-events">Loading event details...</p>
         `;
 
         try {
-            // Generate HTML for current page events
-            const eventHTMLPromises = currentPageEvents.map(event => this.createEventHTML(event, true));
+            // Generate HTML for all events (no pagination)
+            const eventHTMLPromises = allUpcomingEvents.map(event => this.createEventHTML(event, true));
             const eventHTMLs = await Promise.all(eventHTMLPromises);
-
-            // Create pagination controls
-            const paginationHTML = this.createPaginationHTML(this.currentEventPage, totalPages);
 
             eventList.innerHTML = `
                 <div class="events-header">
                     <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
                         Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
                     </p>
-                    <div class="events-title-row" style="display: flex; justify-content: center; align-items: center; margin-bottom: 1rem;">
-                        <div class="top-pagination" style="display: flex; align-items: center; gap: 0.75rem;">
-                            <button class="pagination-btn prev-events-top" ${this.currentEventPage === 1 ? 'disabled' : ''} style="
-                                background: ${this.currentEventPage === 1 ? '#333' : '#ff6b35'}; 
-                                color: ${this.currentEventPage === 1 ? '#666' : '#fff'}; 
-                                border: none; 
-                                padding: 0.4rem 0.8rem; 
-                                border-radius: 4px; 
-                                cursor: ${this.currentEventPage === 1 ? 'not-allowed' : 'pointer'};
-                                font-size: 0.8rem;
-                                transition: background-color 0.3s ease;
-                            ">
-                                ← Prev
-                            </button>
-                            <div class="pagination-info" style="color: #ccc; font-size: 0.85rem;">
-                                Page ${this.currentEventPage} of ${totalPages}
-                            </div>
-                            <button class="pagination-btn next-events-top" ${this.currentEventPage === totalPages ? 'disabled' : ''} style="
-                                background: ${this.currentEventPage === totalPages ? '#333' : '#ff6b35'}; 
-                                color: ${this.currentEventPage === totalPages ? '#666' : '#fff'}; 
-                                border: none; 
-                                padding: 0.4rem 0.8rem; 
-                                border-radius: 4px; 
-                                cursor: ${this.currentEventPage === totalPages ? 'not-allowed' : 'pointer'};
-                                font-size: 0.8rem;
-                                transition: background-color 0.3s ease;
-                            ">
-                                Next →
-                            </button>
-                        </div>
-                    </div>
                 </div>
-                <div class="events-list">
+                <div class="events-list-scrollable">
                     ${eventHTMLs.join('')}
                 </div>
-                ${paginationHTML}
             `;
-
-            // Add event listeners for pagination
-            this.setupPaginationListeners();
 
         } catch (error) {
             console.error('Error loading upcoming events:', error);
             eventList.innerHTML = '<p class="no-events">Error loading events</p>';
         }
-    }
-
-    createPaginationHTML(currentPage, totalPages) {
-        if (totalPages <= 1) return '';
-
-        const prevDisabled = currentPage === 1 ? 'disabled' : '';
-        const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-
-        return `
-            <div class="events-pagination" style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #333;">
-                <button class="pagination-btn prev-events" ${prevDisabled} style="
-                    background: ${currentPage === 1 ? '#333' : '#ff6b35'}; 
-                    color: ${currentPage === 1 ? '#666' : '#fff'}; 
-                    border: none; 
-                    padding: 0.5rem 1rem; 
-                    border-radius: 4px; 
-                    cursor: ${currentPage === 1 ? 'not-allowed' : 'pointer'};
-                    font-size: 0.9rem;
-                    transition: background-color 0.3s ease;
-                ">
-                    ← Previous
-                </button>
-                <span style="color: #ccc; font-size: 0.9rem;">
-                    ${currentPage} of ${totalPages}
-                </span>
-                <button class="pagination-btn next-events" ${nextDisabled} style="
-                    background: ${currentPage === totalPages ? '#333' : '#ff6b35'}; 
-                    color: ${currentPage === totalPages ? '#666' : '#fff'}; 
-                    border: none; 
-                    padding: 0.5rem 1rem; 
-                    border-radius: 4px; 
-                    cursor: ${currentPage === totalPages ? 'not-allowed' : 'pointer'};
-                    font-size: 0.9rem;
-                    transition: background-color 0.3s ease;
-                ">
-                    Next →
-                </button>
-            </div>
-        `;
-    }
-
-    setupPaginationListeners() {
-        // Bottom pagination buttons
-        const prevBtn = document.querySelector('.prev-events');
-        const nextBtn = document.querySelector('.next-events');
-        
-        // Top pagination buttons
-        const prevBtnTop = document.querySelector('.prev-events-top');
-        const nextBtnTop = document.querySelector('.next-events-top');
-
-        // Previous button event listeners
-        [prevBtn, prevBtnTop].forEach(btn => {
-            if (btn && !btn.disabled) {
-                btn.addEventListener('click', () => {
-                    if (this.currentEventPage > 1) {
-                        this.currentEventPage--;
-                        this.showAllUpcomingEvents();
-                    }
-                });
-            }
-        });
-
-        // Next button event listeners
-        [nextBtn, nextBtnTop].forEach(btn => {
-            if (btn && !btn.disabled) {
-                btn.addEventListener('click', () => {
-                    const totalEvents = this.events.filter(event => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return event.date >= today;
-                    }).length;
-                    const eventsPerPage = this.calculateEventsPerPage();
-                    const totalPages = Math.ceil(totalEvents / eventsPerPage);
-                    
-                    if (this.currentEventPage < totalPages) {
-                        this.currentEventPage++;
-                        this.showAllUpcomingEvents();
-                    }
-                });
-            }
-        });
     }
 
     async createEventHTML(event, showDate = false) {
@@ -1065,30 +898,49 @@ class MotoCoachCalendar {
     calculateEventsPerPage() {
         // Return cached value if available and viewport hasn't changed significantly
         if (this.cachedEventsPerPage && this.lastViewportHeight && 
-            Math.abs(window.innerHeight - this.lastViewportHeight) < 100) {
+            Math.abs(window.innerHeight - this.lastViewportHeight) < 50) {
             return this.cachedEventsPerPage;
         }
 
-        // Use a simple, consistent calculation based on screen size
-        const viewportHeight = window.innerHeight;
-        let eventsPerPage;
-
-        // Simple breakpoint-based calculation for consistency
-        if (viewportHeight >= 1000) {
-            eventsPerPage = 6;
-        } else if (viewportHeight >= 800) {
-            eventsPerPage = 5;
-        } else if (viewportHeight >= 600) {
-            eventsPerPage = 4;
-        } else {
-            eventsPerPage = 3;
+        // Get the calendar wrapper and event panel for boundary detection
+        const calendarWrapper = document.querySelector('.calendar-wrapper');
+        const eventPanel = document.getElementById('eventPanel');
+        
+        if (!calendarWrapper || !eventPanel) {
+            return 3; // Conservative fallback
         }
 
-        // Cache the result and viewport height
-        this.cachedEventsPerPage = eventsPerPage;
-        this.lastViewportHeight = viewportHeight;
+        // Get the calendar wrapper bottom boundary (this is your red line)
+        const calendarRect = calendarWrapper.getBoundingClientRect();
+        const calendarBottom = calendarRect.bottom;
         
-        console.log(`Viewport: ${viewportHeight}px, Events per page: ${eventsPerPage}`);
+        // Get the event panel top position
+        const eventPanelRect = eventPanel.getBoundingClientRect();
+        const eventPanelTop = eventPanelRect.top;
+        
+        // Calculate space for headers and pagination
+        const headerSpace = 120; // Space for "Upcoming Events" header and pricing info
+        const paginationSpace = 80; // Space for pagination controls
+        const buffer = 20; // Safety buffer
+        
+        // Available height for actual events
+        const availableHeight = calendarBottom - eventPanelTop - headerSpace - paginationSpace - buffer;
+        
+        // Use a consistent event height estimate (based on your reduced card height)
+        const eventHeight = 140; // Height per event including margins
+        
+        // Calculate how many events fit
+        const calculatedEvents = Math.floor(availableHeight / eventHeight);
+        
+        // Apply conservative bounds
+        const eventsPerPage = Math.max(2, Math.min(6, calculatedEvents));
+        
+        // Cache the result
+        this.cachedEventsPerPage = eventsPerPage;
+        this.lastViewportHeight = window.innerHeight;
+        
+        console.log(`Calendar bottom: ${calendarBottom}px, Panel top: ${eventPanelTop}px`);
+        console.log(`Available: ${availableHeight}px, Event height: ${eventHeight}px, Events: ${eventsPerPage}`);
         
         return eventsPerPage;
     }
