@@ -6011,6 +6011,32 @@ button.btn-register:hover {
     box-shadow: 0 2px 8px rgba(255, 107, 53, 0.2);
 }
 
+/* Past event styling */
+.event-item.past-event {
+    opacity: 0.6;
+    border-color: #555;
+}
+
+.event-item.past-event .event-time-centered,
+.event-item.past-event .event-title-centered,
+.event-item.past-event .event-location-centered,
+.event-item.past-event .event-description-centered,
+.event-item.past-event .event-rate-centered {
+    text-decoration: line-through;
+}
+
+.event-item.past-event:hover {
+    border-color: #666;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.1);
+}
+
+.event-past-notice {
+    color: #ff6b35;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
 .event-details-centered {
     display: flex;
     flex-direction: column;

@@ -20,10 +20,16 @@ class MotoCoachCalendar {
         this.renderCalendar();
         this.updateEventPanel();
         
-        // Add resize listener to switch between desktop/mobile views
+        // Add resize listener to switch between desktop/mobile views and recalculate pagination
         window.addEventListener('resize', () => {
             this.checkViewMode();
             this.renderCalendar();
+            // Recalculate events per page and update if needed
+            if (this.events.length > 0) {
+                const oldPage = this.currentEventPage;
+                this.currentEventPage = 1; // Reset to first page
+                this.updateEventPanel();
+            }
         });
     }
 
@@ -86,14 +92,14 @@ class MotoCoachCalendar {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
         await this.checkAndLoadEvents();
         this.renderCalendar();
-        this.updateEventPanel();
+        // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
     async nextWeek() {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
         await this.checkAndLoadEvents();
         this.renderCalendar();
-        this.updateEventPanel();
+        // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
     async loadEvents() {
@@ -135,22 +141,24 @@ class MotoCoachCalendar {
     convertGoogleEvents(googleEvents) {
         return googleEvents.map(event => {
             let eventDate;
+            let eventEndDate;
             let timeString = 'All Day';
 
             if (event.start.dateTime) {
                 // Use the date exactly as it appears in the calendar, no timezone conversion
                 eventDate = new Date(event.start.dateTime);
+                eventEndDate = event.end.dateTime ? new Date(event.end.dateTime) : eventDate;
                 const startTime = this.formatTime(eventDate);
                 
                 if (event.end.dateTime) {
-                    const endDate = new Date(event.end.dateTime);
-                    const endTime = this.formatTime(endDate);
+                    const endTime = this.formatTime(eventEndDate);
                     timeString = `${startTime} - ${endTime}`;
                 } else {
                     timeString = startTime;
                 }
             } else if (event.start.date) {
                 eventDate = new Date(event.start.date);
+                eventEndDate = event.end.date ? new Date(event.end.date) : eventDate;
                 timeString = 'All Day';
             }
 
@@ -191,6 +199,7 @@ class MotoCoachCalendar {
 
             return {
                 date: eventDate,
+                endDate: eventEndDate,
                 time: timeString,
                 title: event.summary || 'Untitled Event',
                 description: description,
@@ -229,6 +238,16 @@ class MotoCoachCalendar {
         });
     }
 
+    isEventPast(event) {
+        const now = new Date();
+        // If event has an end time, check if it has ended
+        if (event.endDate) {
+            return event.endDate < now;
+        }
+        // If no end time, check if the start date has passed
+        return event.date < now;
+    }
+
     async previousMonth() {
         // Use a safer method to decrement month
         const currentMonth = this.currentDate.getMonth();
@@ -239,7 +258,7 @@ class MotoCoachCalendar {
         
         await this.checkAndLoadEvents();
         this.renderCalendar();
-        this.updateEventPanel();
+        // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
 
     async nextMonth() {
@@ -247,12 +266,12 @@ class MotoCoachCalendar {
         const currentMonth = this.currentDate.getMonth();
         const currentYear = this.currentDate.getFullYear();
         
-        // Create a new date for the first day of the next month
+        // Create a new date for the next month
         this.currentDate = new Date(currentYear, currentMonth + 1, 1);
         
         await this.checkAndLoadEvents();
         this.renderCalendar();
-        this.updateEventPanel();
+        // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
 
     async checkAndLoadEvents() {
@@ -387,8 +406,9 @@ class MotoCoachCalendar {
             if (dayEvents.length > 0) {
                 dayElement.classList.add('has-events');
                 
-                // Add past-event class if this day is in the past
-                if (isPastDay) {
+                // Check if ALL events on this day are past
+                const allEventsPast = dayEvents.every(event => this.isEventPast(event));
+                if (allEventsPast) {
                     dayElement.classList.add('past-event');
                 }
                 
@@ -699,7 +719,7 @@ class MotoCoachCalendar {
             this.currentEventPage = 1;
         }
 
-        const eventsPerPage = 5;
+        const eventsPerPage = this.calculateEventsPerPage();
         const totalPages = Math.ceil(allUpcomingEvents.length / eventsPerPage);
         
         // Ensure current page is valid
@@ -881,7 +901,8 @@ class MotoCoachCalendar {
                         today.setHours(0, 0, 0, 0);
                         return event.date >= today;
                     }).length;
-                    const totalPages = Math.ceil(totalEvents / 5);
+                    const eventsPerPage = this.calculateEventsPerPage();
+                    const totalPages = Math.ceil(totalEvents / eventsPerPage);
                     
                     if (this.currentEventPage < totalPages) {
                         this.currentEventPage++;
@@ -912,7 +933,9 @@ class MotoCoachCalendar {
         // Add register button and spots info if event has registration enabled
         let registerButtonStr = '';
         let spotsDisplayStr = '';
-        if (event.hasRegistration) {
+        const isEventPast = this.isEventPast(event);
+        
+        if (event.hasRegistration && !isEventPast) {
             const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
             
             // Get registration count for this event
@@ -959,13 +982,14 @@ class MotoCoachCalendar {
         }
         
         return `
-            <div class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''}">
+            <div class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
                 <div class="event-details-centered">
                     <div class="event-time-centered">${dateStr}${event.time}</div>
                     <div class="event-title-centered">${event.title}</div>
                     ${locationStr ? `<div class="event-location-centered">${locationStr}</div>` : ''}
                     ${descriptionStr ? `<div class="event-description-centered">${descriptionStr}</div>` : ''}
                     ${rateStr ? `<div class="event-rate-centered">${rateStr}</div>` : ''}
+                    ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
                 </div>
                 ${registerButtonStr ? `<div class="event-register-centered">${registerButtonStr}</div>` : ''}
                 ${spotsDisplayStr ? `<div class="event-spots-centered">${spotsDisplayStr}</div>` : ''}
@@ -1030,6 +1054,47 @@ class MotoCoachCalendar {
         return date1.getDate() === date2.getDate() &&
                date1.getMonth() === date2.getMonth() &&
                date1.getFullYear() === date2.getFullYear();
+    }
+
+    calculateEventsPerPage() {
+        // Get the event panel container
+        const eventPanel = document.getElementById('eventPanel');
+        if (!eventPanel) return 5; // Fallback to default
+
+        // Get viewport height and event panel position
+        const viewportHeight = window.innerHeight;
+        const eventPanelRect = eventPanel.getBoundingClientRect();
+        
+        // Calculate available height for events
+        // Account for header, footer, and panel padding
+        const headerHeight = document.querySelector('.main-header')?.offsetHeight || 80;
+        const footerHeight = document.querySelector('footer')?.offsetHeight || 60;
+        const eventPanelTop = eventPanelRect.top;
+        
+        // Calculate space for pagination and event list headers
+        const paginationHeight = 80; // Space for pagination controls (top + bottom)
+        const eventsHeaderHeight = 100; // Space for pricing info and title
+        const panelPadding = 40; // Internal padding
+        
+        // Available height for actual event items
+        const availableHeight = viewportHeight - headerHeight - footerHeight - paginationHeight - eventsHeaderHeight - panelPadding;
+        
+        // Estimate height per event item
+        // This includes: event details, spacing, register button, spots info
+        const estimatedEventHeight = 140; // Approximate height per event in pixels
+        
+        // Calculate how many events can fit
+        const calculatedEventsPerPage = Math.floor(availableHeight / estimatedEventHeight);
+        
+        // Set reasonable bounds: minimum 3, maximum 10
+        const minEvents = 3;
+        const maxEvents = 10;
+        const eventsPerPage = Math.max(minEvents, Math.min(maxEvents, calculatedEventsPerPage));
+        
+        // For debugging - you can remove this console.log later
+        console.log(`Viewport: ${viewportHeight}px, Available: ${availableHeight}px, Calculated: ${calculatedEventsPerPage}, Final: ${eventsPerPage}`);
+        
+        return eventsPerPage;
     }
 }
 
