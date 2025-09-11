@@ -983,20 +983,16 @@ class MotoCoachCalendar {
         
         return `
             <div class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
-                <div class="event-content-layout">
-                    <div class="event-details-left">
-                        <div class="event-title-main">${event.title}</div>
-                        <div class="event-info-row">
-                            <span class="event-time-small">${dateStr}${event.time}</span>
-                            ${rateStr ? `<span class="event-rate-small">${rateStr}</span>` : ''}
-                        </div>
-                        ${descriptionStr ? `<div class="event-description-small">${descriptionStr}</div>` : ''}
-                        ${locationStr ? `<div class="event-location-small">${locationStr}</div>` : ''}
-                        ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
-                        ${spotsDisplayStr ? `<div class="event-spots-inline">${spotsDisplayStr.replace('<div class="spots-remaining', '<span class="spots-remaining').replace('</div>', '</span>')}</div>` : ''}
-                    </div>
-                    ${registerButtonStr ? `<div class="event-register-right">${registerButtonStr}</div>` : ''}
+                <div class="event-details-centered">
+                    <div class="event-time-centered">${dateStr}${event.time}</div>
+                    <div class="event-title-centered">${event.title}</div>
+                    ${locationStr ? `<div class="event-location-centered">${locationStr}</div>` : ''}
+                    ${descriptionStr ? `<div class="event-description-centered">${descriptionStr}</div>` : ''}
+                    ${rateStr ? `<div class="event-rate-centered">${rateStr}</div>` : ''}
+                    ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
                 </div>
+                ${registerButtonStr ? `<div class="event-register-centered">${registerButtonStr}</div>` : ''}
+                ${spotsDisplayStr ? `<div class="event-spots-centered">${spotsDisplayStr}</div>` : ''}
             </div>
         `;
     }
