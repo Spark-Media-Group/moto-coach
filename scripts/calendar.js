@@ -6,6 +6,7 @@ class MotoCoachCalendar {
         this.isMobileView = false;
         this.selectedEvents = new Map(); // Store selected events for multi-registration
         this.currentEventPage = 1; // For event panel pagination
+        this.cachedEventsPerPage = null; // Cache the events per page calculation
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -24,6 +25,11 @@ class MotoCoachCalendar {
         window.addEventListener('resize', () => {
             this.checkViewMode();
             this.renderCalendar();
+            // Clear cached events per page if viewport changed significantly
+            if (this.lastViewportHeight && Math.abs(window.innerHeight - this.lastViewportHeight) >= 100) {
+                this.cachedEventsPerPage = null;
+                this.lastViewportHeight = null;
+            }
             // Recalculate events per page and update if needed
             if (this.events.length > 0) {
                 const oldPage = this.currentEventPage;
@@ -1057,56 +1063,32 @@ class MotoCoachCalendar {
     }
 
     calculateEventsPerPage() {
-        // Get the event panel container and calendar wrapper
-        const eventPanel = document.getElementById('eventPanel');
-        const calendarWrapper = document.querySelector('.calendar-wrapper');
-        if (!eventPanel || !calendarWrapper) return 3; // Conservative fallback
-
-        // Get the actual dimensions
-        const viewportHeight = window.innerHeight;
-        const calendarWrapperRect = calendarWrapper.getBoundingClientRect();
-        const eventPanelRect = eventPanel.getBoundingClientRect();
-        
-        // Calculate the bottom boundary (footer top or calendar wrapper bottom)
-        const footer = document.querySelector('footer');
-        const bottomBoundary = footer ? footer.getBoundingClientRect().top : calendarWrapperRect.bottom;
-        
-        // Find the events list container to measure actual space
-        const eventList = document.getElementById('eventList');
-        const eventsHeader = eventList?.querySelector('.events-header');
-        const eventsPagination = eventList?.querySelector('.events-pagination');
-        
-        // Measure actual heights instead of estimating
-        const eventsHeaderHeight = eventsHeader?.offsetHeight || 120; // Actual measured header
-        const paginationHeight = eventsPagination?.offsetHeight || 70; // Actual measured pagination
-        
-        // Calculate available height for event items more precisely
-        const eventPanelTop = eventPanelRect.top;
-        const availableHeight = bottomBoundary - eventPanelTop - eventsHeaderHeight - paginationHeight - 60; // 60px buffer
-        
-        // More accurate event height estimation based on actual event items
-        // Look at existing event items to get real height
-        const existingEventItem = eventList?.querySelector('.event-item');
-        let estimatedEventHeight = 160; // Conservative default
-        
-        if (existingEventItem) {
-            const eventItemRect = existingEventItem.getBoundingClientRect();
-            estimatedEventHeight = eventItemRect.height + 10; // Add some margin
+        // Return cached value if available and viewport hasn't changed significantly
+        if (this.cachedEventsPerPage && this.lastViewportHeight && 
+            Math.abs(window.innerHeight - this.lastViewportHeight) < 100) {
+            return this.cachedEventsPerPage;
         }
+
+        // Use a simple, consistent calculation based on screen size
+        const viewportHeight = window.innerHeight;
+        let eventsPerPage;
+
+        // Simple breakpoint-based calculation for consistency
+        if (viewportHeight >= 1000) {
+            eventsPerPage = 6;
+        } else if (viewportHeight >= 800) {
+            eventsPerPage = 5;
+        } else if (viewportHeight >= 600) {
+            eventsPerPage = 4;
+        } else {
+            eventsPerPage = 3;
+        }
+
+        // Cache the result and viewport height
+        this.cachedEventsPerPage = eventsPerPage;
+        this.lastViewportHeight = viewportHeight;
         
-        // Calculate how many events can fit with a buffer
-        const calculatedEventsPerPage = Math.floor(availableHeight / estimatedEventHeight);
-        
-        // Apply more conservative bounds and subtract 1 for safety
-        const safeEventsPerPage = Math.max(1, calculatedEventsPerPage - 1);
-        const minEvents = 2;
-        const maxEvents = 8; // Reduced max to be safer
-        const eventsPerPage = Math.max(minEvents, Math.min(maxEvents, safeEventsPerPage));
-        
-        // Enhanced debugging
-        console.log(`Viewport: ${viewportHeight}px, Panel Top: ${eventPanelTop}px, Bottom: ${bottomBoundary}px`);
-        console.log(`Header: ${eventsHeaderHeight}px, Pagination: ${paginationHeight}px, Available: ${availableHeight}px`);
-        console.log(`Event Height: ${estimatedEventHeight}px, Calculated: ${calculatedEventsPerPage}, Safe: ${safeEventsPerPage}, Final: ${eventsPerPage}`);
+        console.log(`Viewport: ${viewportHeight}px, Events per page: ${eventsPerPage}`);
         
         return eventsPerPage;
     }
