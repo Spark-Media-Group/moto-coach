@@ -17,14 +17,22 @@ class MotoCoachCalendar {
     async init() {
         this.checkViewMode();
         this.bindEvents();
+        
+        // Render empty calendar immediately for instant display
+        await this.renderEmptyCalendar();
+        
+        // Then load events and populate them into the existing calendar
         await this.loadEvents();
-        await this.renderCalendar();
+        await this.populateEventsIntoCalendar();
         this.updateEventPanel();
         
         // Add resize listener to switch between desktop/mobile views and recalculate pagination
         window.addEventListener('resize', async () => {
             this.checkViewMode();
-            await this.renderCalendar();
+            // Render empty calendar first for instant visual feedback
+            await this.renderEmptyCalendar();
+            // Then populate events into the existing calendar structure
+            await this.populateEventsIntoCalendar();
             // Clear cached events per page if viewport changed significantly
             if (this.lastViewportHeight && Math.abs(window.innerHeight - this.lastViewportHeight) >= 100) {
                 this.cachedEventsPerPage = null;
@@ -96,15 +104,21 @@ class MotoCoachCalendar {
 
     async previousWeek() {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
+        // Render empty calendar first for instant visual feedback
+        await this.renderEmptyCalendar();
+        // Then load events if needed and populate
         await this.checkAndLoadEvents();
-        await this.renderCalendar();
+        await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
     async nextWeek() {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
+        // Render empty calendar first for instant visual feedback
+        await this.renderEmptyCalendar();
+        // Then load events if needed and populate
         await this.checkAndLoadEvents();
-        await this.renderCalendar();
+        await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
@@ -262,8 +276,11 @@ class MotoCoachCalendar {
         // Create a new date for the first day of the previous month
         this.currentDate = new Date(currentYear, currentMonth - 1, 1);
         
+        // Render empty calendar first for instant visual feedback
+        await this.renderEmptyCalendar();
+        // Then load events if needed and populate
         await this.checkAndLoadEvents();
-        await this.renderCalendar();
+        await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
 
@@ -275,8 +292,11 @@ class MotoCoachCalendar {
         // Create a new date for the next month
         this.currentDate = new Date(currentYear, currentMonth + 1, 1);
         
+        // Render empty calendar first for instant visual feedback
+        await this.renderEmptyCalendar();
+        // Then load events if needed and populate
         await this.checkAndLoadEvents();
-        await this.renderCalendar();
+        await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
 
@@ -289,6 +309,269 @@ class MotoCoachCalendar {
         if (!hasEventsForMonth) {
             await this.loadEvents();
         }
+    }
+
+    async renderEmptyCalendar() {
+        const monthElement = document.getElementById('currentMonth');
+        const daysContainer = document.getElementById('calendarDays');
+
+        if (!monthElement || !daysContainer) return;
+
+        if (this.isMobileView) {
+            await this.renderEmptyWeeklyView(monthElement, daysContainer);
+        } else {
+            await this.renderEmptyMonthlyView(monthElement, daysContainer);
+        }
+    }
+
+    async populateEventsIntoCalendar() {
+        const daysContainer = document.getElementById('calendarDays');
+        if (!daysContainer) return;
+
+        // Get all day elements and populate them with events
+        const dayElements = daysContainer.querySelectorAll('.calendar-day');
+        
+        for (const dayElement of dayElements) {
+            const dayNumber = parseInt(dayElement.querySelector('.day-number').textContent);
+            const isOtherMonth = dayElement.classList.contains('other-month');
+            
+            if (!isOtherMonth) {
+                // Calculate the date for this day element
+                let currentDay;
+                if (this.isMobileView && dayElement.dataset.fullDate) {
+                    currentDay = new Date(dayElement.dataset.fullDate);
+                } else {
+                    currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), dayNumber);
+                }
+                
+                // Populate this day with events
+                await this.populateEventsForDay(dayElement, currentDay);
+            }
+        }
+    }
+
+    async populateEventsForDay(dayElement, currentDay) {
+        const dayEvents = this.getEventsForDate(currentDay);
+        
+        if (dayEvents.length > 0) {
+            dayElement.classList.add('has-events');
+            
+            // Check if ALL events on this day are past
+            const allEventsPast = dayEvents.every(event => this.isEventPast(event));
+            if (allEventsPast) {
+                dayElement.classList.add('past-event');
+            }
+            
+            if (this.isMobileView) {
+                // Mobile: Show just the number of events
+                const existingEventCount = dayElement.querySelector('.event-count');
+                if (!existingEventCount) {
+                    const eventCount = document.createElement('div');
+                    eventCount.className = 'event-count';
+                    eventCount.textContent = dayEvents.length;
+                    dayElement.appendChild(eventCount);
+                }
+            } else {
+                // Desktop: Show event previews
+                const existingEventsContainer = dayElement.querySelector('.day-events');
+                if (!existingEventsContainer) {
+                    const eventsContainer = document.createElement('div');
+                    eventsContainer.className = 'day-events';
+                    
+                    // Show up to 3 events in the day box
+                    for (const event of dayEvents.slice(0, 3)) {
+                        const eventPreview = document.createElement('div');
+                        eventPreview.className = `event-preview event-${event.type}`;
+                        
+                        // Check if event is full
+                        let isEventFull = false;
+                        if (event.maxSpots && event.maxSpots > 0) {
+                            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                            const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
+                            const remainingSpots = event.maxSpots - registrationCount;
+                            isEventFull = remainingSpots <= 0;
+                        }
+                        
+                        if (isEventFull) {
+                            // Show "EVENT FULL" for full events - no click handler
+                            const eventTitle = event.title.length > 15 
+                                ? event.title.substring(0, 15) + '...' 
+                                : event.title;
+                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                            
+                            eventPreview.innerHTML = `
+                                <div class="event-title-small">${eventTitle}</div>
+                                <div class="event-time-small">${eventTime}</div>
+                                <div class="event-full-indicator">EVENT FULL</div>
+                            `;
+                            eventPreview.classList.add('event-full');
+                        } else {
+                            // Show normal event details with click handler for available events
+                            const maxTitleLength = 15;
+                            const eventTitle = event.title.length > maxTitleLength 
+                                ? event.title.substring(0, maxTitleLength) + '...' 
+                                : event.title;
+                            
+                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                            
+                            let eventContent = `
+                                <div class="event-title-small">${eventTitle}</div>
+                                <div class="event-time-small">${eventTime}</div>
+                            `;
+                            
+                            // Show location on desktop
+                            if (event.location) {
+                                const eventLocation = event.location.length > 20 
+                                    ? event.location.substring(0, 20) + '...' 
+                                    : event.location;
+                                eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                            }
+                            
+                            eventPreview.innerHTML = eventContent;
+                            
+                            // Add click handler only for available events
+                            if (!this.isEventPast(event)) {
+                                eventPreview.style.cursor = 'pointer';
+                                eventPreview.classList.add('clickable-event');
+                                
+                                // Create unique event ID for scrolling
+                                const eventId = this.generateEventId(event);
+                                eventPreview.addEventListener('click', () => {
+                                    this.scrollToEventInUpcomingList(eventId);
+                                });
+                            }
+                        }
+                        
+                        eventsContainer.appendChild(eventPreview);
+                    }
+                    
+                    // If more events, show "and X more"
+                    if (dayEvents.length > 3) {
+                        const moreEvents = document.createElement('div');
+                        moreEvents.className = 'more-events';
+                        moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                        eventsContainer.appendChild(moreEvents);
+                    }
+                    
+                    dayElement.appendChild(eventsContainer);
+                }
+            }
+        }
+    }
+
+    async renderEmptyWeeklyView(monthElement, daysContainer) {
+        if (!this.currentWeekStart) {
+            this.setCurrentWeek(this.currentDate);
+        }
+
+        // Create week range display
+        const weekEnd = new Date(this.currentWeekStart);
+        weekEnd.setDate(this.currentWeekStart.getDate() + 6);
+        
+        const startDay = this.currentWeekStart.getDate();
+        const endDay = weekEnd.getDate();
+        
+        // Use abbreviated month names for mobile
+        const monthNamesShort = [
+            'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
+            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+        ];
+        
+        const monthName = monthNamesShort[this.currentWeekStart.getMonth()];
+        
+        // Handle cross-month weeks
+        if (this.currentWeekStart.getMonth() !== weekEnd.getMonth()) {
+            const endMonthName = monthNamesShort[weekEnd.getMonth()];
+            monthElement.textContent = `${monthName} ${startDay} - ${endMonthName} ${endDay}`;
+        } else {
+            monthElement.textContent = `${monthName} ${startDay}-${endDay}`;
+        }
+
+        daysContainer.innerHTML = '';
+
+        // Render 7 empty days of the week
+        for (let i = 0; i < 7; i++) {
+            const currentDay = new Date(this.currentWeekStart);
+            currentDay.setDate(this.currentWeekStart.getDate() + i);
+            
+            const dayElement = this.createEmptyDayElement(currentDay.getDate(), false, currentDay);
+            daysContainer.appendChild(dayElement);
+        }
+    }
+
+    async renderEmptyMonthlyView(monthElement, daysContainer) {
+        const monthYear = `${this.monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+        monthElement.textContent = monthYear;
+
+        daysContainer.innerHTML = '';
+
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+        const daysInMonth = lastDay.getDate();
+        const startingDayOfWeek = firstDay.getDay();
+
+        // Previous month's trailing days
+        const prevMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 0);
+        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
+            const dayElement = this.createEmptyDayElement(prevMonth.getDate() - i, true);
+            daysContainer.appendChild(dayElement);
+        }
+
+        // Current month's days
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dayElement = this.createEmptyDayElement(day, false);
+            daysContainer.appendChild(dayElement);
+        }
+
+        // Next month's leading days
+        const totalCells = daysContainer.children.length;
+        const remainingCells = 42 - totalCells;
+        for (let day = 1; day <= remainingCells; day++) {
+            const dayElement = this.createEmptyDayElement(day, true);
+            daysContainer.appendChild(dayElement);
+        }
+    }
+
+    createEmptyDayElement(day, isOtherMonth, fullDate = null) {
+        const dayElement = document.createElement('div');
+        dayElement.className = 'calendar-day';
+        
+        // Create day number
+        const dayNumber = document.createElement('div');
+        dayNumber.className = 'day-number';
+        dayNumber.textContent = day;
+        dayElement.appendChild(dayNumber);
+
+        if (isOtherMonth) {
+            dayElement.classList.add('other-month');
+        } else {
+            const today = new Date();
+            let currentDay;
+            
+            if (this.isMobileView && fullDate) {
+                currentDay = fullDate;
+                // Store the full date for later event population
+                dayElement.dataset.fullDate = fullDate.toISOString();
+            } else {
+                currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
+            }
+            
+            // Check if this day is in the past (before today)
+            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const currentDayMidnight = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
+            const isPastDay = currentDayMidnight < todayMidnight;
+            
+            if (this.isSameDay(currentDay, today)) {
+                dayElement.classList.add('today');
+            }
+
+            if (isPastDay) {
+                // Add past-event class even if no events, for visual consistency
+                dayElement.classList.add('past-event');
+            }
+        }
+
+        return dayElement;
     }
 
     async renderCalendar() {
