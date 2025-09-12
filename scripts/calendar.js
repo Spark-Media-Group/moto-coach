@@ -7,6 +7,8 @@ class MotoCoachCalendar {
         this.selectedEvents = new Map(); // Store selected events for multi-registration
         this.currentEventPage = 1; // For event panel pagination
         this.cachedEventsPerPage = null; // Cache the events per page calculation
+        this.globalRegistrationCache = new Map(); // Global cache for all registration counts
+        this.cacheLastUpdated = null; // Track when cache was last updated
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -21,8 +23,11 @@ class MotoCoachCalendar {
         // Render empty calendar immediately for instant display
         await this.renderEmptyCalendar();
         
-        // Then load events and populate them into the existing calendar
+        // Load all events and build global registration cache
         await this.loadEvents();
+        await this.buildGlobalRegistrationCache();
+        
+        // Populate events into calendar and update events panel
         await this.populateEventsIntoCalendar();
         this.updateEventPanel();
         
@@ -106,8 +111,7 @@ class MotoCoachCalendar {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
         // Render empty calendar first for instant visual feedback
         await this.renderEmptyCalendar();
-        // Then load events if needed and populate
-        await this.checkAndLoadEvents();
+        // Populate events (no need to load - all events already cached)
         await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
@@ -116,25 +120,24 @@ class MotoCoachCalendar {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
         // Render empty calendar first for instant visual feedback
         await this.renderEmptyCalendar();
-        // Then load events if needed and populate
-        await this.checkAndLoadEvents();
+        // Populate events (no need to load - all events already cached)
         await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
     async loadEvents() {
         try {
-            // Calculate date range (3 months back to 6 months forward)
+            // Calculate date range (6 months back to 12 months forward for comprehensive loading)
             const startDate = new Date();
-            startDate.setMonth(startDate.getMonth() - 3);
+            startDate.setMonth(startDate.getMonth() - 6);
             const endDate = new Date();
-            endDate.setMonth(endDate.getMonth() + 6);
+            endDate.setMonth(endDate.getMonth() + 12);
 
             const timeMin = startDate.toISOString();
             const timeMax = endDate.toISOString();
 
-            // Call our Vercel API endpoint
-            const response = await fetch(`/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&maxResults=50`);
+            // Call our Vercel API endpoint with higher maxResults for comprehensive loading
+            const response = await fetch(`/api/calendar?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&maxResults=200`);
             
             if (!response.ok) {
                 throw new Error(`API error: ${response.status}`);
@@ -148,7 +151,7 @@ class MotoCoachCalendar {
             } else {
                 // Convert Google Calendar events to our format
                 this.events = this.convertGoogleEvents(data.events || []);
-                console.log(`Loaded ${this.events.length} events from Google Calendar`);
+                console.log(`Loaded ${this.events.length} events from Google Calendar (18-month range)`);
             }
             
         } catch (error) {
@@ -156,6 +159,63 @@ class MotoCoachCalendar {
             console.log('No events to display');
             this.events = [];
         }
+    }
+
+    async buildGlobalRegistrationCache() {
+        console.log('Building global registration cache for all events...');
+        
+        // Collect all unique events that need registration checks
+        const eventsToCheck = new Map();
+        
+        for (const event of this.events) {
+            if (event.maxSpots && event.maxSpots > 0) {
+                const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                const eventKey = `${event.title}_${eventDateStr}`;
+                if (!eventsToCheck.has(eventKey)) {
+                    eventsToCheck.set(eventKey, {
+                        title: event.title,
+                        dateStr: eventDateStr,
+                        maxSpots: event.maxSpots
+                    });
+                }
+            }
+        }
+        
+        if (eventsToCheck.size === 0) {
+            console.log('No events require registration checks');
+            return;
+        }
+        
+        console.log(`Fetching registration counts for ${eventsToCheck.size} unique events...`);
+        
+        // Batch fetch all registration counts in parallel
+        const registrationCountPromises = Array.from(eventsToCheck.values()).map(eventInfo => 
+            this.getRegistrationCount(eventInfo.title, eventInfo.dateStr)
+                .then(count => ({
+                    key: `${eventInfo.title}_${eventInfo.dateStr}`,
+                    count: count,
+                    remainingSpots: eventInfo.maxSpots - count
+                }))
+                .catch(error => {
+                    console.error('Error getting registration count:', error);
+                    return {
+                        key: `${eventInfo.title}_${eventInfo.dateStr}`,
+                        count: 0,
+                        remainingSpots: eventInfo.maxSpots // Fallback
+                    };
+                })
+        );
+        
+        const registrationResults = await Promise.all(registrationCountPromises);
+        
+        // Store results in global cache
+        this.globalRegistrationCache.clear();
+        registrationResults.forEach(result => {
+            this.globalRegistrationCache.set(result.key, result);
+        });
+        
+        this.cacheLastUpdated = new Date();
+        console.log(`Global registration cache built with ${this.globalRegistrationCache.size} entries`);
     }
 
     convertGoogleEvents(googleEvents) {
@@ -278,8 +338,7 @@ class MotoCoachCalendar {
         
         // Render empty calendar first for instant visual feedback
         await this.renderEmptyCalendar();
-        // Then load events if needed and populate
-        await this.checkAndLoadEvents();
+        // Populate events (no need to load - all events already cached)
         await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
@@ -294,8 +353,7 @@ class MotoCoachCalendar {
         
         // Render empty calendar first for instant visual feedback
         await this.renderEmptyCalendar();
-        // Then load events if needed and populate
-        await this.checkAndLoadEvents();
+        // Populate events (no need to load - all events already cached)
         await this.populateEventsIntoCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
@@ -328,12 +386,11 @@ class MotoCoachCalendar {
         const daysContainer = document.getElementById('calendarDays');
         if (!daysContainer) return;
 
-        // Get all day elements and collect events that need registration checks
+        // Get all day elements and populate them with events using global cache
         const dayElements = daysContainer.querySelectorAll('.calendar-day');
-        const eventsToCheck = new Map(); // Map of "eventTitle_date" -> event info
         const dayElementData = [];
         
-        // First pass: collect all events that need checking
+        // Collect all day element data
         for (const dayElement of dayElements) {
             const dayNumber = parseInt(dayElement.querySelector('.day-number').textContent);
             const isOtherMonth = dayElement.classList.contains('other-month');
@@ -348,56 +405,13 @@ class MotoCoachCalendar {
                 }
                 
                 const dayEvents = this.getEventsForDate(currentDay);
-                
-                // Store day element data for second pass
                 dayElementData.push({ dayElement, currentDay, dayEvents });
-                
-                // Collect events that need registration checks
-                for (const event of dayEvents) {
-                    if (event.maxSpots && event.maxSpots > 0) {
-                        const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
-                        const eventKey = `${event.title}_${eventDateStr}`;
-                        if (!eventsToCheck.has(eventKey)) {
-                            eventsToCheck.set(eventKey, {
-                                title: event.title,
-                                dateStr: eventDateStr,
-                                maxSpots: event.maxSpots
-                            });
-                        }
-                    }
-                }
             }
         }
         
-        // Second pass: batch fetch all registration counts in parallel
-        const registrationCountPromises = Array.from(eventsToCheck.values()).map(eventInfo => 
-            this.getRegistrationCount(eventInfo.title, eventInfo.dateStr)
-                .then(count => ({
-                    key: `${eventInfo.title}_${eventInfo.dateStr}`,
-                    count: count,
-                    remainingSpots: eventInfo.maxSpots - count
-                }))
-                .catch(error => {
-                    console.error('Error getting registration count:', error);
-                    return {
-                        key: `${eventInfo.title}_${eventInfo.dateStr}`,
-                        count: 0,
-                        remainingSpots: eventInfo.maxSpots // Fallback
-                    };
-                })
-        );
-        
-        const registrationResults = await Promise.all(registrationCountPromises);
-        
-        // Create a lookup map for registration counts
-        const registrationCountMap = new Map();
-        registrationResults.forEach(result => {
-            registrationCountMap.set(result.key, result);
-        });
-        
-        // Third pass: populate events into calendar with cached registration data
+        // Populate events using global registration cache
         for (const { dayElement, currentDay, dayEvents } of dayElementData) {
-            await this.populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap);
+            await this.populateEventsForDayWithCache(dayElement, currentDay, dayEvents, this.globalRegistrationCache);
         }
     }
 
@@ -1223,30 +1237,7 @@ class MotoCoachCalendar {
             .filter(event => event.date >= today && !this.isEventPast(event))
             .sort((a, b) => a.date - b.date);
 
-        // Filter out full events from the upcoming events list
-        const availableEvents = [];
-        for (const event of allUpcomingEvents) {
-            if (event.hasRegistration && event.maxSpots !== null) {
-                try {
-                    const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
-                    const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
-                    const remainingSpots = event.maxSpots - registrationCount;
-                    
-                    if (remainingSpots > 0) {
-                        availableEvents.push(event);
-                    }
-                } catch (error) {
-                    console.error('Error checking event capacity:', error);
-                    // If error checking, include the event anyway
-                    availableEvents.push(event);
-                }
-            } else {
-                // Events without registration limits or unlimited spots
-                availableEvents.push(event);
-            }
-        }
-
-        if (availableEvents.length === 0) {
+        if (allUpcomingEvents.length === 0) {
             eventList.innerHTML = '<p class="no-events">No available events scheduled</p>';
             return;
         }
@@ -1262,8 +1253,31 @@ class MotoCoachCalendar {
         `;
 
         try {
-            // Generate HTML for available events only
-            const eventHTMLPromises = availableEvents.map(event => this.createEventHTML(event, true));
+            // Filter out full events using global registration cache
+            const availableEvents = allUpcomingEvents.filter(event => {
+                if (event.hasRegistration && event.maxSpots !== null) {
+                    const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                    const eventKey = `${event.title}_${eventDateStr}`;
+                    const cachedResult = this.globalRegistrationCache.get(eventKey);
+                    
+                    if (cachedResult) {
+                        return cachedResult.remainingSpots > 0;
+                    }
+                    // If no cached result, include the event (fallback)
+                    return true;
+                } else {
+                    // Events without registration limits or unlimited spots
+                    return true;
+                }
+            });
+
+            if (availableEvents.length === 0) {
+                eventList.innerHTML = '<p class="no-events">No available events scheduled</p>';
+                return;
+            }
+
+            // Generate HTML for available events using global registration cache
+            const eventHTMLPromises = availableEvents.map(event => this.createEventHTMLWithCache(event, true, this.globalRegistrationCache));
             const eventHTMLs = await Promise.all(eventHTMLPromises);
 
             eventList.innerHTML = `
@@ -1281,6 +1295,92 @@ class MotoCoachCalendar {
             console.error('Error loading upcoming events:', error);
             eventList.innerHTML = '<p class="no-events">Error loading events</p>';
         }
+    }
+
+    async createEventHTMLWithCache(event, showDate = false, registrationCountMap) {
+        const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
+        const locationStr = event.location ? `📍 ${event.location}` : '';
+        const descriptionStr = event.description || '';
+        
+        // Rate display logic
+        let rateStr = '';
+        if (event.hasRegistration) {
+            if (event.ratePerRider === 190) {
+                // Standard rate - show "Standard Rates Apply"
+                rateStr = `Standard Rates Apply`;
+            } else {
+                // Custom rate - show simplified format
+                rateStr = `$${event.ratePerRider} AUD/rider`;
+            }
+        }
+        
+        // Add register button and spots info if event has registration enabled
+        let registerButtonStr = '';
+        let spotsDisplayStr = '';
+        const isEventPast = this.isEventPast(event);
+        
+        if (event.hasRegistration && !isEventPast) {
+            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const eventKey = `${event.title}_${eventDateStr}`;
+            
+            // Get registration count from cache
+            let showRegisterButton = true;
+            let remainingSpots = null;
+            
+            if (event.maxSpots !== null) {
+                const cachedResult = registrationCountMap.get(eventKey);
+                
+                if (cachedResult) {
+                    remainingSpots = cachedResult.remainingSpots;
+                    
+                    if (remainingSpots > 0) {
+                        const lowSpotsClass = remainingSpots < 5 ? ' low' : '';
+                        spotsDisplayStr = `<div class="spots-remaining${lowSpotsClass}">${remainingSpots} spots remaining</div>`;
+                        showRegisterButton = true;
+                    } else {
+                        spotsDisplayStr = `<div class="spots-remaining full">Event is full</div>`;
+                        showRegisterButton = false;
+                    }
+                } else {
+                    // Fallback if no cached data
+                    remainingSpots = event.maxSpots;
+                    spotsDisplayStr = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
+                    showRegisterButton = true;
+                }
+            } else {
+                spotsDisplayStr = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
+                showRegisterButton = true;
+                remainingSpots = null; // No limit
+            }
+            
+            // Check if this event is already selected
+            const isSelected = this.isEventSelected(event);
+            const selectionEventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            
+            if (showRegisterButton) {
+                if (isSelected) {
+                    registerButtonStr = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${selectionEventKey}')">Remove from Selection</button>`;
+                } else {
+                    // Store event data in a data attribute and use a simpler approach
+                    registerButtonStr = `<button class="btn-add-selection" data-event-key="${selectionEventKey}" onclick="calendar.addEventToSelectionByKey('${selectionEventKey}', this)">Add to Selection</button>`;
+                }
+            }
+        }
+        
+        return `
+            <div id="${this.generateEventId(event)}" class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
+                <div class="event-details-centered">
+                    <div class="event-time-centered">${dateStr}${event.time}</div>
+                    <div class="event-title-centered">${event.title}</div>
+                    ${locationStr ? `<div class="event-location-centered">${locationStr}</div>` : ''}
+                    ${descriptionStr ? `<div class="event-description-centered">${descriptionStr}</div>` : ''}
+                    ${rateStr ? `<div class="event-rate-centered">${rateStr}</div>` : ''}
+                    ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
+                </div>
+                ${registerButtonStr ? `<div class="event-register-centered">${registerButtonStr}</div>` : ''}
+                ${spotsDisplayStr ? `<div class="event-spots-centered">${spotsDisplayStr}</div>` : ''}
+            </div>
+        `;
     }
 
     async createEventHTML(event, showDate = false) {
