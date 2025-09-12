@@ -5575,6 +5575,7 @@ div:focus {
     width: 100%;
     max-width: none;
     background: #1a1a1a;
+    align-items: stretch; /* Ensure both panels stretch to match height */
 }
 
 /* Event panel on the left */
@@ -5585,6 +5586,7 @@ div:focus {
     border-right: 1px solid #333;
     overflow-y: auto;
     margin: 0;
+    min-height: calc(500px + 4rem + 72px); /* Match calendar grid min-height + padding + header */
 }
 
 /* Calendar section on the right */
