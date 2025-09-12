@@ -328,9 +328,12 @@ class MotoCoachCalendar {
         const daysContainer = document.getElementById('calendarDays');
         if (!daysContainer) return;
 
-        // Get all day elements and populate them with events
+        // Get all day elements and collect events that need registration checks
         const dayElements = daysContainer.querySelectorAll('.calendar-day');
+        const eventsToCheck = new Map(); // Map of "eventTitle_date" -> event info
+        const dayElementData = [];
         
+        // First pass: collect all events that need checking
         for (const dayElement of dayElements) {
             const dayNumber = parseInt(dayElement.querySelector('.day-number').textContent);
             const isOtherMonth = dayElement.classList.contains('other-month');
@@ -344,8 +347,166 @@ class MotoCoachCalendar {
                     currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), dayNumber);
                 }
                 
-                // Populate this day with events
-                await this.populateEventsForDay(dayElement, currentDay);
+                const dayEvents = this.getEventsForDate(currentDay);
+                
+                // Store day element data for second pass
+                dayElementData.push({ dayElement, currentDay, dayEvents });
+                
+                // Collect events that need registration checks
+                for (const event of dayEvents) {
+                    if (event.maxSpots && event.maxSpots > 0) {
+                        const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                        const eventKey = `${event.title}_${eventDateStr}`;
+                        if (!eventsToCheck.has(eventKey)) {
+                            eventsToCheck.set(eventKey, {
+                                title: event.title,
+                                dateStr: eventDateStr,
+                                maxSpots: event.maxSpots
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Second pass: batch fetch all registration counts in parallel
+        const registrationCountPromises = Array.from(eventsToCheck.values()).map(eventInfo => 
+            this.getRegistrationCount(eventInfo.title, eventInfo.dateStr)
+                .then(count => ({
+                    key: `${eventInfo.title}_${eventInfo.dateStr}`,
+                    count: count,
+                    remainingSpots: eventInfo.maxSpots - count
+                }))
+                .catch(error => {
+                    console.error('Error getting registration count:', error);
+                    return {
+                        key: `${eventInfo.title}_${eventInfo.dateStr}`,
+                        count: 0,
+                        remainingSpots: eventInfo.maxSpots // Fallback
+                    };
+                })
+        );
+        
+        const registrationResults = await Promise.all(registrationCountPromises);
+        
+        // Create a lookup map for registration counts
+        const registrationCountMap = new Map();
+        registrationResults.forEach(result => {
+            registrationCountMap.set(result.key, result);
+        });
+        
+        // Third pass: populate events into calendar with cached registration data
+        for (const { dayElement, currentDay, dayEvents } of dayElementData) {
+            await this.populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap);
+        }
+    }
+
+    async populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap) {
+        if (dayEvents.length > 0) {
+            dayElement.classList.add('has-events');
+            
+            // Check if ALL events on this day are past
+            const allEventsPast = dayEvents.every(event => this.isEventPast(event));
+            if (allEventsPast) {
+                dayElement.classList.add('past-event');
+            }
+            
+            if (this.isMobileView) {
+                // Mobile: Show just the number of events
+                const existingEventCount = dayElement.querySelector('.event-count');
+                if (!existingEventCount) {
+                    const eventCount = document.createElement('div');
+                    eventCount.className = 'event-count';
+                    eventCount.textContent = dayEvents.length;
+                    dayElement.appendChild(eventCount);
+                }
+            } else {
+                // Desktop: Show event previews
+                const existingEventsContainer = dayElement.querySelector('.day-events');
+                if (!existingEventsContainer) {
+                    const eventsContainer = document.createElement('div');
+                    eventsContainer.className = 'day-events';
+                    
+                    // Show up to 3 events in the day box
+                    for (const event of dayEvents.slice(0, 3)) {
+                        const eventPreview = document.createElement('div');
+                        eventPreview.className = `event-preview event-${event.type}`;
+                        
+                        // Check if event is full using cached data
+                        let isEventFull = false;
+                        if (event.maxSpots && event.maxSpots > 0) {
+                            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                            const eventKey = `${event.title}_${eventDateStr}`;
+                            const cachedResult = registrationCountMap.get(eventKey);
+                            
+                            if (cachedResult) {
+                                isEventFull = cachedResult.remainingSpots <= 0;
+                            }
+                        }
+                        
+                        if (isEventFull) {
+                            // Show "EVENT FULL" for full events - no click handler
+                            const eventTitle = event.title.length > 15 
+                                ? event.title.substring(0, 15) + '...' 
+                                : event.title;
+                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                            
+                            eventPreview.innerHTML = `
+                                <div class="event-title-small">${eventTitle}</div>
+                                <div class="event-time-small">${eventTime}</div>
+                                <div class="event-full-indicator">EVENT FULL</div>
+                            `;
+                            eventPreview.classList.add('event-full');
+                        } else {
+                            // Show normal event details with click handler for available events
+                            const maxTitleLength = 15;
+                            const eventTitle = event.title.length > maxTitleLength 
+                                ? event.title.substring(0, maxTitleLength) + '...' 
+                                : event.title;
+                            
+                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                            
+                            let eventContent = `
+                                <div class="event-title-small">${eventTitle}</div>
+                                <div class="event-time-small">${eventTime}</div>
+                            `;
+                            
+                            // Show location on desktop
+                            if (event.location) {
+                                const eventLocation = event.location.length > 20 
+                                    ? event.location.substring(0, 20) + '...' 
+                                    : event.location;
+                                eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                            }
+                            
+                            eventPreview.innerHTML = eventContent;
+                            
+                            // Add click handler only for available events
+                            if (!this.isEventPast(event)) {
+                                eventPreview.style.cursor = 'pointer';
+                                eventPreview.classList.add('clickable-event');
+                                
+                                // Create unique event ID for scrolling
+                                const eventId = this.generateEventId(event);
+                                eventPreview.addEventListener('click', () => {
+                                    this.scrollToEventInUpcomingList(eventId);
+                                });
+                            }
+                        }
+                        
+                        eventsContainer.appendChild(eventPreview);
+                    }
+                    
+                    // If more events, show "and X more"
+                    if (dayEvents.length > 3) {
+                        const moreEvents = document.createElement('div');
+                        moreEvents.className = 'more-events';
+                        moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                        eventsContainer.appendChild(moreEvents);
+                    }
+                    
+                    dayElement.appendChild(eventsContainer);
+                }
             }
         }
     }
