@@ -18,13 +18,13 @@ class MotoCoachCalendar {
         this.checkViewMode();
         this.bindEvents();
         await this.loadEvents();
-        this.renderCalendar();
+        await this.renderCalendar();
         this.updateEventPanel();
         
         // Add resize listener to switch between desktop/mobile views and recalculate pagination
-        window.addEventListener('resize', () => {
+        window.addEventListener('resize', async () => {
             this.checkViewMode();
-            this.renderCalendar();
+            await this.renderCalendar();
             // Clear cached events per page if viewport changed significantly
             if (this.lastViewportHeight && Math.abs(window.innerHeight - this.lastViewportHeight) >= 100) {
                 this.cachedEventsPerPage = null;
@@ -97,14 +97,14 @@ class MotoCoachCalendar {
     async previousWeek() {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
         await this.checkAndLoadEvents();
-        this.renderCalendar();
+        await this.renderCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
     async nextWeek() {
         this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
         await this.checkAndLoadEvents();
-        this.renderCalendar();
+        await this.renderCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
@@ -263,7 +263,7 @@ class MotoCoachCalendar {
         this.currentDate = new Date(currentYear, currentMonth - 1, 1);
         
         await this.checkAndLoadEvents();
-        this.renderCalendar();
+        await this.renderCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
 
@@ -276,7 +276,7 @@ class MotoCoachCalendar {
         this.currentDate = new Date(currentYear, currentMonth + 1, 1);
         
         await this.checkAndLoadEvents();
-        this.renderCalendar();
+        await this.renderCalendar();
         // Note: Don't update event panel - upcoming events don't change when viewing different months
     }
 
@@ -291,20 +291,20 @@ class MotoCoachCalendar {
         }
     }
 
-    renderCalendar() {
+    async renderCalendar() {
         const monthElement = document.getElementById('currentMonth');
         const daysContainer = document.getElementById('calendarDays');
 
         if (!monthElement || !daysContainer) return;
 
         if (this.isMobileView) {
-            this.renderWeeklyView(monthElement, daysContainer);
+            await this.renderWeeklyView(monthElement, daysContainer);
         } else {
-            this.renderMonthlyView(monthElement, daysContainer);
+            await this.renderMonthlyView(monthElement, daysContainer);
         }
     }
 
-    renderWeeklyView(monthElement, daysContainer) {
+    async renderWeeklyView(monthElement, daysContainer) {
         if (!this.currentWeekStart) {
             this.setCurrentWeek(this.currentDate);
         }
@@ -339,12 +339,12 @@ class MotoCoachCalendar {
             const currentDay = new Date(this.currentWeekStart);
             currentDay.setDate(this.currentWeekStart.getDate() + i);
             
-            const dayElement = this.createDayElement(currentDay.getDate(), false, currentDay);
+            const dayElement = await this.createDayElement(currentDay.getDate(), false, currentDay);
             daysContainer.appendChild(dayElement);
         }
     }
 
-    renderMonthlyView(monthElement, daysContainer) {
+    async renderMonthlyView(monthElement, daysContainer) {
         const monthYear = `${this.monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
         monthElement.textContent = monthYear;
 
@@ -358,13 +358,13 @@ class MotoCoachCalendar {
         // Previous month's trailing days
         const prevMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 0);
         for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-            const dayElement = this.createDayElement(prevMonth.getDate() - i, true);
+            const dayElement = await this.createDayElement(prevMonth.getDate() - i, true);
             daysContainer.appendChild(dayElement);
         }
 
         // Current month's days
         for (let day = 1; day <= daysInMonth; day++) {
-            const dayElement = this.createDayElement(day, false);
+            const dayElement = await this.createDayElement(day, false);
             daysContainer.appendChild(dayElement);
         }
 
@@ -372,12 +372,12 @@ class MotoCoachCalendar {
         const totalCells = daysContainer.children.length;
         const remainingCells = 42 - totalCells;
         for (let day = 1; day <= remainingCells; day++) {
-            const dayElement = this.createDayElement(day, true);
+            const dayElement = await this.createDayElement(day, true);
             daysContainer.appendChild(dayElement);
         }
     }
 
-    createDayElement(day, isOtherMonth, fullDate = null) {
+    async createDayElement(day, isOtherMonth, fullDate = null) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
         
@@ -425,39 +425,76 @@ class MotoCoachCalendar {
                     eventCount.textContent = dayEvents.length;
                     dayElement.appendChild(eventCount);
                 } else {
-                    // Desktop: Show event previews
+                    // Desktop: Show event previews or "EVENT FULL" for full events
                     const eventsContainer = document.createElement('div');
                     eventsContainer.className = 'day-events';
                     
                     // Show up to 3 events in the day box
-                    dayEvents.slice(0, 3).forEach(event => {
+                    for (const event of dayEvents.slice(0, 3)) {
                         const eventPreview = document.createElement('div');
                         eventPreview.className = `event-preview event-${event.type}`;
                         
-                        // Create event content: Event title, then time frame, then location
-                        const maxTitleLength = 15;
-                        const eventTitle = event.title.length > maxTitleLength 
-                            ? event.title.substring(0, maxTitleLength) + '...' 
-                            : event.title;
-                        
-                        const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                        
-                        let eventContent = `
-                            <div class="event-title-small">${eventTitle}</div>
-                            <div class="event-time-small">${eventTime}</div>
-                        `;
-                        
-                        // Show location on desktop
-                        if (event.location) {
-                            const eventLocation = event.location.length > 20 
-                                ? event.location.substring(0, 20) + '...' 
-                                : event.location;
-                            eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                        // Check if event is full
+                        let isEventFull = false;
+                        if (event.maxSpots && event.maxSpots > 0) {
+                            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                            const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
+                            const remainingSpots = event.maxSpots - registrationCount;
+                            isEventFull = remainingSpots <= 0;
                         }
                         
-                        eventPreview.innerHTML = eventContent;
+                        if (isEventFull) {
+                            // Show "EVENT FULL" for full events - no click handler
+                            const eventTitle = event.title.length > 15 
+                                ? event.title.substring(0, 15) + '...' 
+                                : event.title;
+                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                            
+                            eventPreview.innerHTML = `
+                                <div class="event-title-small">${eventTitle}</div>
+                                <div class="event-time-small">${eventTime}</div>
+                                <div class="event-full-indicator">EVENT FULL</div>
+                            `;
+                            eventPreview.classList.add('event-full');
+                        } else {
+                            // Show normal event details with click handler for available events
+                            const maxTitleLength = 15;
+                            const eventTitle = event.title.length > maxTitleLength 
+                                ? event.title.substring(0, maxTitleLength) + '...' 
+                                : event.title;
+                            
+                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+                            
+                            let eventContent = `
+                                <div class="event-title-small">${eventTitle}</div>
+                                <div class="event-time-small">${eventTime}</div>
+                            `;
+                            
+                            // Show location on desktop
+                            if (event.location) {
+                                const eventLocation = event.location.length > 20 
+                                    ? event.location.substring(0, 20) + '...' 
+                                    : event.location;
+                                eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                            }
+                            
+                            eventPreview.innerHTML = eventContent;
+                            
+                            // Add click handler only for available events
+                            if (!this.isEventPast(event)) {
+                                eventPreview.style.cursor = 'pointer';
+                                eventPreview.classList.add('clickable-event');
+                                
+                                // Create unique event ID for scrolling
+                                const eventId = this.generateEventId(event);
+                                eventPreview.addEventListener('click', () => {
+                                    this.scrollToEventInUpcomingList(eventId);
+                                });
+                            }
+                        }
+                        
                         eventsContainer.appendChild(eventPreview);
-                    });
+                    }
                     
                     // If more events, show "and X more"
                     if (dayEvents.length > 3) {
@@ -478,6 +515,33 @@ class MotoCoachCalendar {
         }
 
         return dayElement;
+    }
+
+    // Generate unique event ID for calendar-to-upcoming-events scrolling
+    generateEventId(event) {
+        // Create a unique ID based on event title and date
+        const dateStr = `${event.date.getDate()}-${event.date.getMonth() + 1}-${event.date.getFullYear()}`;
+        const titleStr = event.title.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        return `event-${titleStr}-${dateStr}`;
+    }
+
+    // Scroll to specific event in upcoming events list
+    scrollToEventInUpcomingList(eventId) {
+        const eventElement = document.getElementById(eventId);
+        if (eventElement) {
+            // Scroll the element into view with smooth animation
+            eventElement.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center',
+                inline: 'nearest'
+            });
+            
+            // Add a highlight effect
+            eventElement.classList.add('event-highlighted');
+            setTimeout(() => {
+                eventElement.classList.remove('event-highlighted');
+            }, 2000);
+        }
     }
 
     // Date selection methods removed - calendar is now view-only
@@ -711,12 +775,35 @@ class MotoCoachCalendar {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
-        const allUpcomingEvents = this.events
-            .filter(event => event.date >= today)
+        let allUpcomingEvents = this.events
+            .filter(event => event.date >= today && !this.isEventPast(event))
             .sort((a, b) => a.date - b.date);
 
-        if (allUpcomingEvents.length === 0) {
-            eventList.innerHTML = '<p class="no-events">No upcoming events scheduled</p>';
+        // Filter out full events from the upcoming events list
+        const availableEvents = [];
+        for (const event of allUpcomingEvents) {
+            if (event.hasRegistration && event.maxSpots !== null) {
+                try {
+                    const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                    const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
+                    const remainingSpots = event.maxSpots - registrationCount;
+                    
+                    if (remainingSpots > 0) {
+                        availableEvents.push(event);
+                    }
+                } catch (error) {
+                    console.error('Error checking event capacity:', error);
+                    // If error checking, include the event anyway
+                    availableEvents.push(event);
+                }
+            } else {
+                // Events without registration limits or unlimited spots
+                availableEvents.push(event);
+            }
+        }
+
+        if (availableEvents.length === 0) {
+            eventList.innerHTML = '<p class="no-events">No available events scheduled</p>';
             return;
         }
 
@@ -731,8 +818,8 @@ class MotoCoachCalendar {
         `;
 
         try {
-            // Generate HTML for all events (no pagination)
-            const eventHTMLPromises = allUpcomingEvents.map(event => this.createEventHTML(event, true));
+            // Generate HTML for available events only
+            const eventHTMLPromises = availableEvents.map(event => this.createEventHTML(event, true));
             const eventHTMLs = await Promise.all(eventHTMLPromises);
 
             eventList.innerHTML = `
@@ -821,7 +908,7 @@ class MotoCoachCalendar {
         }
         
         return `
-            <div class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
+            <div id="${this.generateEventId(event)}" class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
                 <div class="event-details-centered">
                     <div class="event-time-centered">${dateStr}${event.time}</div>
                     <div class="event-title-centered">${event.title}</div>

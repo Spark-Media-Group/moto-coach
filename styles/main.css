@@ -5842,6 +5842,59 @@ div:focus {
     background: rgba(96, 125, 139, 0.9);
 }
 
+/* Event Full Styles */
+.event-preview.event-full {
+    background: rgba(220, 20, 60, 0.9) !important; /* Dark red background */
+    border: 1px solid rgba(220, 20, 60, 1);
+}
+
+/* Clickable Event Styles */
+.event-preview.clickable-event {
+    transition: all 0.2s ease;
+}
+
+.event-preview.clickable-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(255, 107, 53, 0.3);
+    border: 1px solid rgba(255, 107, 53, 0.6);
+}
+
+.event-full-indicator {
+    color: #ffffff !important;
+    font-size: 0.6rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+}
+
+/* Event highlight animation for scroll-to effect */
+.event-item.event-highlighted {
+    animation: eventHighlight 2s ease-in-out;
+}
+
+@keyframes eventHighlight {
+    0% {
+        background-color: rgba(255, 107, 53, 0.2);
+        border-color: rgba(255, 107, 53, 0.8);
+        transform: scale(1);
+    }
+    50% {
+        background-color: rgba(255, 107, 53, 0.4);
+        border-color: rgba(255, 107, 53, 1);
+        transform: scale(1.02);
+    }
+    100% {
+        background-color: transparent;
+        border-color: rgba(255, 255, 255, 0.1);
+        transform: scale(1);
+    }
+}
+
 .more-events {
     color: #ff6b35;
     font-size: 0.65rem;
