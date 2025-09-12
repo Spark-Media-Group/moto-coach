@@ -5586,7 +5586,7 @@ div:focus {
     border-right: 1px solid #333;
     overflow-y: auto;
     margin: 0;
-    min-height: calc(500px + 4rem + 72px); /* Match calendar grid min-height + padding + header */
+    /* Height will automatically match calendar section due to align-items: stretch */
 }
 
 /* Calendar section on the right */
@@ -5654,7 +5654,7 @@ div:focus {
     gap: 1px;
     background: #333; /* Back to dark grid */
     padding: 2rem; /* Increased padding for better spacing */
-    min-height: 500px; /* Simple minimum height for usability */
+    /* Remove fixed min-height - let it size based on day box heights */
 }
 
 .day-header {
@@ -6439,7 +6439,6 @@ button.btn-register:hover {
     
     .calendar-main-container .calendar-section {
         flex: 1;
-        min-height: 500px;
         padding: 0;
     }
 
