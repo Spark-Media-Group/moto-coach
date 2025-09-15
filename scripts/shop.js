@@ -151,6 +151,19 @@ function isDefaultTitleOnly(product) {
 }
 
 // GraphQL Queries
+const SIMPLE_TEST_QUERY = `
+    query GetProductsSimple($first: Int!) {
+        products(first: $first) {
+            edges {
+                node {
+                    id
+                    title
+                }
+            }
+        }
+    }
+`;
+
 const PRODUCTS_QUERY = `
     query GetProducts($first: Int!) {
         products(first: $first) {
@@ -257,17 +270,26 @@ async function initializeShop() {
 // Load shop configuration from API
 async function loadShopConfig() {
     try {
+        console.log('Loading shop configuration...');
         const response = await fetch('/api/shop?action=config');
         if (!response.ok) {
-            throw new Error(`Config API error: ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`Config API error: ${response.status} - ${errorText}`);
         }
         
         const data = await response.json();
+        console.log('Config response:', data);
+        
         if (data.success) {
             SHOPIFY_CONFIG.storefrontToken = data.data.storefrontToken;
             SHOPIFY_CONFIG.endpoint = data.data.storeUrl + "/api/2025-07/graphql.json";
+            console.log('Configuration loaded successfully:', {
+                hasToken: !!SHOPIFY_CONFIG.storefrontToken,
+                tokenPrefix: SHOPIFY_CONFIG.storefrontToken?.substring(0, 10) + '...',
+                endpoint: SHOPIFY_CONFIG.endpoint
+            });
         } else {
-            throw new Error('Failed to load shop configuration');
+            throw new Error('Failed to load shop configuration: ' + (data.error || 'Unknown error'));
         }
     } catch (error) {
         console.error('Error loading shop config:', error);
@@ -278,6 +300,41 @@ async function loadShopConfig() {
 // Fetch products from Shopify Storefront API
 async function fetchProducts() {
     try {
+        console.log('Fetching products with config:', {
+            endpoint: SHOPIFY_CONFIG.endpoint,
+            hasToken: !!SHOPIFY_CONFIG.storefrontToken,
+            tokenLength: SHOPIFY_CONFIG.storefrontToken?.length || 0
+        });
+        
+        // First try a simple test query to validate connection
+        console.log('Testing Shopify connection with simple query...');
+        const testResponse = await fetch(SHOPIFY_CONFIG.endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Storefront-Access-Token': SHOPIFY_CONFIG.storefrontToken
+            },
+            body: JSON.stringify({
+                query: SIMPLE_TEST_QUERY,
+                variables: { first: 1 }
+            })
+        });
+
+        if (!testResponse.ok) {
+            const errorText = await testResponse.text();
+            console.error('Test query failed:', errorText);
+            throw new Error(`Test query failed - HTTP ${testResponse.status}: ${testResponse.statusText} — ${errorText}`);
+        }
+        
+        const testData = await testResponse.json();
+        if (testData.errors) {
+            console.error('Test query GraphQL errors:', testData.errors);
+            throw new Error('Test query GraphQL errors: ' + JSON.stringify(testData.errors));
+        }
+        
+        console.log('Test query successful, fetching full product data...');
+        
+        // Now fetch the full product data
         const response = await fetch(SHOPIFY_CONFIG.endpoint, {
             method: 'POST',
             headers: {
@@ -291,7 +348,8 @@ async function fetchProducts() {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${response.statusText} — ${errorText}`);
         }
 
         const data = await response.json();

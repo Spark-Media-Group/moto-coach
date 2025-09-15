@@ -75,6 +75,23 @@ export default async function handler(req, res) {
 // Get public configuration (storefront token, etc.)
 async function getConfig(req, res) {
     try {
+        // Validate required environment variables
+        if (!SHOPIFY_CONFIG.storefrontToken) {
+            console.error('Missing SHOPIFY_STOREFRONT_API_TOKEN environment variable');
+            return res.status(500).json({
+                success: false,
+                error: 'Server configuration error: Missing Shopify storefront token'
+            });
+        }
+        
+        if (!SHOPIFY_CONFIG.store) {
+            console.error('Missing SHOPIFY_STORE_URL environment variable');
+            return res.status(500).json({
+                success: false,
+                error: 'Server configuration error: Missing Shopify store URL'
+            });
+        }
+        
         return res.status(200).json({
             success: true,
             data: {
@@ -181,7 +198,9 @@ async function getProducts(req, res) {
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorText = await response.text();
+            console.error(`Shopify API error ${response.status}:`, errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText} — ${errorText}`);
         }
 
         const data = await response.json();
