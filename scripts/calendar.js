@@ -9,6 +9,7 @@ class MotoCoachCalendar {
         this.cachedEventsPerPage = null; // Cache the events per page calculation
         this.globalRegistrationCache = new Map(); // Global cache for all registration counts
         this.cacheLastUpdated = null; // Track when cache was last updated
+        this.apiKey = 'calendar-app-2024'; // Simple API key for request validation
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -26,6 +27,22 @@ class MotoCoachCalendar {
                 fn(...args);
             }
         };
+    }
+
+    // HTML escape function to prevent XSS
+    escapeHtml(text) {
+        if (typeof text !== 'string') return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Create DOM element safely with text content
+    createElementWithText(tag, className, textContent) {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (textContent) element.textContent = textContent;
+        return element;
     }
 
     async init() {
@@ -212,6 +229,7 @@ class MotoCoachCalendar {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-App-Key': this.apiKey
                 },
                 body: JSON.stringify({ items })
             });
@@ -521,11 +539,14 @@ class MotoCoachCalendar {
                                 : event.title;
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
-                            eventPreview.innerHTML = `
-                                <div class="event-title-small">${eventTitle}</div>
-                                <div class="event-time-small">${eventTime}</div>
-                                <div class="event-full-indicator">EVENT FULL</div>
-                            `;
+                            // Create elements safely to prevent XSS
+                            const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
+                            const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
+                            const fullDiv = this.createElementWithText('div', 'event-full-indicator', 'EVENT FULL');
+                            
+                            eventPreview.appendChild(titleDiv);
+                            eventPreview.appendChild(timeDiv);
+                            eventPreview.appendChild(fullDiv);
                             eventPreview.classList.add('event-full');
                         } else {
                             // Show normal event details with click handler for available events
@@ -536,20 +557,21 @@ class MotoCoachCalendar {
                             
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
-                            let eventContent = `
-                                <div class="event-title-small">${eventTitle}</div>
-                                <div class="event-time-small">${eventTime}</div>
-                            `;
+                            // Create elements safely to prevent XSS
+                            const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
+                            const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
+                            
+                            eventPreview.appendChild(titleDiv);
+                            eventPreview.appendChild(timeDiv);
                             
                             // Show location on desktop
                             if (event.location) {
                                 const eventLocation = event.location.length > 20 
                                     ? event.location.substring(0, 20) + '...' 
                                     : event.location;
-                                eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                                const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
+                                eventPreview.appendChild(locationDiv);
                             }
-                            
-                            eventPreview.innerHTML = eventContent;
                             
                             // Add click handler only for available events
                             if (!this.isEventPast(event)) {
@@ -855,11 +877,20 @@ class MotoCoachCalendar {
                                 : event.title;
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
-                            eventPreview.innerHTML = `
-                                <div class="event-title-small">${eventTitle}</div>
-                                <div class="event-time-small">${eventTime}</div>
-                                <div class="event-full-indicator">EVENT FULL</div>
-                            `;
+                            // Create safe DOM elements
+                            const titleDiv = createElementWithText('div', eventTitle);
+                            titleDiv.className = 'event-title-small';
+                            
+                            const timeDiv = createElementWithText('div', eventTime);
+                            timeDiv.className = 'event-time-small';
+                            
+                            const fullDiv = createElementWithText('div', 'EVENT FULL');
+                            fullDiv.className = 'event-full-indicator';
+                            
+                            eventPreview.appendChild(titleDiv);
+                            eventPreview.appendChild(timeDiv);
+                            eventPreview.appendChild(fullDiv);
+                            
                             eventPreview.classList.add('event-full');
                         } else {
                             // Show normal event details with click handler for available events
@@ -870,20 +901,25 @@ class MotoCoachCalendar {
                             
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
-                            let eventContent = `
-                                <div class="event-title-small">${eventTitle}</div>
-                                <div class="event-time-small">${eventTime}</div>
-                            `;
+                            // Create safe DOM elements
+                            const titleDiv = createElementWithText('div', eventTitle);
+                            titleDiv.className = 'event-title-small';
+                            
+                            const timeDiv = createElementWithText('div', eventTime);
+                            timeDiv.className = 'event-time-small';
+                            
+                            eventPreview.appendChild(titleDiv);
+                            eventPreview.appendChild(timeDiv);
                             
                             // Show location on desktop
                             if (event.location) {
                                 const eventLocation = event.location.length > 20 
                                     ? event.location.substring(0, 20) + '...' 
                                     : event.location;
-                                eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
+                                const locationDiv = createElementWithText('div', `📍 ${eventLocation}`);
+                                locationDiv.className = 'event-location-small';
+                                eventPreview.appendChild(locationDiv);
                             }
-                            
-                            eventPreview.innerHTML = eventContent;
                             
                             // Add click handler only for available events
                             if (!this.isEventPast(event)) {
@@ -1044,17 +1080,40 @@ class MotoCoachCalendar {
                 </div>`;
             }
 
-            selectionPanel.innerHTML = `
-                <div class="selection-header">
-                    <h4>${selectionCount} Event${selectionCount !== 1 ? 's' : ''} Selected</h4>
-                    <span class="selection-total">$${totalCost.toFixed(2)} AUD</span>
-                </div>
-                ${pricingBreakdown}
-                <div class="selection-actions">
-                    <button class="btn-clear-selection" onclick="calendar.clearSelection()">Clear All</button>
-                    <button class="btn-register-selected" onclick="calendar.proceedToRegistration()">Register for Selected Events</button>
-                </div>
-            `;
+            // Create selection panel DOM elements safely
+            const header = document.createElement('div');
+            header.className = 'selection-header';
+            
+            const title = createElementWithText('h4', `${selectionCount} Event${selectionCount !== 1 ? 's' : ''} Selected`);
+            const total = createElementWithText('span', `$${totalCost.toFixed(2)} AUD`);
+            total.className = 'selection-total';
+            
+            header.appendChild(title);
+            header.appendChild(total);
+            selectionPanel.appendChild(header);
+            
+            // Add pricing breakdown if exists
+            if (pricingBreakdown) {
+                const breakdownDiv = document.createElement('div');
+                breakdownDiv.innerHTML = pricingBreakdown; // Safe since this is controlled content
+                selectionPanel.appendChild(breakdownDiv);
+            }
+            
+            // Create action buttons safely
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'selection-actions';
+            
+            const clearBtn = createElementWithText('button', 'Clear All');
+            clearBtn.className = 'btn-clear-selection';
+            clearBtn.addEventListener('click', () => this.clearSelection());
+            
+            const registerBtn = createElementWithText('button', 'Register for Selected Events');
+            registerBtn.className = 'btn-register-selected';
+            registerBtn.addEventListener('click', () => this.proceedToRegistration());
+            
+            actionsDiv.appendChild(clearBtn);
+            actionsDiv.appendChild(registerBtn);
+            selectionPanel.appendChild(actionsDiv);
         } else if (selectionPanel) {
             selectionPanel.remove();
         }
@@ -1185,19 +1244,32 @@ class MotoCoachCalendar {
             .sort((a, b) => a.date - b.date);
 
         if (allUpcomingEvents.length === 0) {
-            eventList.innerHTML = '<p class="no-events">No available events scheduled</p>';
+            eventList.innerHTML = '';
+            const noEventsP = createElementWithText('p', 'No available events scheduled');
+            noEventsP.className = 'no-events';
+            eventList.appendChild(noEventsP);
             return;
         }
 
-        // Show loading state
-        eventList.innerHTML = `
-            <div class="events-header">
-                <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
-                    Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
-                </p>
-            </div>
-            <p class="loading-events">Loading event details...</p>
-        `;
+        // Show loading state with safe DOM creation
+        eventList.innerHTML = '';
+        
+        const eventsHeader = document.createElement('div');
+        eventsHeader.className = 'events-header';
+        
+        const ratesP = createElementWithText('p', 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
+        ratesP.style.color = '#ccc';
+        ratesP.style.fontSize = '0.9rem';
+        ratesP.style.marginBottom = '0.5rem';
+        ratesP.style.lineHeight = '1.4';
+        
+        eventsHeader.appendChild(ratesP);
+        
+        const loadingP = createElementWithText('p', 'Loading event details...');
+        loadingP.className = 'loading-events';
+        
+        eventList.appendChild(eventsHeader);
+        eventList.appendChild(loadingP);
 
         try {
             // Filter out full events using global registration cache
@@ -1219,7 +1291,10 @@ class MotoCoachCalendar {
             });
 
             if (availableEvents.length === 0) {
-                eventList.innerHTML = '<p class="no-events">No available events scheduled</p>';
+                eventList.innerHTML = '';
+                const noEventsP = createElementWithText('p', 'No available events scheduled');
+                noEventsP.className = 'no-events';
+                eventList.appendChild(noEventsP);
                 return;
             }
 
@@ -1227,20 +1302,33 @@ class MotoCoachCalendar {
             const eventHTMLPromises = availableEvents.map(event => this.createEventHTMLWithCache(event, true, this.globalRegistrationCache));
             const eventHTMLs = await Promise.all(eventHTMLPromises);
 
-            eventList.innerHTML = `
-                <div class="events-header">
-                    <p style="color: #ccc; font-size: 0.9rem; margin-bottom: 0.5rem; line-height: 1.4;">
-                        Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)
-                    </p>
-                </div>
-                <div class="events-list-scrollable">
-                    ${eventHTMLs.join('')}
-                </div>
-            `;
+            // Create final event list with safe DOM
+            eventList.innerHTML = '';
+            
+            const eventsHeader = document.createElement('div');
+            eventsHeader.className = 'events-header';
+            
+            const ratesP = createElementWithText('p', 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
+            ratesP.style.color = '#ccc';
+            ratesP.style.fontSize = '0.9rem';
+            ratesP.style.marginBottom = '0.5rem';
+            ratesP.style.lineHeight = '1.4';
+            
+            eventsHeader.appendChild(ratesP);
+            
+            const eventsScrollable = document.createElement('div');
+            eventsScrollable.className = 'events-list-scrollable';
+            eventsScrollable.innerHTML = eventHTMLs.join(''); // Safe since this is controlled content
+            
+            eventList.appendChild(eventsHeader);
+            eventList.appendChild(eventsScrollable);
 
         } catch (error) {
             console.error('Error loading upcoming events:', error);
-            eventList.innerHTML = '<p class="no-events">Error loading events</p>';
+            eventList.innerHTML = '';
+            const errorP = createElementWithText('p', 'Error loading events');
+            errorP.className = 'no-events';
+            eventList.appendChild(errorP);
         }
     }
 
@@ -1429,6 +1517,7 @@ class MotoCoachCalendar {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-App-Key': this.apiKey
                 },
                 body: JSON.stringify({
                     eventName: eventName,

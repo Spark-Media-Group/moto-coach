@@ -1,14 +1,61 @@
 const { google } = require('googleapis');
 
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Set strict CORS headers - only allow specific domains
+    const origin = req.headers.origin || "";
+    const allowedDomains = new Set([
+        "https://motocoach.com.au",
+        "https://www.motocoach.com.au",
+        "https://sydneymotocoach.com",
+        "https://www.sydneymotocoach.com",
+        "https://smg-mc.vercel.app"
+    ]);
+    
+    const isVercelPreview = /\.vercel\.app$/.test(new URL(origin || "http://localhost").hostname || "");
+    
+    if (allowedDomains.has(origin) || isVercelPreview) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Vary", "Origin");
+    }
+    
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-App-Key, X-Requested-With');
 
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
+    }
+
+    // Security: Require API key for POST requests
+    const APP_KEY = process.env.APP_KEY;
+    if (req.method === 'POST') {
+        const providedKey = req.headers['x-app-key'];
+        if (!APP_KEY || providedKey !== APP_KEY) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        
+        // CSRF protection: validate Origin/Referer for POST requests
+        const referer = req.headers.referer || '';
+        const isValidRequest = allowedDomains.has(origin) || isVercelPreview || 
+                              [...allowedDomains].some(domain => referer.startsWith(domain));
+        
+        if (!isValidRequest) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+    }
+
+    // Input validation
+    const MAX_RESULTS = 100;
+    const maxResults = req.query.maxResults || 50;
+    const maxResultsNum = Math.min(Number(maxResults), MAX_RESULTS);
+    if (Number.isNaN(maxResultsNum) || maxResultsNum < 1) {
+        return res.status(400).json({ error: 'Invalid maxResults' });
+    }
+
+    // Validate mode parameter
+    const mode = req.query.mode;
+    if (mode && !['single', 'batchCounts'].includes(mode)) {
+        return res.status(400).json({ error: 'Invalid mode' });
     }
 
     // Handle both GET (calendar events) and POST (registration count) requests
@@ -28,7 +75,11 @@ export default async function handler(req, res) {
 // Handle GET requests for calendar events
 async function handleGetEvents(req, res) {
     try {
-        const { mode, eventName, eventDate, timeMin, timeMax, maxResults = 50 } = req.query;
+        const { mode, eventName, eventDate, timeMin, timeMax } = req.query;
+        
+        // Get validated maxResults from main handler
+        const MAX_RESULTS = 100;
+        const maxResults = Math.min(Number(req.query.maxResults || 50), MAX_RESULTS);
 
         // Add cache control headers for performance
         res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
@@ -66,9 +117,9 @@ async function handleGetEvents(req, res) {
         });
 
         if (error) {
-            console.error(`Google Calendar API error: ${status}`);
-            return res.status(status).json({
-                error: `Google Calendar API error: ${status}`,
+            console.error('Google Calendar API error');
+            return res.status(500).json({
+                error: 'Calendar service unavailable',
                 fallback: true
             });
         }
@@ -81,7 +132,7 @@ async function handleGetEvents(req, res) {
         });
 
     } catch (error) {
-        console.error('Calendar API error:', error);
+        console.error('Calendar API error');
         
         res.status(500).json({
             error: 'Internal server error',
@@ -116,7 +167,9 @@ async function listEvents({ timeMin, timeMax, apiKey, calendarId }) {
 // Handle single event validation for track reservation
 async function handleSingleEventValidation(req, res, eventName, eventDate) {
     try {
-        console.log(`Single event validation requested for: "${eventName}" on "${eventDate}"`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`Single event validation requested for: "${eventName}" on "${eventDate}"`);
+        }
         
         // Get environment variables
         const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
@@ -126,11 +179,9 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             console.error('Missing environment variables for single event validation');
             return res.status(500).json({ 
                 success: false,
-                error: 'Server configuration error - missing calendar credentials'
+                error: 'Server configuration error'
             });
         }
-
-        console.log('Using calendar ID:', calendarId.substring(0, 10) + '...');
 
         // Parse eventDate (d/m/yyyy) to build exact day range
         const [day, month, year] = eventDate.split('/').map(Number);
@@ -146,10 +197,10 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
         });
 
         if (error) {
-            console.error(`Google Calendar API error: ${status}`);
-            return res.status(status).json({
+            console.error('Calendar API error in single event validation');
+            return res.status(500).json({
                 success: false,
-                error: `Google Calendar API error: ${status}`
+                error: 'Calendar service unavailable'
             });
         }
 
@@ -161,12 +212,14 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             return event.summary.trim() === eventName.trim();
         });
 
-        console.log(`Found ${events.length} calendar events on ${eventDate}, looking for: "${eventName}"`);
-        if (!foundEvent) {
-            console.log('Available events on this date:', events.map(e => ({
-                title: e.summary,
-                time: e.start?.dateTime
-            })));
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`Found ${events.length} calendar events on ${eventDate}, looking for: "${eventName}"`);
+            if (!foundEvent) {
+                console.log('Available events on this date:', events.map(e => ({
+                    title: e.summary,
+                    time: e.start?.dateTime
+                })));
+            }
         }
 
         if (!foundEvent) {
@@ -239,13 +292,12 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
             remainingSpots = Math.max(0, maxSpots - registrationCount);
             
-            console.log(`🔍 SINGLE EVENT VALIDATION: ${eventName} on ${eventDate}`);
-            console.log(`🔍 Max spots: ${maxSpots}, Registrations: ${registrationCount}, Remaining: ${remainingSpots}`);
-            console.log(`Event validation: ${eventName} on ${eventDate} - ${registrationCount}/${maxSpots} registered, ${remainingSpots} remaining`);
+            if (process.env.NODE_ENV !== 'production') {
+                console.log(`Event validation: ${eventName} on ${eventDate} - ${registrationCount}/${maxSpots} registered, ${remainingSpots} remaining`);
+            }
             
         } catch (sheetsError) {
-            console.error('🔍 ERROR in single validation sheets access:', sheetsError.message);
-            console.error('Error getting registration count in single validation:', sheetsError);
+            console.error('Error in single validation sheets access');
             // Continue with default remainingSpots = maxSpots
         }
 
@@ -347,7 +399,9 @@ async function handleBatchRegistrationCounts(req, res) {
             }
         }
 
-        console.log(`Batch registration count: processed ${items.length} events from ${rows.length} sheet rows`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`Batch registration count: processed ${items.length} events from ${rows.length} sheet rows`);
+        }
 
         return res.status(200).json({
             success: true,

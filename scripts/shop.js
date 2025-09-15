@@ -1,7 +1,7 @@
 // Shopify Storefront API Configuration
 const SHOPIFY_CONFIG = {
-    endpoint: "https://spark-sandbox.myshopify.com/api/2025-07/graphql.json",
-    storefrontToken: "623273d8a56c267c1753a8fe70c04d74"
+    endpoint: null, // Will be loaded from API
+    storefrontToken: null // Will be loaded from API
 };
 
 // Global variables
@@ -239,6 +239,10 @@ document.addEventListener('DOMContentLoaded', function() {
 async function initializeShop() {
     try {
         showLoadingState();
+        
+        // Load shop configuration first
+        await loadShopConfig();
+        
         await fetchProducts();
         setupFilters();
         setupSorting();
@@ -247,6 +251,27 @@ async function initializeShop() {
     } catch (error) {
         console.error('Shop initialization error:', error);
         showErrorState();
+    }
+}
+
+// Load shop configuration from API
+async function loadShopConfig() {
+    try {
+        const response = await fetch('/api/shop?action=config');
+        if (!response.ok) {
+            throw new Error(`Config API error: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        if (data.success) {
+            SHOPIFY_CONFIG.storefrontToken = data.data.storefrontToken;
+            SHOPIFY_CONFIG.endpoint = data.data.storeUrl + "/api/2025-07/graphql.json";
+        } else {
+            throw new Error('Failed to load shop configuration');
+        }
+    } catch (error) {
+        console.error('Error loading shop config:', error);
+        throw error;
     }
 }
 

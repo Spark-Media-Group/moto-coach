@@ -9,15 +9,40 @@ const SHOPIFY_CONFIG = {
 };
 
 export default async function handler(req, res) {
-    // Set CORS headers for cross-origin requests
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    // Set strict CORS headers - only allow specific domains
+    const origin = req.headers.origin || "";
+    const allowedDomains = new Set([
+        "https://motocoach.com.au",
+        "https://www.motocoach.com.au",
+        "https://sydneymotocoach.com",
+        "https://www.sydneymotocoach.com",
+        "https://smg-mc.vercel.app"
+    ]);
+    
+    const isVercelPreview = /\.vercel\.app$/.test(new URL(origin || "http://localhost").hostname || "");
+    
+    if (allowedDomains.has(origin) || isVercelPreview) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Vary", "Origin");
+    }
+    
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-App-Key, X-Requested-With');
 
     // Handle preflight requests
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
+    }
+
+    // Input validation for action parameter
+    const { action } = req.query;
+    const validActions = ['products', 'product', 'collections', 'search', 'config'];
+    
+    if (!action || !validActions.includes(action)) {
+        return res.status(400).json({ 
+            error: 'Invalid action. Supported actions: products, product, collections, search, config' 
+        });
     }
 
     try {
@@ -32,23 +57,56 @@ export default async function handler(req, res) {
                 return await getCollections(req, res);
             case 'search':
                 return await searchProducts(req, res);
+            case 'config':
+                return await getConfig(req, res);
             default:
                 return res.status(400).json({ 
-                    error: 'Invalid action. Supported actions: products, product, collections, search' 
+                    error: 'Invalid action. Supported actions: products, product, collections, search, config' 
                 });
         }
     } catch (error) {
         console.error('Shopify API Error:', error);
         return res.status(500).json({ 
-            error: 'Internal server error',
-            message: error.message 
+            error: 'Internal server error'
+        });
+    }
+}
+
+// Get public configuration (storefront token, etc.)
+async function getConfig(req, res) {
+    try {
+        return res.status(200).json({
+            success: true,
+            data: {
+                storefrontToken: SHOPIFY_CONFIG.storefrontToken,
+                storeUrl: SHOPIFY_CONFIG.store
+            }
+        });
+    } catch (error) {
+        console.error('Error getting shop config:', error);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to get configuration'
         });
     }
 }
 
 // Get all products (uses Storefront API for public data)
 async function getProducts(req, res) {
-    const { limit = 50, sortKey = 'TITLE', reverse = false } = req.query;
+    const limitParam = req.query.limit || 50;
+    const sortKey = req.query.sortKey || 'TITLE';
+    const reverse = req.query.reverse || false;
+    
+    // Input validation
+    const limit = Math.min(Math.max(Number(limitParam), 1), 250); // Cap at 250, min 1
+    if (Number.isNaN(limit)) {
+        return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
+    
+    const validSortKeys = ['TITLE', 'CREATED_AT', 'UPDATED_AT', 'PRICE', 'PRODUCT_TYPE'];
+    if (!validSortKeys.includes(sortKey)) {
+        return res.status(400).json({ error: 'Invalid sortKey parameter' });
+    }
 
     const query = `
         query GetProducts($first: Int!, $sortKey: ProductSortKeys!, $reverse: Boolean!) {
@@ -115,7 +173,7 @@ async function getProducts(req, res) {
             body: JSON.stringify({
                 query,
                 variables: {
-                    first: parseInt(limit),
+                    first: limit,
                     sortKey,
                     reverse: reverse === 'true'
                 }
@@ -372,14 +430,24 @@ async function getCollections(req, res) {
 
 // Search products
 async function searchProducts(req, res) {
-    const { query: searchQuery, limit = 20 } = req.query;
+    const { query: searchQuery } = req.query;
+    const limitParam = req.query.limit || 20;
 
-    if (!searchQuery) {
+    if (!searchQuery || typeof searchQuery !== 'string' || searchQuery.trim().length === 0) {
         return res.status(400).json({
             success: false,
             error: 'Search query is required'
         });
     }
+    
+    // Input validation
+    const limit = Math.min(Math.max(Number(limitParam), 1), 100); // Cap at 100 for search
+    if (Number.isNaN(limit)) {
+        return res.status(400).json({ error: 'Invalid limit parameter' });
+    }
+    
+    // Sanitize search query (basic protection)
+    const sanitizedQuery = searchQuery.trim().slice(0, 100); // Limit length
 
     const query = `
         query SearchProducts($query: String!, $first: Int!) {
@@ -427,8 +495,8 @@ async function searchProducts(req, res) {
             body: JSON.stringify({
                 query,
                 variables: {
-                    query: searchQuery,
-                    first: parseInt(limit)
+                    query: sanitizedQuery,
+                    first: limit
                 }
             })
         });
@@ -446,7 +514,7 @@ async function searchProducts(req, res) {
         return res.status(200).json({
             success: true,
             data: data.data.products,
-            query: searchQuery
+            query: sanitizedQuery
         });
 
     } catch (error) {
