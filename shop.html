@@ -9,6 +9,9 @@
     <meta name="author" content="Moto Coach">
     <link rel="canonical" href="https://motocoach.com.au/shop.html">
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="images/tall logo black.png">
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://motocoach.com.au/shop.html">
@@ -29,6 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/shop.css">
 </head>
 <body>
     <!-- Header -->
@@ -46,8 +50,8 @@
                     <span class="dropdown-toggle">Programs</span>
                     <ul class="dropdown-menu">
                         <li><a href="programs/professional_coaching.html">Professional Coaching</a></li>
-                        <li><a href="programs/us_travel_program.html">US Travel & Training Program</a></li>
-                        <!-- <li><a href="programs/australia_travel_program.html">Australia Outback & Experience</a></li> -->
+                        <li><a href="programs/us_travel_program.html">US Training Camp</a></li>
+                        <li><a href="programs/australia_travel_program.html">Aussie Moto Vacations</a></li>
                     </ul>
                 </li>
                 <li><a href="index.html#about">About</a></li>
@@ -67,6 +71,13 @@
                     </svg>
                 </a>
             </div>
+            <!-- Cart Icon -->
+            <div class="cart-icon" onclick="toggleCart()">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M7 18c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12L8.1 13h7.45c.75 0 1.41-.41 1.75-1.03L21.7 4H5.21l-.94-2H1zm16 16c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                </svg>
+                <span id="cart-count" class="cart-count">0</span>
+            </div>
             <button class="mobile-menu-toggle">
                 <span></span>
                 <span></span>
@@ -75,6 +86,114 @@
             </div>
         </nav>
     </header>
+
+    <!-- Shop Hero Section -->
+    <section class="shop-hero">
+        <div class="hero-content">
+            <h1>Moto Coach Shop</h1>
+            
+            <!-- Filter and Sort Controls - Now integrated into hero -->
+            <div id="shop-controls" class="shop-controls" style="display: none;">
+                <div class="filters">
+                    <div class="filters-header">
+                        <h3>Categories</h3>
+                        <div class="filters-meta">
+                            <span id="results-inline" class="results-inline" aria-live="polite"></span>
+                            <div class="sort-controls inline">
+                                <label for="sort-select" class="visually-hidden">Sort products</label>
+                                <select id="sort-select" aria-label="Sort products">
+                                    <option value="title-asc">Name (A-Z)</option>
+                                    <option value="title-desc">Name (Z-A)</option>
+                                    <option value="price-asc">Price (Low to High)</option>
+                                    <option value="price-desc">Price (High to Low)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-buttons" id="parent-filters"></div>
+                    <div class="filter-buttons" id="leaf-filters"></div>
+                </div>
+            </div>
+            <div id="active-filter-breadcrumbs" class="active-filter-breadcrumbs" style="display:none;"></div>
+        </div>
+    </section>
+
+    <!-- Shop Content -->
+    <main class="shop-main">
+        <div class="shop-container">
+            <!-- Loading State -->
+            <div id="loading-state" class="loading-state">
+                <div class="loading-spinner"></div>
+                <p>Loading our premium products...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="error-state" class="error-state" style="display: none;">
+                <div class="error-content">
+                    <h3>Oops! Something went wrong</h3>
+                    <p>We're having trouble loading our products. Please try again later.</p>
+                    <button onclick="location.reload()" class="retry-btn">Try Again</button>
+                </div>
+            </div>
+
+            <!-- (Inline results count now lives in filter bar; legacy container removed) -->
+
+            <!-- Products Grid -->
+            <div id="products-grid" class="products-grid" style="display: none;">
+                <!-- Products will be dynamically inserted here -->
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state" style="display: none;">
+                <div class="empty-content">
+                    <h3>No products found</h3>
+                    <p>We don't have any products available at the moment. Check back soon!</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Product Modal -->
+    <div id="product-modal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="closeProductModal()"></div>
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeProductModal()">&times;</button>
+            <div id="modal-body">
+                <!-- Product details will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Sidebar -->
+    <div id="cart-sidebar" class="cart-sidebar">
+        <div class="cart-header">
+            <h3>Shopping Cart</h3>
+            <button class="cart-close" onclick="toggleCart()">&times;</button>
+        </div>
+        <div class="cart-content">
+            <div id="cart-items" class="cart-items">
+                <!-- Cart items will be dynamically inserted here -->
+            </div>
+            <div id="cart-empty" class="cart-empty" style="display: none;">
+                <p>Your cart is empty</p>
+                <p>Browse our products and add items to your cart.</p>
+            </div>
+        </div>
+        <div id="cart-footer" class="cart-footer" style="display: none;">
+            <div class="cart-total">
+                <div class="total-line">
+                    <span>Subtotal:</span>
+                    <span id="cart-subtotal">$0.00</span>
+                </div>
+            </div>
+            <button id="checkout-btn" class="checkout-btn" onclick="proceedToCheckout()">
+                Proceed to Checkout
+            </button>
+        </div>
+    </div>
+
+    <!-- Cart Overlay -->
+    <div id="cart-overlay" class="cart-overlay" onclick="toggleCart()" style="display: none;"></div>
 
     <footer>
         <div class="footer-content">
@@ -94,6 +213,7 @@
         </div>
     </footer>
     <script src="scripts/main.js"></script>
+    <script src="scripts/shop.js"></script>
     <script src="scripts/analytics.js"></script>
 </body>
 </html>

@@ -9,6 +9,9 @@
     <meta name="author" content="Moto Coach">
     <link rel="canonical" href="https://motocoach.com.au/programs/professional_coaching.html">
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../images/tall logo black.png">
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://motocoach.com.au/programs/professional_coaching.html">
@@ -29,6 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/main.css">
+    <link rel="stylesheet" href="../styles/coaching.css">
 </head>
 <body>
     <!-- Header -->
@@ -46,8 +50,8 @@
                         <span class="dropdown-toggle">Programs</span>
                         <ul class="dropdown-menu">
                             <li><a href="professional_coaching.html">Professional Coaching</a></li>
-                            <li><a href="us_travel_program.html">US Travel & Training Program</a></li>
-                            <!-- <li><a href="australia_travel_program.html">Australia Outback & Experience</a></li> -->
+                            <li><a href="us_travel_program.html">US Training Camp</a></li>
+                            <li><a href="australia_travel_program.html">Aussie Moto Vacations</a></li>
                         </ul>
                     </li>
                     <li><a href="../index.html#about">About</a></li>
@@ -78,170 +82,74 @@
 
     <main>
         <!-- Professional Coaching Hero Section -->
-        <section class="coaching-hero-section">
-            <!-- Mobile-only Full Screen Hero Slideshow -->
-            <div class="mobile-hero-slideshow">
-                <div class="mobile-hero-slide active">
-                    <img src="../images/coaching 4.jpg" alt="Group Coaching Session">
+        <section class="hero coaching-hero-section" id="professional-coaching">
+            <!-- Hero Images Side by Side -->
+            <div class="coaching-hero-images">
+                <div class="coaching-hero-image">
+                    <img src="../images/coaching 5.jpg" alt="Track Training">
                 </div>
-                <div class="mobile-hero-slide">
-                    <img src="../images/coaching 2.jpg" alt="Professional Training">
+                <div class="coaching-hero-image">
+                    <img src="../images/coaching 4.jpg" alt="Motocross Coaching">
                 </div>
-                <div class="mobile-hero-slide">
-                    <img src="../images/coaching 1.jpg" alt="Track Training">
-                </div>
-                <div class="mobile-hero-slide">
+                <div class="coaching-hero-image">
                     <img src="../images/coaching 6.jpg" alt="Rider Development">
                 </div>
             </div>
-            <div class="mobile-hero-content">
-                <h1>Professional Coaching</h1>
-                <p>Level 2 MA Accredited Coach Leigh Gainfort</p>
-                <button class="scroll-down-btn" id="scroll-down">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7 10L12 15L17 10H7Z"/>
-                    </svg>
-                </button>
+
+            <!-- Hero Overlay -->
+            <div class="coaching-hero-overlay"></div>
+
+            <!-- Hero Content -->
+            <div class="coaching-hero-content">
+                <div class="coaching-title-section">
+                    <h1 class="coaching-main-title">Professional Coaching</h1>
+                </div>
+                
+                <div class="coaching-cta-section">
+                    <a class="coaching-btn-primary" href="../calendar.html">Reserve your spot</a>
+                    <button class="coaching-btn-secondary" onclick="scrollToSection('.how-it-works-section')">Learn More</button>
+                </div>
             </div>
-            <div class="coaching-container">
-                <div class="coaching-content-side">
-                    <h1>Professional Coaching</h1>
-                    <div class="top-apply-cta">
-                        <a href="../calendar.html" class="btn-experience coaching-btn">Reserve Your Spot</a>
-                    </div>
-                    <div class="coaching-subtitle">
-                        <p>Group coaching sessions across Australia with Level 2 MA accredited coach Leigh Gainfort</p>
-                    </div>
-                    <div class="coaching-description">
-                        <p>At our coaching days, we cover all parts of riding dirt bikes on a motocross track, including body position, controls, braking, cornering (ruts and berms) and jumps. Bring lunch, plenty of drink and fuel for the bikes. It's a full-on day not to be missed!</p>
-                        <p>Depending on riders entered, we split the riders into groups and have 1 coach per group, so bike sizes/rider capabilities are riding together. Coaching days cater for all levels and bike sizes.</p>
-                    </div>
-                    <div class="coaching-credentials">
-                        <div class="credential-badge">
-                            <div class="badge-text">
-                                <span class="badge-title">NZ Veteran</span>
-                                <span class="badge-desc">Champion</span>
-                            </div>
-                        </div>
-                        <div class="credential-badge">
-                            <div class="badge-text">
-                                <span class="badge-title">13 Years</span>
-                                <span class="badge-desc">MX Nationals</span>
-                            </div>
-                        </div>
-                        <div class="credential-badge">
-                            <div class="badge-text">
-                                <span class="badge-title">30+ Years</span>
-                                <span class="badge-desc">Racing Experience</span>
-                            </div>
-                        </div>
-                    </div>
+
+            <!-- Scroll Indicator -->
+            <div class="coaching-scroll-indicator" onclick="scrollToSection('.how-it-works-section')">
+                <div class="coaching-scroll-mouse">
+                    <div class="coaching-scroll-wheel"></div>
                 </div>
-                <div class="coaching-images-side">
-                    <div class="coaching-image-main">
-                        <div class="coaching-slideshow">
-                            <div class="coaching-slide active">
-                                <img src="../images/coaching 2.jpg" alt="Group Coaching Session">
-                            </div>
-                            <div class="coaching-slide">
-                                <img src="../images/coaching 1.jpg" alt="Professional Training">
-                            </div>
-                            <div class="coaching-slide">
-                                <img src="../images/coaching 4.jpg" alt="Motocross Coaching">
-                            </div>
-                            <div class="coaching-slide">
-                                <img src="../images/coaching 5.jpg" alt="Track Training">
-                            </div>
-                            <div class="coaching-slide">
-                                <img src="../images/coaching 6.jpg" alt="Rider Development">
-                            </div>
-                        </div>
-                        <div class="coaching-image-overlay">
-                            <h3>Group Training Sessions</h3>
-                            <p>Ride with the pack, learn from the best</p>
-                        </div>
-                    </div>
-                </div>
+                <span>Scroll Down</span>
             </div>
         </section>
 
-        <!-- Mobile Coaching Content Section (shown only on mobile) -->
-        <section class="mobile-coaching-content">
-            <div class="mobile-content-container">
-                <div class="mobile-coaching-info">
-                    <h2>Professional Coaching</h2>
-                    <div class="top-apply-cta">
-                        <a href="../calendar.html" class="btn-experience coaching-btn">Reserve Your Spot</a>
-                    </div>
-                    <div class="mobile-coaching-subtitle">
-                        <p>Group coaching sessions across Sydney</p>
-                    </div>
-                    <div class="mobile-coaching-description">
-                        <p>At our coaching days, we cover all parts of riding dirt bikes on a motocross track, including body position, controls, braking, cornering (ruts and berms) and jumps. Bring lunch, plenty of drink and fuel for the bikes. It's a full-on day not to be missed!</p>
-                        <p>Depending on riders entered, we split the riders into groups and have 1 coach per group, so bike sizes/rider capabilities are riding together. Coaching days cater for all levels and bike sizes.</p>
-                    </div>
-                    <div class="mobile-coaching-credentials">
-                        <div class="mobile-credential-badge">
-                            <div class="mobile-badge-text">
-                                <span class="mobile-badge-title">NZ Veteran</span>
-                                <span class="mobile-badge-desc">Champion</span>
-                            </div>
-                        </div>
-                        <div class="mobile-credential-badge">
-                            <div class="mobile-badge-text">
-                                <span class="mobile-badge-title">13 Years</span>
-                                <span class="mobile-badge-desc">MX Nationals</span>
-                            </div>
-                        </div>
-                        <div class="mobile-credential-badge">
-                            <div class="mobile-badge-text">
-                                <span class="mobile-badge-title">30+ Years</span>
-                                <span class="mobile-badge-desc">Racing Experience</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+
 
         <!-- How It Works Section -->
         <section class="how-it-works-section">
             <div class="works-container">
-                <div class="works-images-side">
-                    <div class="works-image-grid">
-                        <div class="works-image">
-                            <img src="../images/coaching 3.jpg" alt="Professional Instruction">
-                            <div class="works-overlay">
-                                <h4>Expert Instruction</h4>
-                                <p>Level 2 MA accredited coaching</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
                 <div class="works-content-side">
                     <h2>Expert Instruction</h2>
                     <div class="works-process">
                         <div class="process-step">
-                            <div class="step-number"></div>
                             <div class="step-content">
-                                <h4>Regular Weekly Sessions</h4>
-                                <p>We run consistent weekly coaching at multiple venues: Penrith Mini Bike Club (Mondays & Wednesdays 4-6:30pm), Dargle (Thursday evenings 4-6:30pm), and Saturdays at Appin all day. Both small group sessions and private coaching available.</p>
+                                <h4>Regular Weekly After School Program</h4>
+                                <p>We run consistent weekly coaching at multiple venues: Penrith Mini Bike Club (Mondays & Wednesdays 4-6:30pm), Dargle (Thursday evenings 4-6:30pm), and Saturdays at Appin all day. Both small group sessions and private coaching available. Maximum of 12 riders per session.</p>
                             </div>
                         </div>
                         <div class="process-step">
-                            <div class="step-number"></div>
                             <div class="step-content">
                                 <h4>Small Group Coaching at Appin</h4>
-                                <p>Specialized sessions for riders of similar bike size and ability on our Fast 50 track. Currently catering to 50cc-125cc bikes with 2-hour sessions (9:00-11:00am or 11:30-1:30pm) for $140 per rider. Track entry included, plus all-day access to public tracks.</p>
+                                <p>Specialized sessions for riders of similar bike size and ability on our Fast 50 track. Currently catering to 50cc-125cc bikes with 2-hour sessions (9:00-11:00am or 11:30-1:30pm). Maximum of 6 riders per session. Track entry included, plus all-day access to public tracks.</p>
                             </div>
                         </div>
                         <div class="process-step">
-                            <div class="step-number"></div>
                             <div class="step-content">
                                 <h4>Comprehensive Support</h4>
-                                <p>We provide Motorcycling NSW Kickstarts and Endorsements, offer 1:1 training sessions, and can supply training bikes and helmets when needed. Flexible booking with Afterpay available for all coaching programs.</p>
+                                <p>We provide Motorcycling NSW Kickstarts and Endorsements, offer 1:1 training sessions, and can supply training bikes and helmets when needed. All coaching is done under Motorcycling New South Wales permits, which covers riders and spectators under the insurance policy. Flexible booking with Afterpay available for all coaching programs.</p>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="works-cta-section">
+                        <a class="coaching-btn-primary" href="../calendar.html">Reserve your spot</a>
                     </div>
                 </div>
             </div>
@@ -289,6 +197,51 @@
             </div>
         </div>
     </footer>
+
+    <script>
+        (function setHeaderVar(){
+            function apply() {
+                const h = document.querySelector('.main-header')?.offsetHeight || 0;
+                document.documentElement.style.setProperty('--header-h', h + 'px');
+            }
+            window.addEventListener('load', apply);
+            window.addEventListener('resize', apply);
+        })();
+
+        // Scroll to section function for coaching scroll indicator
+        function scrollToSection(selector) {
+            const targetSection = document.querySelector(selector);
+            if (targetSection) {
+                const navbar = document.querySelector('.navbar');
+                const navbarHeight = navbar ? navbar.offsetHeight : 0;
+                const extraOffset = -20; // Negative offset to scroll slightly past the target
+                
+                const targetPosition = targetSection.getBoundingClientRect().top + window.pageYOffset - navbarHeight - extraOffset;
+                
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }
+    </script>
+
+    <script>
+        (function () {
+            if (!('IntersectionObserver' in window)) return;
+            const pairs = [...document.querySelectorAll('.belt')].map(belt => ({
+                belt, track: belt.querySelector('.belt__track')
+            }));
+            const io = new IntersectionObserver((entries) => {
+                entries.forEach(e => {
+                    const track = e.target.querySelector('.belt__track');
+                    if (!track) return;
+                    track.style.animationPlayState = e.isIntersecting ? 'running' : 'paused';
+                });
+            }, { threshold: 0.05 });
+            pairs.forEach(({ belt }) => io.observe(belt));
+        })();
+    </script>
 
     <script src="../scripts/main.js"></script>
     <script src="../scripts/analytics.js"></script>

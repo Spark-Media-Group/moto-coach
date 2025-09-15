@@ -72,7 +72,7 @@ export default async function handler(req, res) {
     // Map subject values to readable text
     const subjectMap = {
       'professional-coaching': 'Professional Coaching',
-      'us-travel-program': 'US Travel & Training Program',
+      'us-travel-program': 'US Training Camp',
       'certification': 'Coach Certification',
       'general': 'General Inquiry',
       'other': 'Other'

@@ -43,7 +43,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
                         </p>
                         
                         <p style="color: #333; font-size: 16px; line-height: 1.6;">
-                            Thank you for applying to the <strong>US Travel & Training Program</strong> at ClubMX! 
+                            Thank you for applying to the <strong>US Training Camp</strong> at ClubMX! 
                             We have successfully received your application.
                         </p>
                         

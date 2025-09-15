@@ -16,6 +16,18 @@ class MotoCoachCalendar {
         this.init();
     }
 
+    // Throttle function to prevent excessive resize handling
+    throttle(fn, wait = 150) {
+        let lastTime = 0;
+        return (...args) => {
+            const now = Date.now();
+            if (now - lastTime >= wait) {
+                lastTime = now;
+                fn(...args);
+            }
+        };
+    }
+
     async init() {
         this.checkViewMode();
         this.bindEvents();
@@ -31,8 +43,8 @@ class MotoCoachCalendar {
         await this.populateEventsIntoCalendar();
         this.updateEventPanel();
         
-        // Add resize listener to switch between desktop/mobile views and recalculate pagination
-        window.addEventListener('resize', async () => {
+        // Add throttled resize listener to switch between desktop/mobile views and recalculate pagination
+        window.addEventListener('resize', this.throttle(async () => {
             this.checkViewMode();
             // Render empty calendar first for instant visual feedback
             await this.renderEmptyCalendar();
@@ -49,7 +61,7 @@ class MotoCoachCalendar {
                 this.currentEventPage = 1; // Reset to first page
                 this.updateEventPanel();
             }
-        });
+        }, 150));
     }
 
     checkViewMode() {
@@ -186,36 +198,80 @@ class MotoCoachCalendar {
             return;
         }
         
-        console.log(`Fetching registration counts for ${eventsToCheck.size} unique events...`);
+        console.log(`Batch fetching registration counts for ${eventsToCheck.size} unique events...`);
         
-        // Batch fetch all registration counts in parallel
-        const registrationCountPromises = Array.from(eventsToCheck.values()).map(eventInfo => 
-            this.getRegistrationCount(eventInfo.title, eventInfo.dateStr)
-                .then(count => ({
-                    key: `${eventInfo.title}_${eventInfo.dateStr}`,
-                    count: count,
-                    remainingSpots: eventInfo.maxSpots - count
-                }))
-                .catch(error => {
-                    console.error('Error getting registration count:', error);
-                    return {
+        try {
+            // Prepare batch request data
+            const items = Array.from(eventsToCheck.values()).map(eventInfo => ({
+                name: eventInfo.title,
+                date: eventInfo.dateStr
+            }));
+
+            // Make single batch request
+            const response = await fetch('/api/calendar?mode=batchCounts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ items })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Batch API error: ${response.status}`);
+            }
+
+            const { counts } = await response.json();
+
+            // Store results in global cache
+            this.globalRegistrationCache.clear();
+            for (const { title, dateStr, maxSpots } of eventsToCheck.values()) {
+                const key = `${title}_${dateStr}`;
+                const lookupKey = `${title.trim().toLowerCase()}__${dateStr}`;
+                const count = counts[lookupKey] || 0;
+                const remainingSpots = Math.max(0, maxSpots - count);
+                
+                this.globalRegistrationCache.set(key, {
+                    key,
+                    count,
+                    remainingSpots
+                });
+            }
+
+            this.cacheLastUpdated = new Date();
+            console.log(`Global registration cache built with ${this.globalRegistrationCache.size} entries using batch request`);
+
+        } catch (error) {
+            console.error('Error building batch registration cache, falling back to individual requests:', error);
+            
+            // Fallback to individual requests if batch fails
+            const registrationCountPromises = Array.from(eventsToCheck.values()).map(eventInfo => 
+                this.getRegistrationCount(eventInfo.title, eventInfo.dateStr)
+                    .then(count => ({
                         key: `${eventInfo.title}_${eventInfo.dateStr}`,
-                        count: 0,
-                        remainingSpots: eventInfo.maxSpots // Fallback
-                    };
-                })
-        );
-        
-        const registrationResults = await Promise.all(registrationCountPromises);
-        
-        // Store results in global cache
-        this.globalRegistrationCache.clear();
-        registrationResults.forEach(result => {
-            this.globalRegistrationCache.set(result.key, result);
-        });
-        
-        this.cacheLastUpdated = new Date();
-        console.log(`Global registration cache built with ${this.globalRegistrationCache.size} entries`);
+                        count: count,
+                        remainingSpots: Math.max(0, eventInfo.maxSpots - count)
+                    }))
+                    .catch(error => {
+                        console.error('Error getting registration count:', error);
+                        return {
+                            key: `${eventInfo.title}_${eventInfo.dateStr}`,
+                            count: 0,
+                            remainingSpots: eventInfo.maxSpots // Fallback
+                        };
+                    })
+            );
+            
+            const registrationResults = await Promise.all(registrationCountPromises);
+            
+            // Store results in global cache
+            this.globalRegistrationCache.clear();
+            registrationResults.forEach(result => {
+                this.globalRegistrationCache.set(result.key, result);
+            });
+            
+            this.cacheLastUpdated = new Date();
+            console.log(`Global registration cache built with ${this.globalRegistrationCache.size} entries using fallback method`);
+        }
     }
 
     convertGoogleEvents(googleEvents) {
@@ -456,115 +512,6 @@ class MotoCoachCalendar {
                             if (cachedResult) {
                                 isEventFull = cachedResult.remainingSpots <= 0;
                             }
-                        }
-                        
-                        if (isEventFull) {
-                            // Show "EVENT FULL" for full events - no click handler
-                            const eventTitle = event.title.length > 15 
-                                ? event.title.substring(0, 15) + '...' 
-                                : event.title;
-                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                            
-                            eventPreview.innerHTML = `
-                                <div class="event-title-small">${eventTitle}</div>
-                                <div class="event-time-small">${eventTime}</div>
-                                <div class="event-full-indicator">EVENT FULL</div>
-                            `;
-                            eventPreview.classList.add('event-full');
-                        } else {
-                            // Show normal event details with click handler for available events
-                            const maxTitleLength = 15;
-                            const eventTitle = event.title.length > maxTitleLength 
-                                ? event.title.substring(0, maxTitleLength) + '...' 
-                                : event.title;
-                            
-                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                            
-                            let eventContent = `
-                                <div class="event-title-small">${eventTitle}</div>
-                                <div class="event-time-small">${eventTime}</div>
-                            `;
-                            
-                            // Show location on desktop
-                            if (event.location) {
-                                const eventLocation = event.location.length > 20 
-                                    ? event.location.substring(0, 20) + '...' 
-                                    : event.location;
-                                eventContent += `<div class="event-location-small">📍 ${eventLocation}</div>`;
-                            }
-                            
-                            eventPreview.innerHTML = eventContent;
-                            
-                            // Add click handler only for available events
-                            if (!this.isEventPast(event)) {
-                                eventPreview.style.cursor = 'pointer';
-                                eventPreview.classList.add('clickable-event');
-                                
-                                // Create unique event ID for scrolling
-                                const eventId = this.generateEventId(event);
-                                eventPreview.addEventListener('click', () => {
-                                    this.scrollToEventInUpcomingList(eventId);
-                                });
-                            }
-                        }
-                        
-                        eventsContainer.appendChild(eventPreview);
-                    }
-                    
-                    // If more events, show "and X more"
-                    if (dayEvents.length > 3) {
-                        const moreEvents = document.createElement('div');
-                        moreEvents.className = 'more-events';
-                        moreEvents.textContent = `+${dayEvents.length - 3} more`;
-                        eventsContainer.appendChild(moreEvents);
-                    }
-                    
-                    dayElement.appendChild(eventsContainer);
-                }
-            }
-        }
-    }
-
-    async populateEventsForDay(dayElement, currentDay) {
-        const dayEvents = this.getEventsForDate(currentDay);
-        
-        if (dayEvents.length > 0) {
-            dayElement.classList.add('has-events');
-            
-            // Check if ALL events on this day are past
-            const allEventsPast = dayEvents.every(event => this.isEventPast(event));
-            if (allEventsPast) {
-                dayElement.classList.add('past-event');
-            }
-            
-            if (this.isMobileView) {
-                // Mobile: Show just the number of events
-                const existingEventCount = dayElement.querySelector('.event-count');
-                if (!existingEventCount) {
-                    const eventCount = document.createElement('div');
-                    eventCount.className = 'event-count';
-                    eventCount.textContent = dayEvents.length;
-                    dayElement.appendChild(eventCount);
-                }
-            } else {
-                // Desktop: Show event previews
-                const existingEventsContainer = dayElement.querySelector('.day-events');
-                if (!existingEventsContainer) {
-                    const eventsContainer = document.createElement('div');
-                    eventsContainer.className = 'day-events';
-                    
-                    // Show up to 3 events in the day box
-                    for (const event of dayEvents.slice(0, 3)) {
-                        const eventPreview = document.createElement('div');
-                        eventPreview.className = `event-preview event-${event.type}`;
-                        
-                        // Check if event is full
-                        let isEventFull = false;
-                        if (event.maxSpots && event.maxSpots > 0) {
-                            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
-                            const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
-                            const remainingSpots = event.maxSpots - registrationCount;
-                            isEventFull = remainingSpots <= 0;
                         }
                         
                         if (isEventFull) {
@@ -1414,8 +1361,17 @@ class MotoCoachCalendar {
             
             if (event.maxSpots !== null) {
                 try {
-                    const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
-                    remainingSpots = event.maxSpots - registrationCount;
+                    // Use global registration cache instead of individual API call
+                    const cacheKey = `${event.title}_${eventDateStr}`;
+                    const cached = this.globalRegistrationCache.get(cacheKey);
+                    
+                    if (cached) {
+                        remainingSpots = cached.remainingSpots;
+                    } else {
+                        // Fallback to individual API call if not in cache
+                        const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
+                        remainingSpots = event.maxSpots - registrationCount;
+                    }
                     
                     if (remainingSpots > 0) {
                         const lowSpotsClass = remainingSpots < 5 ? ' low' : '';

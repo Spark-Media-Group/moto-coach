@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Australia Outback & Experience - Adventure Motorcycle Tours | Moto Coach</title>
+    <title>Aussie Moto Vacations - Adventure Motorcycle Tours | Moto Coach</title>
     <meta name="description" content="Epic motorcycle adventures through Australia's outback. Guided tours, scenic routes, and unforgettable experiences across the Australian landscape with Moto Coach Sydney's expert guides.">
     <meta name="keywords" content="Australia motorcycle tours, outback adventure, motorcycle travel program, guided tours Australia, adventure riding, scenic motorcycle routes, Australian outback tours, motorcycle experiences Sydney">
     <meta name="author" content="Moto Coach">
     <link rel="canonical" href="https://motocoach.com.au/programs/australia_travel_program.html">
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="../images/tall logo black.png">
+    
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://motocoach.com.au/programs/australia_travel_program.html">
-    <meta property="og:title" content="Australia Outback & Experience - Adventure Motorcycle Tours">
+    <meta property="og:title" content="Aussie Moto Vacations - Adventure Motorcycle Tours">
     <meta property="og:description" content="Epic motorcycle adventures through Australia's outback. Guided tours, scenic routes, and unforgettable experiences with expert guides.">
     <meta property="og:image" content="https://motocoach.com.au/images/long logo.png">
     <meta property="og:site_name" content="Moto Coach">
@@ -21,7 +24,7 @@
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://motocoach.com.au/programs/australia_travel_program.html">
-    <meta property="twitter:title" content="Australia Outback & Experience - Adventure Motorcycle Tours">
+    <meta property="twitter:title" content="Aussie Moto Vacations - Adventure Motorcycle Tours">
     <meta property="twitter:description" content="Epic motorcycle adventures through Australia's outback. Guided tours and unforgettable experiences.">
     <meta property="twitter:image" content="https://motocoach.com.au/images/long logo.png">
     
@@ -29,6 +32,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/main.css">
+    <link rel="stylesheet" href="../styles/australia.css">
 </head>
 <body>
     <!-- Header -->
@@ -46,8 +50,8 @@
                         <span class="dropdown-toggle">Programs</span>
                         <ul class="dropdown-menu">
                             <li><a href="professional_coaching.html">Professional Coaching</a></li>
-                            <li><a href="us_travel_program.html">US Travel & Training Program</a></li>
-                            <!-- <li><a href="australia_travel_program.html">Australia Outback & Experience</a></li> -->
+                            <li><a href="us_travel_program.html">US Training Camp</a></li>
+                            <li><a href="australia_travel_program.html">Aussie Moto Vacations</a></li>
                         </ul>
                     </li>
                     <li><a href="../index.html#about">About</a></li>
@@ -77,7 +81,54 @@
     </header>
 
     <main>
-        <!-- Page content will go here -->
+        <!-- Hero Section -->
+        <section class="aussie-hero-section">
+            <div class="aussie-slideshow">
+                <div class="aussie-slide active">
+                    <img src="../images/pexels-pixabay-258118.jpg" alt="Australian Landscape">
+                </div>
+                <div class="aussie-slide">
+                    <img src="../images/pexels-rachel-claire-7263772.jpg" alt="Australian Adventure">
+                </div>
+                <div class="aussie-slide">
+                    <img src="../images/pexels-luis-la-79784941-8858270.jpg" alt="Australian Terrain">
+                </div>
+                <div class="aussie-slide">
+                    <img src="../images/pexels-catchavibe-1555453.jpg" alt="Australian Motorcycle Adventure">
+                </div>
+            </div>
+            
+            <div class="aussie-hero-overlay"></div>
+            
+            <div class="container">
+                <div class="aussie-hero-content">
+                    <div class="aussie-title-section">
+                        <h1 class="aussie-main-title">Aussie Moto Vacations</h1>
+                        <p class="aussie-subtitle">Discover the raw beauty of Australia's most spectacular landscapes on two wheels</p>
+                    </div>
+                    
+                    <div class="aussie-cta-section">
+                        <a href="#pricing-details" class="aussie-btn-primary">Pricing & Details</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Scroll indicator -->
+            <div class="aussie-scroll-indicator">
+                <div class="aussie-scroll-mouse">
+                    <div class="aussie-scroll-wheel"></div>
+                </div>
+                <span>Scroll to explore</span>
+            </div>
+        </section>
+
+        <!-- Content sections will go here -->
+        <section id="pricing-details" class="aussie-content-section">
+            <div class="container">
+                <h2>Coming Soon</h2>
+                <p>Epic Australian motorcycle adventures are in development. Stay tuned for incredible outback experiences.</p>
+            </div>
+        </section>
     </main>
 
     <footer>
@@ -100,5 +151,42 @@
 
     <script src="../scripts/main.js"></script>
     <script src="../scripts/analytics.js"></script>
+    <script>
+        // Australia slideshow functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const slides = document.querySelectorAll('.aussie-slide');
+            let currentSlide = 0;
+            
+            function showNextSlide() {
+                // Remove active class from current slide
+                slides[currentSlide].classList.remove('active');
+                
+                // Move to next slide (loop back to 0 if at end)
+                currentSlide = (currentSlide + 1) % slides.length;
+                
+                // Add active class to new slide
+                slides[currentSlide].classList.add('active');
+            }
+            
+            // Change slide every 4 seconds
+            setInterval(showNextSlide, 4000);
+            
+            // Smooth scroll for pricing button
+            const pricingBtn = document.querySelector('.aussie-btn-primary');
+            if (pricingBtn) {
+                pricingBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>

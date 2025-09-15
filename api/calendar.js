@@ -15,6 +15,10 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
         return handleGetEvents(req, res);
     } else if (req.method === 'POST') {
+        // Check if this is a batch counts request
+        if (req.query.mode === 'batchCounts') {
+            return handleBatchRegistrationCounts(req, res);
+        }
         return handleGetRegistrationCount(req, res);
     } else {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -25,6 +29,9 @@ export default async function handler(req, res) {
 async function handleGetEvents(req, res) {
     try {
         const { mode, eventName, eventDate, timeMin, timeMax, maxResults = 50 } = req.query;
+
+        // Add cache control headers for performance
+        res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=300');
 
         // Handle single event validation request
         if (mode === 'single' && eventName && eventDate) {
@@ -50,35 +57,27 @@ async function handleGetEvents(req, res) {
             });
         }
 
-        // Build Google Calendar API URL
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
-            `key=${apiKey}&` +
-            `timeMin=${encodeURIComponent(timeMin)}&` +
-            `timeMax=${encodeURIComponent(timeMax)}&` +
-            `maxResults=${maxResults}&` +
-            `singleEvents=true&` +
-            `orderBy=startTime`;
+        // Use the new listEvents helper to get all events with pagination
+        const { items, error, status } = await listEvents({ 
+            timeMin, 
+            timeMax, 
+            apiKey, 
+            calendarId 
+        });
 
-        // Fetch events from Google Calendar
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            console.error(`Google Calendar API error: ${response.status} ${response.statusText}`);
-            
-            // Return fallback response
-            return res.status(response.status).json({
-                error: `Google Calendar API error: ${response.status}`,
+        if (error) {
+            console.error(`Google Calendar API error: ${status}`);
+            return res.status(status).json({
+                error: `Google Calendar API error: ${status}`,
                 fallback: true
             });
         }
 
-        const data = await response.json();
-
         // Return the events data
         res.status(200).json({
             success: true,
-            events: data.items || [],
-            total: data.items?.length || 0
+            events: items || [],
+            total: items?.length || 0
         });
 
     } catch (error) {
@@ -89,6 +88,29 @@ async function handleGetEvents(req, res) {
             fallback: true
         });
     }
+}
+
+// Helper function to fetch all calendar events with pagination and field optimization
+async function listEvents({ timeMin, timeMax, apiKey, calendarId }) {
+    let pageToken;
+    let items = [];
+    const base = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+    const fields = 'items(summary,description,location,start,end),nextPageToken';
+    
+    do {
+        const url = `${base}?key=${apiKey}&timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250&fields=${fields}${pageToken ? `&pageToken=${pageToken}` : ''}`;
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+            return { error: true, status: response.status };
+        }
+        
+        const data = await response.json();
+        items = items.concat(data.items || []);
+        pageToken = data.nextPageToken;
+    } while (pageToken);
+    
+    return { items };
 }
 
 // Handle single event validation for track reservation
@@ -110,62 +132,40 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
         console.log('Using calendar ID:', calendarId.substring(0, 10) + '...');
 
-        // Get calendar events for a reasonable time range to find the specific event
-        const now = new Date();
-        const sixMonthsFromNow = new Date();
-        sixMonthsFromNow.setMonth(now.getMonth() + 6);
+        // Parse eventDate (d/m/yyyy) to build exact day range
+        const [day, month, year] = eventDate.split('/').map(Number);
+        const startOfDay = new Date(year, month - 1, day, 0, 0, 0);
+        const endOfDay = new Date(year, month - 1, day + 1, 0, 0, 0);
 
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
-            `key=${apiKey}&` +
-            `timeMin=${now.toISOString()}&` +
-            `timeMax=${sixMonthsFromNow.toISOString()}&` +
-            `maxResults=250&` +
-            `singleEvents=true&` +
-            `orderBy=startTime`;
+        // Use the new listEvents helper to query the exact day with pagination
+        const { items, error, status } = await listEvents({
+            timeMin: startOfDay.toISOString(),
+            timeMax: endOfDay.toISOString(),
+            apiKey,
+            calendarId
+        });
 
-        const response = await fetch(url);
-        
-        console.log(`Google Calendar API response: ${response.status} ${response.statusText}`);
-        
-        if (!response.ok) {
-            console.error(`Google Calendar API error: ${response.status} ${response.statusText}`);
-            const errorText = await response.text();
-            console.error('Error details:', errorText);
-            return res.status(response.status).json({
+        if (error) {
+            console.error(`Google Calendar API error: ${status}`);
+            return res.status(status).json({
                 success: false,
-                error: `Google Calendar API error: ${response.status} - ${response.statusText}`
+                error: `Google Calendar API error: ${status}`
             });
         }
 
-        const data = await response.json();
-        const events = data.items || [];
+        const events = items || [];
 
-        // Find the specific event
+        // Find the specific event with strict title match
         const foundEvent = events.find(event => {
             if (!event.summary || !event.start?.dateTime) return false;
-            
-            const eventTitle = event.summary.trim();
-            // Use the calendar date exactly as it appears, no timezone conversion
-            const eventStartDate = new Date(event.start.dateTime);
-            const eventDateString = `${eventStartDate.getDate()}/${eventStartDate.getMonth() + 1}/${eventStartDate.getFullYear()}`;
-            
-            console.log(`Comparing: "${eventTitle}" vs "${eventName.trim()}" and "${eventDateString}" vs "${eventDate.trim()}"`);
-            console.log(`Title match: ${eventTitle === eventName.trim()}`);
-            console.log(`Date match: ${eventDateString === eventDate.trim()}`);
-            console.log(`Event raw date: ${event.start.dateTime}, parsed: ${eventStartDate}, formatted: ${eventDateString}`);
-            
-            return eventTitle === eventName.trim() && eventDateString === eventDate.trim();
+            return event.summary.trim() === eventName.trim();
         });
 
-        console.log(`Found ${events.length} calendar events, looking for: "${eventName}" on "${eventDate}"`);
+        console.log(`Found ${events.length} calendar events on ${eventDate}, looking for: "${eventName}"`);
         if (!foundEvent) {
-            console.log('Available events:', events.map(e => ({
+            console.log('Available events on this date:', events.map(e => ({
                 title: e.summary,
-                date: e.start?.dateTime ? new Date(e.start.dateTime).toLocaleDateString('en-AU', {
-                    day: '2-digit',
-                    month: '2-digit', 
-                    year: 'numeric'
-                }) : 'No date'
+                time: e.start?.dateTime
             })));
         }
 
@@ -270,6 +270,98 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
     }
 }
 
+// Handle batch registration counts
+async function handleBatchRegistrationCounts(req, res) {
+    try {
+        const { items } = req.body; // [{name, date}] with date "d/m/yyyy"
+        
+        if (!Array.isArray(items) || !items.length) {
+            return res.status(400).json({ error: 'items array required' });
+        }
+
+        // Validate required environment variables for Google Sheets
+        const requiredEnvVars = [
+            'GOOGLE_SHEETS_ID',
+            'GOOGLE_PROJECT_ID', 
+            'GOOGLE_CLIENT_EMAIL',
+            'GOOGLE_PRIVATE_KEY',
+            'GOOGLE_CLIENT_ID'
+        ];
+
+        for (const envVar of requiredEnvVars) {
+            if (!process.env[envVar]) {
+                return res.status(500).json({ error: `Missing required environment variable: ${envVar}` });
+            }
+        }
+
+        // Get the Google Sheets credentials from environment variables
+        const credentials = {
+            type: 'service_account',
+            project_id: process.env.GOOGLE_PROJECT_ID,
+            private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
+            private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+            client_email: process.env.GOOGLE_CLIENT_EMAIL,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+            token_uri: 'https://oauth2.googleapis.com/token',
+            auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+            client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/moto-coach-sheet%40moto-coach-test.iam.gserviceaccount.com`,
+            universe_domain: 'googleapis.com'
+        };
+
+        // Initialize Google Sheets API
+        const auth = new google.auth.GoogleAuth({
+            credentials,
+            scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+        });
+
+        const sheets = google.sheets({ version: 'v4', auth });
+
+        // Read the sheet once for all events
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: process.env.GOOGLE_SHEETS_ID,
+            range: 'Event Registrations!A3:C',
+        });
+
+        const rows = response.data.values || [];
+
+        // Create key function for consistent matching
+        const createKey = (name, date) => `${name.trim().toLowerCase()}__${date.trim()}`;
+
+        // Initialize counts map for all requested items
+        const counts = {};
+        for (const { name, date } of items) {
+            counts[createKey(name, date)] = 0;
+        }
+
+        // Count registrations for each requested event
+        for (const row of rows) {
+            if (row.length >= 3) {
+                const sheetEventName = (row[1] || '').trim().toLowerCase();
+                const sheetEventDate = (row[2] || '').trim();
+                const key = `${sheetEventName}__${sheetEventDate}`;
+                
+                if (key in counts) {
+                    counts[key] += 1;
+                }
+            }
+        }
+
+        console.log(`Batch registration count: processed ${items.length} events from ${rows.length} sheet rows`);
+
+        return res.status(200).json({
+            success: true,
+            counts: counts
+        });
+
+    } catch (error) {
+        console.error('Error getting batch registration counts:', error);
+        return res.status(500).json({
+            error: 'Failed to get batch registration counts'
+        });
+    }
+}
+
 // Handle POST requests for registration count
 async function handleGetRegistrationCount(req, res) {
     try {
@@ -328,13 +420,16 @@ async function handleGetRegistrationCount(req, res) {
 
         const rows = response.data.values || [];
         
-        console.log(`=== DEBUG: Google Sheets Registration Count ===`);
-        console.log(`Looking for: "${eventName}" on "${eventDate}"`);
-        console.log(`Found ${rows.length} rows in sheet`);
-        console.log('Sheet data:');
-        rows.forEach((row, index) => {
-            console.log(`Row ${index + 3}: [${row[0] || 'empty'}, "${row[1] || 'empty'}", "${row[2] || 'empty'}"]`);
-        });
+        // Only show debug logging in development
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`=== DEBUG: Google Sheets Registration Count ===`);
+            console.log(`Looking for: "${eventName}" on "${eventDate}"`);
+            console.log(`Found ${rows.length} rows in sheet`);
+            console.log('Sheet data:');
+            rows.forEach((row, index) => {
+                console.log(`Row ${index + 3}: [${row[0] || 'empty'}, "${row[1] || 'empty'}", "${row[2] || 'empty'}"]`);
+            });
+        }
         
         // Count matching registrations (eventName in column B, eventDate in column C)
         const registrationCount = rows.filter(row => {
@@ -344,13 +439,17 @@ async function handleGetRegistrationCount(req, res) {
             const nameMatch = sheetEventName.trim() === eventName.trim();
             const dateMatch = sheetEventDate.trim() === eventDate.trim();
             
-            console.log(`Comparing row: "${sheetEventName}" vs "${eventName}" (name: ${nameMatch}) and "${sheetEventDate}" vs "${eventDate}" (date: ${dateMatch})`);
+            if (process.env.NODE_ENV !== 'production') {
+                console.log(`Comparing row: "${sheetEventName}" vs "${eventName}" (name: ${nameMatch}) and "${sheetEventDate}" vs "${eventDate}" (date: ${dateMatch})`);
+            }
             
             return nameMatch && dateMatch;
         }).length;
 
-        console.log(`Final registration count: ${registrationCount}`);
-        console.log(`=== END DEBUG ===`);
+        if (process.env.NODE_ENV !== 'production') {
+            console.log(`Final registration count: ${registrationCount}`);
+            console.log(`=== END DEBUG ===`);
+        }
 
         res.status(200).json({
             success: true,
