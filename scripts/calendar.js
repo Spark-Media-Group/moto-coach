@@ -878,14 +878,9 @@ class MotoCoachCalendar {
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
                             // Create safe DOM elements
-                            const titleDiv = createElementWithText('div', eventTitle);
-                            titleDiv.className = 'event-title-small';
-                            
-                            const timeDiv = createElementWithText('div', eventTime);
-                            timeDiv.className = 'event-time-small';
-                            
-                            const fullDiv = createElementWithText('div', 'EVENT FULL');
-                            fullDiv.className = 'event-full-indicator';
+                            const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
+                            const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
+                            const fullDiv = this.createElementWithText('div', 'event-full-indicator', 'EVENT FULL');
                             
                             eventPreview.appendChild(titleDiv);
                             eventPreview.appendChild(timeDiv);
@@ -902,11 +897,8 @@ class MotoCoachCalendar {
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
                             // Create safe DOM elements
-                            const titleDiv = createElementWithText('div', eventTitle);
-                            titleDiv.className = 'event-title-small';
-                            
-                            const timeDiv = createElementWithText('div', eventTime);
-                            timeDiv.className = 'event-time-small';
+                            const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
+                            const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
                             
                             eventPreview.appendChild(titleDiv);
                             eventPreview.appendChild(timeDiv);
@@ -916,8 +908,7 @@ class MotoCoachCalendar {
                                 const eventLocation = event.location.length > 20 
                                     ? event.location.substring(0, 20) + '...' 
                                     : event.location;
-                                const locationDiv = createElementWithText('div', `📍 ${eventLocation}`);
-                                locationDiv.className = 'event-location-small';
+                                const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
                                 eventPreview.appendChild(locationDiv);
                             }
                             
@@ -1084,9 +1075,8 @@ class MotoCoachCalendar {
             const header = document.createElement('div');
             header.className = 'selection-header';
             
-            const title = createElementWithText('h4', `${selectionCount} Event${selectionCount !== 1 ? 's' : ''} Selected`);
-            const total = createElementWithText('span', `$${totalCost.toFixed(2)} AUD`);
-            total.className = 'selection-total';
+            const title = this.createElementWithText('h4', null, `${selectionCount} Event${selectionCount !== 1 ? 's' : ''} Selected`);
+            const total = this.createElementWithText('span', 'selection-total', `$${totalCost.toFixed(2)} AUD`);
             
             header.appendChild(title);
             header.appendChild(total);
@@ -1103,12 +1093,10 @@ class MotoCoachCalendar {
             const actionsDiv = document.createElement('div');
             actionsDiv.className = 'selection-actions';
             
-            const clearBtn = createElementWithText('button', 'Clear All');
-            clearBtn.className = 'btn-clear-selection';
+            const clearBtn = this.createElementWithText('button', 'btn-clear-selection', 'Clear All');
             clearBtn.addEventListener('click', () => this.clearSelection());
             
-            const registerBtn = createElementWithText('button', 'Register for Selected Events');
-            registerBtn.className = 'btn-register-selected';
+            const registerBtn = this.createElementWithText('button', 'btn-register-selected', 'Register for Selected Events');
             registerBtn.addEventListener('click', () => this.proceedToRegistration());
             
             actionsDiv.appendChild(clearBtn);
@@ -1245,8 +1233,7 @@ class MotoCoachCalendar {
 
         if (allUpcomingEvents.length === 0) {
             eventList.innerHTML = '';
-            const noEventsP = createElementWithText('p', 'No available events scheduled');
-            noEventsP.className = 'no-events';
+            const noEventsP = this.createElementWithText('p', 'no-events', 'No available events scheduled');
             eventList.appendChild(noEventsP);
             return;
         }
@@ -1257,7 +1244,7 @@ class MotoCoachCalendar {
         const eventsHeader = document.createElement('div');
         eventsHeader.className = 'events-header';
         
-        const ratesP = createElementWithText('p', 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
+        const ratesP = this.createElementWithText('p', null, 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
         ratesP.style.color = '#ccc';
         ratesP.style.fontSize = '0.9rem';
         ratesP.style.marginBottom = '0.5rem';
@@ -1265,8 +1252,7 @@ class MotoCoachCalendar {
         
         eventsHeader.appendChild(ratesP);
         
-        const loadingP = createElementWithText('p', 'Loading event details...');
-        loadingP.className = 'loading-events';
+        const loadingP = this.createElementWithText('p', 'loading-events', 'Loading event details...');
         
         eventList.appendChild(eventsHeader);
         eventList.appendChild(loadingP);
@@ -1292,8 +1278,7 @@ class MotoCoachCalendar {
 
             if (availableEvents.length === 0) {
                 eventList.innerHTML = '';
-                const noEventsP = createElementWithText('p', 'No available events scheduled');
-                noEventsP.className = 'no-events';
+                const noEventsP = this.createElementWithText('p', 'no-events', 'No available events scheduled');
                 eventList.appendChild(noEventsP);
                 return;
             }
@@ -1308,7 +1293,7 @@ class MotoCoachCalendar {
             const eventsHeader = document.createElement('div');
             eventsHeader.className = 'events-header';
             
-            const ratesP = createElementWithText('p', 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
+            const ratesP = this.createElementWithText('p', null, 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
             ratesP.style.color = '#ccc';
             ratesP.style.fontSize = '0.9rem';
             ratesP.style.marginBottom = '0.5rem';
