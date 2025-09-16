@@ -12,7 +12,7 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' cdn.jsdelivr.net;
+                   script-src 'self' 'unsafe-inline' cdn.jsdelivr.net https://vercel.live;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
                    font-src fonts.gstatic.com;
                    img-src 'self' data:;
@@ -100,7 +100,13 @@
                         <div class="event-panel" id="eventPanel">
                             <h3>Upcoming Events</h3>
                             <div class="event-list" id="eventList">
-                                <p class="no-events">Loading upcoming events...</p>
+                                <div class="events-header">
+                                    <p>Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)</p>
+                                </div>
+                                <div class="event-loading-state" role="status">
+                                    <div class="calendar-loading-spinner" aria-hidden="true"></div>
+                                    <p class="loading-events" aria-live="polite">Loading upcoming events...</p>
+                                </div>
                             </div>
                         </div>
                         
