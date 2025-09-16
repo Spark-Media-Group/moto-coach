@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 import { Resend } from 'resend';
+import { applyCors } from './_utils/cors';
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -265,13 +266,12 @@ async function checkEventAvailability(formData, riderCount) {
 }
 
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'POST', 'OPTIONS'],
+        headers: ['Content-Type']
+    });
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
 
