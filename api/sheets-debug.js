@@ -1,5 +1,6 @@
 // Debug endpoint to see Google Sheets data
 const { google } = require('googleapis');
+import { applyCors } from './_utils/cors';
 
 const isSheetsDebugEnabled = () => process.env.SHEETS_DEBUG_ENABLED === 'true';
 
@@ -59,8 +60,7 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
 

@@ -1,14 +1,14 @@
 // Dedicated API endpoint for validating single events
 const { google } = require('googleapis');
+import { applyCors } from './_utils/cors';
 
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'OPTIONS'],
+        headers: ['Content-Type']
+    });
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
 
@@ -26,7 +26,10 @@ export default async function handler(req, res) {
             });
         }
 
-        console.log(`Validating event: "${eventName}" on "${eventDate}"`);
+        console.log('Validating user-provided event (details redacted)', {
+            eventNameLength: eventName.length,
+            eventDateLength: eventDate.length
+        });
 
         // Get environment variables
         const apiKey = process.env.GOOGLE_CALENDAR_API_KEY;
@@ -86,9 +89,17 @@ export default async function handler(req, res) {
             const searchTitle = eventName.trim();
             const searchDate = eventDate.trim();
             
-            console.log(`Comparing: "${eventTitle}" vs "${searchTitle}" and "${eventDateString}" vs "${searchDate}"`);
-            
-            return eventTitle === searchTitle && eventDateString === searchDate;
+            const nameMatch = eventTitle === searchTitle;
+            const dateMatch = eventDateString === searchDate;
+
+            console.log('Comparing calendar event to user request (details redacted)', {
+                nameMatch,
+                dateMatch,
+                requestTitleLength: searchTitle.length,
+                requestDateLength: searchDate.length
+            });
+
+            return nameMatch && dateMatch;
         });
 
         if (!foundEvent) {
@@ -167,7 +178,7 @@ export default async function handler(req, res) {
             // Continue with default remainingSpots
         }
 
-        console.log(`Event validated successfully: ${foundEvent.summary}`);
+        console.log('Event validated successfully (details redacted)');
 
         return res.status(200).json({
             success: true,
