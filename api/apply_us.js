@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 import { Resend } from 'resend';
+import { applyCors } from './_utils/cors';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -208,14 +209,13 @@ async function sendAdminNotificationEmail(formData, applicationId) {
 }
 
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const cors = applyCors(req, res, {
+        methods: ['POST', 'OPTIONS'],
+        headers: ['Content-Type']
+    });
 
-    // Handle preflight OPTIONS request
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
+    if (cors.handled) {
+        return;
     }
 
     // Only allow POST requests

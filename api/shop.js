@@ -1,6 +1,8 @@
 // Shopify API endpoint for server-side operations
 // This handles operations that require the Admin API or private operations
 
+import { applyCors } from './_utils/cors';
+
 const SHOPIFY_CONFIG = {
     store: process.env.SHOPIFY_STORE_URL || 'https://spark-sandbox.myshopify.com',
     apiKey: process.env.SHOPIFY_API_KEY,
@@ -9,29 +11,12 @@ const SHOPIFY_CONFIG = {
 };
 
 export default async function handler(req, res) {
-    // Set strict CORS headers - only allow specific domains
-    const origin = req.headers.origin || "";
-    const allowedDomains = new Set([
-        "https://motocoach.com.au",
-        "https://www.motocoach.com.au",
-        "https://sydneymotocoach.com",
-        "https://www.sydneymotocoach.com",
-        "https://smg-mc.vercel.app"
-    ]);
-    
-    const isVercelPreview = /\.vercel\.app$/.test(new URL(origin || "http://localhost").hostname || "");
-    
-    if (allowedDomains.has(origin) || isVercelPreview) {
-        res.setHeader("Access-Control-Allow-Origin", origin);
-        res.setHeader("Vary", "Origin");
-    }
-    
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-App-Key, X-Requested-With');
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'POST', 'OPTIONS'],
+        headers: ['Content-Type', 'X-App-Key', 'X-Requested-With']
+    });
 
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
 

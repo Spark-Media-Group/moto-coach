@@ -1,12 +1,13 @@
+import { applyCors } from './_utils/cors';
+
 // Debug endpoint to see exact date formatting
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'OPTIONS'],
+        headers: ['Content-Type']
+    });
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
 

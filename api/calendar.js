@@ -1,30 +1,20 @@
 const { google } = require('googleapis');
+import { ALLOWED_ORIGINS, applyCors } from './_utils/cors';
+
+const ALLOWED_DOMAIN_SET = new Set(ALLOWED_ORIGINS);
 
 export default async function handler(req, res) {
-    // Set strict CORS headers - only allow specific domains
-    const origin = req.headers.origin || "";
-    const allowedDomains = new Set([
-        "https://motocoach.com.au",
-        "https://www.motocoach.com.au",
-        "https://sydneymotocoach.com",
-        "https://www.sydneymotocoach.com",
-        "https://smg-mc.vercel.app"
-    ]);
-    
-    const isVercelPreview = /\.vercel\.app$/.test(new URL(origin || "http://localhost").hostname || "");
-    
-    if (allowedDomains.has(origin) || isVercelPreview) {
-        res.setHeader("Access-Control-Allow-Origin", origin);
-        res.setHeader("Vary", "Origin");
-    }
-    
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-App-Key, X-Requested-With');
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'POST', 'OPTIONS'],
+        headers: ['Content-Type', 'X-App-Key', 'X-Requested-With']
+    });
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
+
+    const origin = req.headers.origin || '';
+    const referer = req.headers.referer || '';
 
     // Security: Require API key for POST requests
     const APP_KEY = process.env.APP_KEY;
@@ -35,9 +25,8 @@ export default async function handler(req, res) {
         }
         
         // CSRF protection: validate Origin/Referer for POST requests
-        const referer = req.headers.referer || '';
-        const isValidRequest = allowedDomains.has(origin) || isVercelPreview || 
-                              [...allowedDomains].some(domain => referer.startsWith(domain));
+        const isValidRequest = ALLOWED_DOMAIN_SET.has(origin) || cors.isPreviewOrigin ||
+                              ALLOWED_ORIGINS.some(domain => referer.startsWith(domain));
         
         if (!isValidRequest) {
             return res.status(403).json({ error: 'Forbidden' });
