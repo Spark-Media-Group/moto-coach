@@ -225,7 +225,7 @@ export default async function handler(req, res) {
 
     try {
         const formData = req.body;
-        console.log('Received US Travel Program application:', JSON.stringify(formData, null, 2));
+        console.log('Received US Travel Program application (details redacted)');
 
         // Validate required fields
         const requiredFields = [

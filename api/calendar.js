@@ -168,7 +168,10 @@ async function listEvents({ timeMin, timeMax, apiKey, calendarId }) {
 async function handleSingleEventValidation(req, res, eventName, eventDate) {
     try {
         if (process.env.NODE_ENV !== 'production') {
-            console.log(`Single event validation requested for: "${eventName}" on "${eventDate}"`);
+            console.log('Single event validation requested for user-provided event (details redacted)', {
+                eventNameLength: eventName ? eventName.length : 0,
+                eventDateLength: eventDate ? eventDate.length : 0
+            });
         }
         
         // Get environment variables
@@ -213,7 +216,10 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
         });
 
         if (process.env.NODE_ENV !== 'production') {
-            console.log(`Found ${events.length} calendar events on ${eventDate}, looking for: "${eventName}"`);
+            console.log(`Found ${events.length} calendar events on requested date (user input redacted)`, {
+                requestedDateLength: eventDate ? eventDate.length : 0,
+                requestedNameLength: eventName ? eventName.length : 0
+            });
             if (!foundEvent) {
                 console.log('Available events on this date:', events.map(e => ({
                     title: e.summary,
@@ -293,7 +299,11 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             remainingSpots = Math.max(0, maxSpots - registrationCount);
             
             if (process.env.NODE_ENV !== 'production') {
-                console.log(`Event validation: ${eventName} on ${eventDate} - ${registrationCount}/${maxSpots} registered, ${remainingSpots} remaining`);
+                console.log('Event validation summary (user request redacted):', {
+                    registrationCount,
+                    maxSpots,
+                    remainingSpots
+                });
             }
             
         } catch (sheetsError) {
@@ -477,7 +487,10 @@ async function handleGetRegistrationCount(req, res) {
         // Only show debug logging in development
         if (process.env.NODE_ENV !== 'production') {
             console.log(`=== DEBUG: Google Sheets Registration Count ===`);
-            console.log(`Looking for: "${eventName}" on "${eventDate}"`);
+            console.log('Looking for user-submitted event in sheet (details redacted)', {
+                eventNameLength: eventName ? eventName.length : 0,
+                eventDateLength: eventDate ? eventDate.length : 0
+            });
             console.log(`Found ${rows.length} rows in sheet`);
             console.log('Sheet data:');
             rows.forEach((row, index) => {
@@ -494,7 +507,10 @@ async function handleGetRegistrationCount(req, res) {
             const dateMatch = sheetEventDate.trim() === eventDate.trim();
             
             if (process.env.NODE_ENV !== 'production') {
-                console.log(`Comparing row: "${sheetEventName}" vs "${eventName}" (name: ${nameMatch}) and "${sheetEventDate}" vs "${eventDate}" (date: ${dateMatch})`);
+                console.log('Comparing sheet row to user request (details redacted)', {
+                    nameMatch,
+                    dateMatch
+                });
             }
             
             return nameMatch && dateMatch;
