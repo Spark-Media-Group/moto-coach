@@ -1123,20 +1123,35 @@ div:focus {
 
 /* Mobile Calendar Styles */
 @media (max-width: 768px) {
-    .calendar-hero h1 {
-        font-size: 2rem;
+    .calendar-hero {
+        padding: 90px clamp(1.25rem, 6vw, 1.8rem) 52px clamp(1.25rem, 6vw, 1.8rem);
+        background: radial-gradient(circle at top, rgba(255, 107, 53, 0.18), rgba(18, 18, 18, 0.92));
+        color: #f5f5f5;
+        border-radius: 0 0 30px 30px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+        text-align: center;
     }
-    
+
+    .calendar-hero h1 {
+        font-size: clamp(1.85rem, 6vw, 2.2rem);
+        letter-spacing: 2px;
+        text-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+    }
+
     .calendar-hero p {
         font-size: 1rem;
-        padding: 0 1rem;
+        padding: 0 clamp(1rem, 5vw, 1.5rem);
+        color: rgba(255, 255, 255, 0.75);
     }
-    
+
     .calendar-header {
-        padding: 1rem 0.5rem;
-        border-radius: 8px 8px 0 0;
+        padding: clamp(0.85rem, 4vw, 1.1rem) clamp(0.75rem, 4vw, 1.25rem);
+        border-radius: 18px 18px 0 0;
+        background: rgba(22, 22, 22, 0.92);
+        border: 1px solid rgba(255, 107, 53, 0.18);
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
     }
-    
+
     .month-year h2 {
         font-size: 1.4rem;
         letter-spacing: 1px;
@@ -1185,33 +1200,37 @@ div:focus {
     }
     
     .event-panel {
-        padding: 1rem 0.5rem;
+        padding: clamp(1.25rem, 5vw, 1.75rem) clamp(1rem, 5vw, 1.5rem);
     }
-    
+
     .event-panel h3 {
         font-size: 1.2rem;
         text-align: center;
     }
-    
+
     .calendar-wrapper {
-        margin: 0; /* Full width on mobile */
-        border-radius: 0; /* Remove border radius for full-width */
+        margin: clamp(1.5rem, 6vw, 2.25rem) clamp(1rem, 5vw, 1.75rem);
+        border-radius: 22px;
         overflow: hidden;
+        background: rgba(13, 13, 13, 0.92);
+        border: 1px solid rgba(255, 107, 53, 0.15);
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
     }
 
     /* Mobile: Stack event panel on top, calendar below */
     .calendar-main-container {
         flex-direction: column;
     }
-    
+
     .calendar-main-container .event-panel {
         flex: 0 0 auto;
         max-height: 300px;
         border-right: none;
-        border-bottom: 1px solid #333;
-        padding: 2rem;
+        border-bottom: 1px solid rgba(255, 107, 53, 0.18);
+        padding: clamp(1.5rem, 6vw, 2.25rem);
+        background: rgba(16, 16, 16, 0.9);
     }
-    
+
     .calendar-main-container .calendar-section {
         flex: 1;
         padding: 0;
@@ -1226,6 +1245,14 @@ div:focus {
         max-width: 100% !important;
         overflow: hidden !important;
         padding: 1rem !important;
+    }
+
+    .event-item {
+        background: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 107, 53, 0.12) !important;
+        border-radius: 16px !important;
+        padding: clamp(1rem, 4vw, 1.4rem) !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35) !important;
     }
     
     .mobile-week-view .calendar-day {
@@ -1327,49 +1354,54 @@ div:focus {
 
 /* Extra Small Mobile Styles */
 @media (max-width: 480px) {
+    .calendar-hero {
+        padding: 80px clamp(1rem, 7vw, 1.5rem) 45px clamp(1rem, 7vw, 1.5rem);
+        border-radius: 0 0 24px 24px;
+    }
+
     .calendar-wrapper {
-        margin: 0; /* Full width on extra small mobile */
+        margin: clamp(1rem, 6vw, 1.5rem);
     }
-    
+
     .calendar-header {
-        padding: 0.75rem 1rem;
-        border-radius: 0;
+        padding: 0.7rem 1rem;
+        border-radius: 16px 16px 0 0;
     }
-    
+
     .month-year h2 {
         font-size: 1.2rem;
         letter-spacing: 0.5px;
     }
-    
+
     .nav-btn {
         width: 34px;
         height: 34px;
         font-size: 0.9rem;
         border-radius: 5px;
     }
-    
+
     .day-header {
         padding: 0.4rem 0.1rem;
         font-size: 0.65rem;
     }
-    
+
     .calendar-day {
         min-height: 60px;
         padding: 0.2rem;
         font-size: 0.8rem;
     }
-    
+
     .day-number {
         font-size: 0.7rem;
     }
-    
+
     .event-preview {
         font-size: 0.5rem;
         padding: 1px;
     }
-    
+
     .event-panel {
-        padding: 0.75rem 0.25rem;
+        padding: clamp(1rem, 6vw, 1.4rem) clamp(0.75rem, 6vw, 1.1rem);
     }
     
     /* Mobile Event Panel Styles */

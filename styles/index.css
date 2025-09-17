@@ -522,30 +522,49 @@ main {
     }
 
     .hero-content {
-        padding: 0 clamp(1.25rem, 5vw, 2rem);
+        padding: clamp(1.5rem, 6vw, 2.25rem);
+        margin: 0 clamp(1.1rem, 6vw, 2.25rem);
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.55) 100%);
+        border-radius: 24px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(8px);
     }
 
     .hero-content h1 {
         font-size: clamp(1.8rem, 6vw, 3rem);
         letter-spacing: 2px;
+        text-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
     }
 
     .hero-content p {
         font-size: clamp(1rem, 4.5vw, 1.3rem);
         line-height: 1.6;
         margin-bottom: clamp(1.5rem, 6vw, 2rem);
+        color: rgba(255, 255, 255, 0.85);
+        text-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
     }
-    
+
     .slide img {
         object-position: center center;
         filter: brightness(0.8) contrast(1.2);
     }
-    
+
     /* CTA Button mobile styles */
     .cta-btn {
-        padding: clamp(0.85rem, 3.5vw, 1rem) clamp(1.75rem, 6vw, 2.5rem);
-        font-size: clamp(1rem, 3.5vw, 1.1rem);
-        border-radius: 45px;
+        padding: clamp(0.9rem, 3.8vw, 1.1rem) clamp(1.9rem, 6.4vw, 2.6rem);
+        font-size: clamp(1rem, 3.5vw, 1.15rem);
+        border-radius: 999px;
+        width: min(100%, 320px);
+    }
+
+    .services-section {
+        color: rgba(245, 245, 245, 0.85);
+    }
+
+    .services-section .section-title {
+        color: #ffffff;
+        text-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+        letter-spacing: 2px;
     }
 
     .services-grid {
@@ -555,57 +574,91 @@ main {
 
     .service-item {
         text-align: center;
+        background: radial-gradient(circle at top, rgba(255, 107, 53, 0.12), rgba(26, 26, 26, 0.85));
+        border-radius: 22px;
+        padding: clamp(1.25rem, 5vw, 1.75rem) clamp(1rem, 4vw, 1.5rem) clamp(1.5rem, 5vw, 2rem);
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 107, 53, 0.15);
     }
 
     .service-image {
         height: clamp(200px, 55vw, 260px);
+        border-radius: 16px;
+        object-fit: cover;
+        box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
     }
 
     .service-item h3 {
         font-size: clamp(1.2rem, 4.5vw, 1.6rem);
+        margin-top: clamp(1.1rem, 4vw, 1.5rem);
+        color: #f8f9fa;
+        letter-spacing: 1px;
     }
-    
+
     /* Sponsors section mobile styles */
     .sponsors-section {
         margin-top: clamp(3rem, 12vw, 4.5rem);
+        padding: clamp(2rem, 7vw, 3rem) clamp(1.25rem, 5vw, 2.5rem);
+        background: linear-gradient(180deg, rgba(26, 26, 26, 0.92) 0%, rgba(15, 15, 15, 0.92) 100%);
+        border-radius: 24px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+
+    .sponsors-section .section-title {
+        color: #ffffff;
+        font-size: clamp(1.8rem, 5.5vw, 2.2rem);
+        text-shadow: 0 8px 26px rgba(0, 0, 0, 0.45);
     }
 
     .sponsors-grid {
         flex-direction: column;
         gap: clamp(1.5rem, 6vw, 2.5rem);
     }
-    
+
     .sponsor-image {
         max-width: clamp(100px, 25vw, 150px);
         max-height: clamp(60px, 15vw, 90px);
+        filter: brightness(1.08) contrast(1.1);
     }
-    
+
     .about-section {
-        padding: clamp(45px, 12vw, 70px) clamp(1.25rem, 5vw, 1.75rem);
+        padding: clamp(48px, 13vw, 74px) clamp(1.5rem, 6vw, 2.25rem);
+        background: radial-gradient(circle at top, rgba(255, 107, 53, 0.14), rgba(12, 12, 12, 0.95));
+        border-radius: 0 0 32px 32px;
     }
 
     /* About section mobile styles */
     .about-container {
         grid-template-columns: 1fr;
+        gap: clamp(1.5rem, 5vw, 2rem);
     }
-    
+
     .about-image-side {
         display: none;
     }
-    
+
     .about-content-side {
         order: 1;
-        padding: clamp(0.5rem, 2vw, 1rem) 0;
+        padding: clamp(1.5rem, 6vw, 2.25rem);
         max-width: 650px;
         margin: 0 auto;
+        background: rgba(14, 14, 14, 0.9);
+        border-radius: 24px;
+        box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+        border: 1px solid rgba(255, 107, 53, 0.12);
     }
 
     .about-description {
         margin-bottom: clamp(2rem, 8vw, 3rem);
+        display: grid;
+        gap: clamp(1rem, 4vw, 1.5rem);
     }
 
     .about-description p {
         text-align: center;
+        color: rgba(232, 232, 232, 0.85);
+        font-size: clamp(0.95rem, 3.8vw, 1.05rem);
+        line-height: 1.7;
     }
 
     .about-stats {
@@ -619,6 +672,10 @@ main {
 
     .stat-item {
         padding: clamp(1rem, 4vw, 1.5rem);
+        background: linear-gradient(160deg, rgba(255, 107, 53, 0.28), rgba(24, 24, 24, 0.95));
+        border-radius: 18px;
+        border: 1px solid rgba(255, 107, 53, 0.25);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
         aspect-ratio: auto;
         display: flex;
         flex-direction: column;
@@ -635,14 +692,20 @@ main {
 
     .stat-number {
         font-size: clamp(1.6rem, 7vw, 2.3rem);
+        color: #fff;
+        letter-spacing: 1px;
     }
 
     .stat-label {
         font-size: clamp(0.85rem, 3vw, 1rem);
+        color: rgba(255, 255, 255, 0.8);
+        letter-spacing: 1.2px;
     }
 
     .about-highlight {
         margin-bottom: clamp(0.6rem, 3vw, 1.4rem);
+        color: #ff6b35;
+        letter-spacing: 2.2px;
     }
 
     /* Show mobile programs subtitle on mobile only */
@@ -663,13 +726,19 @@ main {
 @media (max-width: 480px) {
     /* CTA Button extra small mobile styles */
     .cta-btn {
-        padding: 12px 25px;
+        padding: 0.85rem 1.6rem;
         font-size: 1rem;
         letter-spacing: 1px;
+        width: 100%;
     }
 
     .hero {
         padding-bottom: clamp(3rem, 22vw, 5rem);
+    }
+
+    .hero-content {
+        margin: 0 clamp(0.85rem, 6vw, 1.25rem);
+        border-radius: 20px;
     }
 
     .hero-content h1 {
@@ -681,11 +750,16 @@ main {
     }
 
     .services-grid {
-        padding: 0 clamp(0.8rem, 6vw, 1.2rem);
+        padding: 0 clamp(0.75rem, 6vw, 1.1rem);
+    }
+
+    .service-item {
+        padding: clamp(1.1rem, 6vw, 1.5rem) clamp(0.9rem, 5vw, 1.3rem) clamp(1.35rem, 6vw, 1.9rem);
+        border-radius: 20px;
     }
 
     .about-content-side {
-        padding: 0;
+        padding: clamp(1.2rem, 6vw, 1.85rem);
     }
 
     /* Extra mobile centering for about stats on small screens */
@@ -697,7 +771,8 @@ main {
     }
 
     .stat-item {
-        padding: clamp(0.9rem, 5vw, 1.2rem);
+        padding: clamp(0.95rem, 6vw, 1.3rem);
+        border-radius: 16px;
     }
 
     .mobile-programs-subtitle {
