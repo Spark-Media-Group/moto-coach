@@ -516,8 +516,24 @@ main {
 
 /* Mobile Responsive Styles for index.html */
 @media (max-width: 768px) {
+    .hero {
+        align-items: flex-end;
+        padding-bottom: clamp(4rem, 18vw, 6.5rem);
+    }
+
+    .hero-content {
+        padding: 0 clamp(1.25rem, 5vw, 2rem);
+    }
+
     .hero-content h1 {
         font-size: clamp(1.8rem, 6vw, 3rem);
+        letter-spacing: 2px;
+    }
+
+    .hero-content p {
+        font-size: clamp(1rem, 4.5vw, 1.3rem);
+        line-height: 1.6;
+        margin-bottom: clamp(1.5rem, 6vw, 2rem);
     }
     
     .slide img {
@@ -527,14 +543,36 @@ main {
     
     /* CTA Button mobile styles */
     .cta-btn {
-        padding: 15px 30px;
-        font-size: 1.1rem;
+        padding: clamp(0.85rem, 3.5vw, 1rem) clamp(1.75rem, 6vw, 2.5rem);
+        font-size: clamp(1rem, 3.5vw, 1.1rem);
+        border-radius: 45px;
+    }
+
+    .services-grid {
+        padding: 0 clamp(1rem, 5vw, 1.5rem);
+        gap: clamp(1.5rem, 6vw, 2.5rem);
+    }
+
+    .service-item {
+        text-align: center;
+    }
+
+    .service-image {
+        height: clamp(200px, 55vw, 260px);
+    }
+
+    .service-item h3 {
+        font-size: clamp(1.2rem, 4.5vw, 1.6rem);
     }
     
     /* Sponsors section mobile styles */
+    .sponsors-section {
+        margin-top: clamp(3rem, 12vw, 4.5rem);
+    }
+
     .sponsors-grid {
         flex-direction: column;
-        gap: clamp(1rem, 3vw, 2rem);
+        gap: clamp(1.5rem, 6vw, 2.5rem);
     }
     
     .sponsor-image {
@@ -542,6 +580,10 @@ main {
         max-height: clamp(60px, 15vw, 90px);
     }
     
+    .about-section {
+        padding: clamp(45px, 12vw, 70px) clamp(1.25rem, 5vw, 1.75rem);
+    }
+
     /* About section mobile styles */
     .about-container {
         grid-template-columns: 1fr;
@@ -554,45 +596,67 @@ main {
     .about-content-side {
         order: 1;
         padding: clamp(0.5rem, 2vw, 1rem) 0;
+        max-width: 650px;
+        margin: 0 auto;
     }
-    
+
+    .about-description {
+        margin-bottom: clamp(2rem, 8vw, 3rem);
+    }
+
+    .about-description p {
+        text-align: center;
+    }
+
     .about-stats {
-        grid-template-columns: repeat(3, 1fr);
-        gap: clamp(0.5rem, 2vw, 1rem);
-        margin-top: 1.5rem;
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+        gap: clamp(0.75rem, 4vw, 1.5rem);
+        margin-top: clamp(1.75rem, 6vw, 2.5rem);
+        max-width: 420px;
+        margin-left: auto;
+        margin-right: auto;
     }
-    
+
     .stat-item {
-        padding: clamp(0.8rem, 3vw, 1.2rem);
-        aspect-ratio: 1;
+        padding: clamp(1rem, 4vw, 1.5rem);
+        aspect-ratio: auto;
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
         text-align: center;
     }
-    
+
     .stat-number,
     .stat-label {
         text-align: center;
         width: 100%;
     }
-    
-    .about-highlight {
-        margin-bottom: clamp(0.8rem, 2vw, 1.5rem);
+
+    .stat-number {
+        font-size: clamp(1.6rem, 7vw, 2.3rem);
     }
-    
+
+    .stat-label {
+        font-size: clamp(0.85rem, 3vw, 1rem);
+    }
+
+    .about-highlight {
+        margin-bottom: clamp(0.6rem, 3vw, 1.4rem);
+    }
+
     /* Show mobile programs subtitle on mobile only */
     .mobile-programs-subtitle {
         display: block !important;
         color: #ff6b35 !important;
-        font-size: 1rem !important;
+        font-size: clamp(0.95rem, 3.8vw, 1.1rem) !important;
         font-weight: 500 !important;
-        margin-bottom: 2rem !important;
-        margin-top: -2rem !important;
+        margin-bottom: clamp(1.5rem, 6vw, 2rem) !important;
+        margin-top: 0 !important;
         text-align: center !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
+        line-height: 1.4 !important;
     }
 }
 
@@ -603,35 +667,41 @@ main {
         font-size: 1rem;
         letter-spacing: 1px;
     }
-    
+
+    .hero {
+        padding-bottom: clamp(3rem, 22vw, 5rem);
+    }
+
+    .hero-content h1 {
+        letter-spacing: 1.5px;
+    }
+
+    .hero-content p {
+        font-size: clamp(0.95rem, 5vw, 1.15rem);
+    }
+
+    .services-grid {
+        padding: 0 clamp(0.8rem, 6vw, 1.2rem);
+    }
+
+    .about-content-side {
+        padding: 0;
+    }
+
     /* Extra mobile centering for about stats on small screens */
     .about-stats {
-        gap: 0.5rem;
-        margin-top: 1rem;
+        grid-template-columns: 1fr;
+        max-width: 320px;
+        margin-top: clamp(1.5rem, 8vw, 2rem);
+        gap: clamp(0.65rem, 5vw, 1rem);
     }
-    
+
     .stat-item {
-        padding: 0.8rem 0.4rem;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        min-height: 100px;
+        padding: clamp(0.9rem, 5vw, 1.2rem);
     }
-    
-    .stat-number {
-        text-align: center;
-        display: block;
-        width: 100%;
-        line-height: 1.1;
-    }
-    
-    .stat-label {
-        text-align: center;
-        display: block;
-        width: 100%;
-        margin-top: 0.3rem;
+
+    .mobile-programs-subtitle {
+        margin-bottom: clamp(1.25rem, 5vw, 1.75rem) !important;
     }
 }
 
@@ -652,26 +722,28 @@ main {
         bottom: 0;
         width: 100vw;
         height: calc(100vh - clamp(50px, 8vw, 70px));
-        background: rgba(0, 0, 0, 0.98);
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.97) 0%, rgba(0, 0, 0, 0.9) 100%);
         backdrop-filter: blur(15px);
         flex-direction: column;
         justify-content: flex-start;
-        align-items: flex-start;
-        gap: 2rem;
+        align-items: stretch;
+        gap: clamp(1.25rem, 5vw, 1.75rem);
         transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        padding: 2rem;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        padding: clamp(1.75rem, 6vw, 2.5rem) clamp(1.25rem, 6vw, 2rem) clamp(3rem, 12vw, 4rem);
         z-index: 999;
         overflow-y: auto;
         overflow-x: hidden;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
     }
-    
+
     .main-header .nav-links.active {
         transform: translateX(0);
     }
-    
+
     .main-header .nav-links li {
-        width: auto;
+        width: 100%;
         text-align: left;
         border-bottom: none;
         padding: 0;
@@ -684,15 +756,18 @@ main {
     
     .main-header .nav-links a {
         display: block;
-        padding: 1rem 2rem;
+        padding: clamp(0.85rem, 3.5vw, 1.25rem) clamp(1.5rem, 6vw, 2rem);
         font-size: clamp(1.2rem, 4vw, 1.8rem);
         font-weight: 600;
         text-align: left; /* Left align menu items */
         color: white;
         text-decoration: none;
         transition: all 0.3s ease;
-        border-radius: 8px;
-        margin: 0.5rem 0;
+        border-radius: 12px;
+        margin: 0;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.05);
+        line-height: 1.4;
     }
     
     /* Desktop-only hover effects for main header */
@@ -708,15 +783,18 @@ main {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 1rem 2rem;
+        padding: clamp(0.85rem, 3.5vw, 1.25rem) clamp(1.5rem, 6vw, 2rem);
         font-size: clamp(1.2rem, 4vw, 1.8rem);
         font-weight: 600;
         color: white;
         cursor: pointer;
-        border-radius: 8px;
-        margin: 0.5rem 0;
+        border-radius: 12px;
+        margin: 0;
         transition: all 0.3s ease;
         width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.05);
+        line-height: 1.4;
     }
     
     .main-header .dropdown-arrow {
@@ -736,13 +814,14 @@ main {
         visibility: visible;
         transform: none;
         box-shadow: none;
-        background: rgba(255, 107, 53, 0.1);
-        margin: 0.5rem 0;
-        border-radius: 8px;
+        background: rgba(0, 0, 0, 0.6);
+        margin: 0.75rem 0 0;
+        border-radius: 10px;
         display: none;
-        border-left: 3px solid #ff6b35;
-        padding: 1rem 0;
-        text-align: center;
+        border-left: none;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 0.75rem 0;
+        text-align: left;
         backdrop-filter: blur(5px);
     }
     
@@ -753,11 +832,11 @@ main {
     .main-header .dropdown-menu a {
         font-size: clamp(1rem, 3vw, 1.4rem);
         color: #e0e0e0;
-        padding: 0.75rem 1rem;
+        padding: 0.75rem clamp(1.25rem, 6vw, 1.75rem);
         text-align: left; /* Left align dropdown menu items */
         display: block;
         border-radius: 6px;
-        margin: 0.25rem 1rem;
+        margin: 0;
         transition: all 0.3s ease;
     }
     
