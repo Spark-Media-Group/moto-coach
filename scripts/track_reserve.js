@@ -14,7 +14,11 @@ function checkPaymentStatus() {
     
     if (paymentStatus === 'success' && paymentIntent) {
         // Handle successful payment return
-        console.log('Payment completed successfully:', paymentIntent);
+        const intentIdString = typeof paymentIntent === 'string' ? paymentIntent : String(paymentIntent);
+        const maskedIntentId = intentIdString.length > 8
+            ? `${intentIdString.slice(0, 4)}...${intentIdString.slice(-4)}`
+            : '[redacted]';
+        console.log('Payment completed successfully (masked ID):', maskedIntentId);
         
         // Show success modal
         showSuccessModal();
@@ -407,13 +411,13 @@ async function initializePricing() {
     if (multiEventsParam) {
         try {
             const events = JSON.parse(decodeURIComponent(multiEventsParam));
-            
+
             // Validate each event against server data and find minimum availability
             let minRemainingSpots = Infinity;
             let validatedEvents = [];
             let totalRate = 0;
-            
-            console.log('Validating multi-event registration:', events);
+
+            console.log(`Validating multi-event registration for ${events.length} event(s)`);
             
             for (const event of events) {
                 try {
@@ -440,17 +444,17 @@ async function initializePricing() {
                             // Track the minimum remaining spots across all events
                             minRemainingSpots = Math.min(minRemainingSpots, serverData.event.remainingSpots);
                             
-                            console.log(`Event "${serverData.event.name}" validated: ${serverData.event.remainingSpots} spots remaining`);
-                            console.log(`🔍 MIN SPOTS TRACKING: minRemainingSpots = ${minRemainingSpots} (after processing ${serverData.event.name})`);
+                            console.log('Event validated against server data. Spots remaining:', serverData.event.remainingSpots);
+                            console.log(`🔍 MIN SPOTS TRACKING: minRemainingSpots = ${minRemainingSpots}`);
                         } else {
-                            console.warn(`Could not validate event: ${event.title}`);
+                            console.warn('Could not validate user-selected event (details redacted)');
                             // Fallback to URL data for this event
                             validatedEvents.push(event);
                             totalRate += event.effectiveRate || 190;
                             minRemainingSpots = Math.min(minRemainingSpots, event.remainingSpots || 0);
                         }
                     } else {
-                        console.warn(`Server validation failed for event: ${event.title}`);
+                        console.warn('Server validation failed for user-selected event (details redacted)');
                         // Fallback to URL data
                         validatedEvents.push(event);
                         totalRate += event.effectiveRate || 190;
@@ -543,7 +547,7 @@ async function initializePricing() {
                         eventDisplayElement.textContent = serverData.event.name;
                     }
                     
-                    console.log(`Event security validation: "${serverData.event.name}" (overrode URL: "${eventName}")`);
+                    console.log('Event security validation succeeded (URL parameters overridden with server data)');
                     
                     console.log('Event data validated from server:', {
                         rate: ratePerRider,
@@ -989,7 +993,7 @@ async function handleFormSubmission(event) {
                 
                 // Check if event name was tampered with
                 if (serverData.event.name !== urlEvent.title) {
-                    console.warn(`🔒 SECURITY ALERT: Event name tampering detected. Server: "${serverData.event.name}", URL: "${urlEvent.title}"`);
+                    console.warn('🔒 SECURITY ALERT: Event name tampering detected (details redacted)');
                     showErrorModal('⚠️ Security validation failed: Event data has been tampered with. Please return to the calendar and select events properly.');
                     submitButton.disabled = false;
                     submitButton.textContent = originalButtonText;
@@ -1125,13 +1129,16 @@ async function handleFormSubmission(event) {
         }
 
         const paymentData = await paymentResponse.json();
-        console.log('Payment data received:', paymentData);
-        
+        console.log('Payment data received (keys):', Object.keys(paymentData));
+
         const { clientSecret, paymentIntentId } = paymentData;
-        
-        console.log('Payment intent created:', { 
-            clientSecret: clientSecret ? clientSecret.substring(0, 20) + '...' : 'UNDEFINED', 
-            paymentIntentId 
+        const maskedPaymentIntentId = typeof paymentIntentId === 'string' && paymentIntentId.length > 8
+            ? `${paymentIntentId.slice(0, 4)}...${paymentIntentId.slice(-4)}`
+            : paymentIntentId ? '[redacted]' : 'UNDEFINED';
+
+        console.log('Payment intent created:', {
+            clientSecret: clientSecret ? clientSecret.substring(0, 20) + '...' : 'UNDEFINED',
+            paymentIntentId: maskedPaymentIntentId
         });
         
         if (!clientSecret) {
@@ -1573,8 +1580,8 @@ async function completeRegistration(form, paymentIntentId, totalAmount) {
             }
         }
         
-        const result = await response.json();
-        console.log('Registration submitted successfully:', result);
+        await response.json();
+        console.log('Registration submitted successfully (response redacted).');
         
         // Show success modal
         showSuccessModal();

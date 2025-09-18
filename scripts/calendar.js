@@ -9,6 +9,7 @@ class MotoCoachCalendar {
         this.cachedEventsPerPage = null; // Cache the events per page calculation
         this.globalRegistrationCache = new Map(); // Global cache for all registration counts
         this.cacheLastUpdated = null; // Track when cache was last updated
+        this.heightSyncRaf = null; // Track pending animation frame for height syncing
         this.apiKey = 'calendar-app-2024'; // Simple API key for request validation
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
@@ -55,10 +56,10 @@ class MotoCoachCalendar {
         // Load all events and build global registration cache
         await this.loadEvents();
         await this.buildGlobalRegistrationCache();
-        
+
         // Populate events into calendar and update events panel
         await this.populateEventsIntoCalendar();
-        this.updateEventPanel();
+        await this.updateEventPanel();
         
         // Add throttled resize listener to switch between desktop/mobile views and recalculate pagination
         window.addEventListener('resize', this.throttle(async () => {
@@ -76,7 +77,7 @@ class MotoCoachCalendar {
             if (this.events.length > 0) {
                 const oldPage = this.currentEventPage;
                 this.currentEventPage = 1; // Reset to first page
-                this.updateEventPanel();
+                await this.updateEventPanel();
             }
         }, 150));
     }
@@ -99,6 +100,8 @@ class MotoCoachCalendar {
                 calendarWrapper.classList.remove('mobile-week-view');
             }
         }
+
+        this.scheduleEventPanelHeightSync();
     }
 
     setCurrentWeek(date) {
@@ -487,6 +490,8 @@ class MotoCoachCalendar {
         for (const { dayElement, currentDay, dayEvents } of dayElementData) {
             await this.populateEventsForDayWithCache(dayElement, currentDay, dayEvents, this.globalRegistrationCache);
         }
+
+        this.scheduleEventPanelHeightSync();
     }
 
     async populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap) {
@@ -1219,6 +1224,91 @@ class MotoCoachCalendar {
         await this.showAllUpcomingEvents();
     }
 
+    scheduleEventPanelHeightSync() {
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        if (this.heightSyncRaf) {
+            cancelAnimationFrame(this.heightSyncRaf);
+        }
+
+        this.heightSyncRaf = window.requestAnimationFrame(() => {
+            this.heightSyncRaf = null;
+            this.syncEventPanelHeight();
+        });
+    }
+
+    syncEventPanelHeight() {
+        const eventPanel = document.getElementById('eventPanel');
+
+        if (!eventPanel) {
+            return;
+        }
+
+        if (this.isMobileView) {
+            eventPanel.style.removeProperty('height');
+            eventPanel.style.removeProperty('max-height');
+            return;
+        }
+
+        const calendarSection = document.querySelector('.calendar-main-container .calendar-section');
+
+        if (!calendarSection) {
+            return;
+        }
+
+        const calendarHeight = calendarSection.offsetHeight;
+
+        if (calendarHeight > 0) {
+            eventPanel.style.height = `${calendarHeight}px`;
+            eventPanel.style.maxHeight = `${calendarHeight}px`;
+        } else {
+            eventPanel.style.removeProperty('height');
+            eventPanel.style.removeProperty('max-height');
+        }
+    }
+
+    createEventsHeader() {
+        const eventsHeader = document.createElement('div');
+        eventsHeader.className = 'events-header';
+
+        const ratesP = this.createElementWithText('p', null, 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
+        ratesP.style.color = '#ccc';
+        ratesP.style.fontSize = '0.9rem';
+        ratesP.style.marginBottom = '0.5rem';
+        ratesP.style.lineHeight = '1.4';
+
+        eventsHeader.appendChild(ratesP);
+        return eventsHeader;
+    }
+
+    renderEventPanelLoadingState(eventList) {
+        if (!eventList) return;
+
+        eventList.innerHTML = '';
+
+        const eventsHeader = this.createEventsHeader();
+        const loadingState = document.createElement('div');
+        loadingState.className = 'event-loading-state';
+        loadingState.setAttribute('role', 'status');
+
+        const spinner = document.createElement('div');
+        spinner.className = 'calendar-loading-spinner';
+        spinner.setAttribute('aria-hidden', 'true');
+
+        const loadingText = this.createElementWithText('p', 'loading-events', 'Loading upcoming events...');
+        loadingText.setAttribute('aria-live', 'polite');
+
+        loadingState.appendChild(spinner);
+        loadingState.appendChild(loadingText);
+
+        eventList.appendChild(eventsHeader);
+        eventList.appendChild(loadingState);
+
+        this.scheduleEventPanelHeightSync();
+    }
+
     async showAllUpcomingEvents() {
         const eventList = document.getElementById('eventList');
         if (!eventList) return;
@@ -1226,7 +1316,7 @@ class MotoCoachCalendar {
         // Get all upcoming events (from today onwards)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
+
         let allUpcomingEvents = this.events
             .filter(event => event.date >= today && !this.isEventPast(event))
             .sort((a, b) => a.date - b.date);
@@ -1235,27 +1325,12 @@ class MotoCoachCalendar {
             eventList.innerHTML = '';
             const noEventsP = this.createElementWithText('p', 'no-events', 'No available events scheduled');
             eventList.appendChild(noEventsP);
+            this.scheduleEventPanelHeightSync();
             return;
         }
 
-        // Show loading state with safe DOM creation
-        eventList.innerHTML = '';
-        
-        const eventsHeader = document.createElement('div');
-        eventsHeader.className = 'events-header';
-        
-        const ratesP = this.createElementWithText('p', null, 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
-        ratesP.style.color = '#ccc';
-        ratesP.style.fontSize = '0.9rem';
-        ratesP.style.marginBottom = '0.5rem';
-        ratesP.style.lineHeight = '1.4';
-        
-        eventsHeader.appendChild(ratesP);
-        
-        const loadingP = this.createElementWithText('p', 'loading-events', 'Loading event details...');
-        
-        eventList.appendChild(eventsHeader);
-        eventList.appendChild(loadingP);
+        // Show loading state while event details are prepared
+        this.renderEventPanelLoadingState(eventList);
 
         try {
             // Filter out full events using global registration cache
@@ -1280,6 +1355,7 @@ class MotoCoachCalendar {
                 eventList.innerHTML = '';
                 const noEventsP = this.createElementWithText('p', 'no-events', 'No available events scheduled');
                 eventList.appendChild(noEventsP);
+                this.scheduleEventPanelHeightSync();
                 return;
             }
 
@@ -1289,31 +1365,24 @@ class MotoCoachCalendar {
 
             // Create final event list with safe DOM
             eventList.innerHTML = '';
-            
-            const eventsHeader = document.createElement('div');
-            eventsHeader.className = 'events-header';
-            
-            const ratesP = this.createElementWithText('p', null, 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
-            ratesP.style.color = '#ccc';
-            ratesP.style.fontSize = '0.9rem';
-            ratesP.style.marginBottom = '0.5rem';
-            ratesP.style.lineHeight = '1.4';
-            
-            eventsHeader.appendChild(ratesP);
-            
+
+            const eventsHeader = this.createEventsHeader();
+
             const eventsScrollable = document.createElement('div');
             eventsScrollable.className = 'events-list-scrollable';
             eventsScrollable.innerHTML = eventHTMLs.join(''); // Safe since this is controlled content
-            
+
             eventList.appendChild(eventsHeader);
             eventList.appendChild(eventsScrollable);
+
+            this.scheduleEventPanelHeightSync();
 
         } catch (error) {
             console.error('Error loading upcoming events:', error);
             eventList.innerHTML = '';
-            const errorP = createElementWithText('p', 'Error loading events');
-            errorP.className = 'no-events';
+            const errorP = this.createElementWithText('p', 'no-events', 'Error loading events');
             eventList.appendChild(errorP);
+            this.scheduleEventPanelHeightSync();
         }
     }
 

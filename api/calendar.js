@@ -1,30 +1,20 @@
 const { google } = require('googleapis');
+import { ALLOWED_ORIGINS, applyCors } from './_utils/cors';
+
+const ALLOWED_DOMAIN_SET = new Set(ALLOWED_ORIGINS);
 
 export default async function handler(req, res) {
-    // Set strict CORS headers - only allow specific domains
-    const origin = req.headers.origin || "";
-    const allowedDomains = new Set([
-        "https://motocoach.com.au",
-        "https://www.motocoach.com.au",
-        "https://sydneymotocoach.com",
-        "https://www.sydneymotocoach.com",
-        "https://smg-mc.vercel.app"
-    ]);
-    
-    const isVercelPreview = /\.vercel\.app$/.test(new URL(origin || "http://localhost").hostname || "");
-    
-    if (allowedDomains.has(origin) || isVercelPreview) {
-        res.setHeader("Access-Control-Allow-Origin", origin);
-        res.setHeader("Vary", "Origin");
-    }
-    
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-App-Key, X-Requested-With');
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'POST', 'OPTIONS'],
+        headers: ['Content-Type', 'X-App-Key', 'X-Requested-With']
+    });
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
+
+    const origin = req.headers.origin || '';
+    const referer = req.headers.referer || '';
 
     // Security: Require API key for POST requests
     const APP_KEY = process.env.APP_KEY;
@@ -35,9 +25,8 @@ export default async function handler(req, res) {
         }
         
         // CSRF protection: validate Origin/Referer for POST requests
-        const referer = req.headers.referer || '';
-        const isValidRequest = allowedDomains.has(origin) || isVercelPreview || 
-                              [...allowedDomains].some(domain => referer.startsWith(domain));
+        const isValidRequest = ALLOWED_DOMAIN_SET.has(origin) || cors.isPreviewOrigin ||
+                              ALLOWED_ORIGINS.some(domain => referer.startsWith(domain));
         
         if (!isValidRequest) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -168,7 +157,10 @@ async function listEvents({ timeMin, timeMax, apiKey, calendarId }) {
 async function handleSingleEventValidation(req, res, eventName, eventDate) {
     try {
         if (process.env.NODE_ENV !== 'production') {
-            console.log(`Single event validation requested for: "${eventName}" on "${eventDate}"`);
+            console.log('Single event validation requested for user-provided event (details redacted)', {
+                eventNameLength: eventName ? eventName.length : 0,
+                eventDateLength: eventDate ? eventDate.length : 0
+            });
         }
         
         // Get environment variables
@@ -213,7 +205,10 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
         });
 
         if (process.env.NODE_ENV !== 'production') {
-            console.log(`Found ${events.length} calendar events on ${eventDate}, looking for: "${eventName}"`);
+            console.log(`Found ${events.length} calendar events on requested date (user input redacted)`, {
+                requestedDateLength: eventDate ? eventDate.length : 0,
+                requestedNameLength: eventName ? eventName.length : 0
+            });
             if (!foundEvent) {
                 console.log('Available events on this date:', events.map(e => ({
                     title: e.summary,
@@ -293,7 +288,11 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             remainingSpots = Math.max(0, maxSpots - registrationCount);
             
             if (process.env.NODE_ENV !== 'production') {
-                console.log(`Event validation: ${eventName} on ${eventDate} - ${registrationCount}/${maxSpots} registered, ${remainingSpots} remaining`);
+                console.log('Event validation summary (user request redacted):', {
+                    registrationCount,
+                    maxSpots,
+                    remainingSpots
+                });
             }
             
         } catch (sheetsError) {
@@ -477,7 +476,10 @@ async function handleGetRegistrationCount(req, res) {
         // Only show debug logging in development
         if (process.env.NODE_ENV !== 'production') {
             console.log(`=== DEBUG: Google Sheets Registration Count ===`);
-            console.log(`Looking for: "${eventName}" on "${eventDate}"`);
+            console.log('Looking for user-submitted event in sheet (details redacted)', {
+                eventNameLength: eventName ? eventName.length : 0,
+                eventDateLength: eventDate ? eventDate.length : 0
+            });
             console.log(`Found ${rows.length} rows in sheet`);
             console.log('Sheet data:');
             rows.forEach((row, index) => {
@@ -494,7 +496,10 @@ async function handleGetRegistrationCount(req, res) {
             const dateMatch = sheetEventDate.trim() === eventDate.trim();
             
             if (process.env.NODE_ENV !== 'production') {
-                console.log(`Comparing row: "${sheetEventName}" vs "${eventName}" (name: ${nameMatch}) and "${sheetEventDate}" vs "${eventDate}" (date: ${dateMatch})`);
+                console.log('Comparing sheet row to user request (details redacted)', {
+                    nameMatch,
+                    dateMatch
+                });
             }
             
             return nameMatch && dateMatch;

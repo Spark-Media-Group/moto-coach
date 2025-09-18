@@ -1,5 +1,6 @@
 const { google } = require('googleapis');
 import { Resend } from 'resend';
+import { applyCors } from './_utils/cors';
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -87,24 +88,37 @@ async function validateEventDetails(eventData) {
             // Find matching event in Google Calendar
             const foundEvent = calendarEvents.find(calEvent => {
                 if (!calEvent.summary || !calEvent.start?.dateTime) return false;
-                
+
                 const calEventTitle = calEvent.summary.trim();
                 const calEventStartDate = new Date(calEvent.start.dateTime);
                 // Use same non-padded format as calendar.js
                 const calEventDateString = `${calEventStartDate.getDate()}/${calEventStartDate.getMonth() + 1}/${calEventStartDate.getFullYear()}`;
-                
-                console.log(`Track reserve validation: "${calEventTitle}" vs "${submittedEvent.title?.trim()}" and "${calEventDateString}" vs "${submittedEvent.dateString?.trim()}"`);
-                
-                const titleMatch = calEventTitle === submittedEvent.title?.trim();
-                const dateMatch = calEventDateString === submittedEvent.dateString?.trim();
-                
+
+                const submittedTitle = submittedEvent.title?.trim();
+                const submittedDate = submittedEvent.dateString?.trim();
+                const titleMatch = calEventTitle === submittedTitle;
+                const dateMatch = calEventDateString === submittedDate;
+
+                console.log('Track reserve validation: comparing calendar event to submitted values (details redacted)', {
+                    titleMatch,
+                    dateMatch,
+                    submittedTitleLength: submittedTitle ? submittedTitle.length : 0,
+                    submittedDateLength: submittedDate ? submittedDate.length : 0
+                });
+
                 if (!titleMatch) {
-                    console.warn(`⚠️  SECURITY: Event title mismatch detected - Calendar: "${calEventTitle}" vs Submitted: "${submittedEvent.title?.trim()}"`);
+                    console.warn('⚠️  SECURITY: Event title mismatch detected (values redacted)', {
+                        calendarTitleLength: calEventTitle.length,
+                        submittedTitleLength: submittedTitle ? submittedTitle.length : 0
+                    });
                 }
                 if (!dateMatch) {
-                    console.warn(`⚠️  SECURITY: Event date mismatch detected - Calendar: "${calEventDateString}" vs Submitted: "${submittedEvent.dateString?.trim()}"`);
+                    console.warn('⚠️  SECURITY: Event date mismatch detected (values redacted)', {
+                        calendarDateLength: calEventDateString.length,
+                        submittedDateLength: submittedDate ? submittedDate.length : 0
+                    });
                 }
-                
+
                 return titleMatch && dateMatch;
             });
 
@@ -141,11 +155,11 @@ async function validateEventDetails(eventData) {
                 }
             }
 
-            console.log(`Event validated: ${submittedEvent.title} on ${submittedEvent.dateString}`);
+            console.log('Event validated: submitted selection matched calendar event (details redacted)');
         }
 
         if (invalidEvents.length > 0) {
-            console.warn('Event validation failed:', invalidEvents);
+            console.warn('Event validation failed for submitted data (details redacted)');
             return {
                 success: false,
                 message: 'Event validation failed',
@@ -221,7 +235,12 @@ async function checkEventAvailability(formData, riderCount) {
 
             const spotsRemaining = event.maxSpots - currentRegistrations;
             
-            console.log(`Event: ${event.title}, Date: ${event.date}, Max: ${event.maxSpots}, Current: ${currentRegistrations}, Remaining: ${spotsRemaining}, Requested: ${riderCount}`);
+            console.log('Event availability summary (user selections redacted):', {
+                maxSpots: event.maxSpots,
+                currentRegistrations,
+                spotsRemaining,
+                requestedRiders: riderCount
+            });
             
             if (spotsRemaining < riderCount) {
                 unavailableEvents.push({
@@ -265,13 +284,12 @@ async function checkEventAvailability(formData, riderCount) {
 }
 
 export default async function handler(req, res) {
-    // Set CORS headers
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'POST', 'OPTIONS'],
+        headers: ['Content-Type']
+    });
 
-    if (req.method === 'OPTIONS') {
-        res.status(200).end();
+    if (cors.handled) {
         return;
     }
 
@@ -429,7 +447,7 @@ export default async function handler(req, res) {
 
         // Extract form data
         const formData = req.body;
-        console.log('Received form data:', JSON.stringify(formData, null, 2));
+        console.log('Received track reservation form submission (details redacted)');
 
         // **EVENT VALIDATION** - Validate event details against Google Calendar
         const eventValidation = await validateEventDetails(formData);
@@ -470,7 +488,10 @@ export default async function handler(req, res) {
                 });
             }
 
-            console.log('Payment verified successfully:', paymentIntent.id);
+            const maskedPaymentIntentId = typeof paymentIntent.id === 'string' && paymentIntent.id.length > 8
+                ? `${paymentIntent.id.slice(0, 4)}...${paymentIntent.id.slice(-4)}`
+                : '[redacted]';
+            console.log('Payment verified successfully:', maskedPaymentIntentId);
         } catch (paymentError) {
             console.error('Payment verification error:', paymentError);
             return res.status(400).json({ 
@@ -709,7 +730,7 @@ async function sendConfirmationEmails(riders, formData) {
         
         // Convert Map to Array for processing
         const recipients = Array.from(emailRecipients.values());
-        console.log(`Sending ${recipients.length} confirmation email(s) to:`, recipients.map(r => r.email));
+        console.log(`Sending ${recipients.length} confirmation email(s)`);
         
         // Create rider names list for email
         const riderNames = riders.map(rider => `${rider.firstName} ${rider.lastName}`).join(', ');
@@ -731,7 +752,7 @@ async function sendConfirmationEmails(riders, formData) {
 // Function to send individual confirmation email
 async function sendIndividualConfirmationEmail(recipient, formData, riderNames, riders) {
     try {
-        console.log(`Sending confirmation email to: ${recipient.email}`);
+        console.log('Sending confirmation email to recipient (address redacted)');
         
         // Create a subject line that indicates multi-event if applicable
         const subjectLine = formData.multiEventRegistration && formData.events && formData.events.length > 1 
@@ -853,7 +874,7 @@ Moto Coach Track Reservation System
         if (error) {
             console.error('Error sending email to:', recipient.email, error);
         } else {
-            console.log('Confirmation email sent to:', recipient.email);
+            console.log('Confirmation email sent successfully (recipient redacted)');
         }
 
     } catch (error) {

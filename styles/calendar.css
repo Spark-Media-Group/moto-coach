@@ -63,9 +63,13 @@
     background: #222;
     padding: 2rem;
     border-right: 1px solid #333;
-    overflow-y: auto;
     margin: 0;
-    /* Height will automatically match calendar section due to align-items: stretch */
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    overflow: hidden;
+    min-height: 0;
+    /* Height will be controlled to match the calendar section */
 }
 
 /* Calendar section on the right */
@@ -417,19 +421,29 @@
     border-bottom: 2px solid #ff6b35;
     padding-bottom: 0.5rem;
     text-align: center;
+    flex-shrink: 0;
 }
 
 .event-list {
     color: #ccc;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.event-list .events-header {
+    flex-shrink: 0;
 }
 
 /* Scrollable Events List */
 .events-list-scrollable {
     /* Remove viewport-based height constraint to work with flexbox layout */
+    flex: 1;
     overflow-y: auto;
     padding-right: 10px;
     margin-top: 1rem;
-    height: 100%; /* Fill available space in flex container */
+    min-height: 0;
 }
 
 /* Custom scrollbar styling */
@@ -518,6 +532,35 @@ button.btn-register:hover {
     font-style: italic;
     text-align: center;
     animation: pulse 1.5s ease-in-out infinite alternate;
+}
+
+.event-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 0;
+    color: #ccc;
+    text-align: center;
+    gap: 1rem;
+}
+
+.calendar-loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-top: 4px solid #ff6b35;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* Centered Event Layout Styles */
