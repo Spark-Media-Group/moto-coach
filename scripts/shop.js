@@ -35,6 +35,25 @@ function categoryParent(cat) {
     return { id: p.id, name: p.name };
 }
 
+// Helper to determine the best category label for display purposes
+function categoryDisplayLabel(productNode) {
+    if (!productNode) return 'General';
+
+    const category = productNode.category;
+    if (category) {
+        const parent = categoryParent(category);
+        if (parent?.id && parent.id !== category.id && parent.name) {
+            return parent.name;
+        }
+        if (category.name) {
+            return category.name;
+        }
+    }
+
+    const productType = (productNode.productType || '').trim();
+    return productType || 'General';
+}
+
 // Helper function to compute pricing from all variants
 function computeProductPricing(variants) {
     if (!variants || variants.length === 0) {
@@ -369,6 +388,7 @@ async function fetchProducts() {
                 availableForSale: edge.node.availableForSale,
                 productType: edge.node.productType || 'General',
                 category: edge.node.category,
+                categoryLabel: categoryDisplayLabel(edge.node),
                 tags: edge.node.tags || [],
                 collections: edge.node.collections.edges.map(collectionEdge => collectionEdge.node),
                 options: edge.node.options || [],
@@ -710,12 +730,12 @@ function createProductCard(product) {
                 <h3 class="product-title">${product.title}</h3>
                 <div class="product-price">
                     <span class="price-current">${formatMoney(product.price, product.hasMultiplePrices)}</span>
-                    ${isOnSale ? 
-                        `<span class="price-original">${formatMoney(product.compareAtPrice)}</span>` : 
+                    ${isOnSale ?
+                        `<span class="price-original">${formatMoney(product.compareAtPrice)}</span>` :
                         ''
                     }
                 </div>
-                <div class="product-type">${product.productType}</div>
+                <div class="product-type">${product.categoryLabel || 'General'}</div>
             </div>
         </div>
     `;
