@@ -602,8 +602,19 @@ footer {
         gap: clamp(0.75rem, 4vw, 1.25rem);
     }
 
-    .social-icons {
-        display: none;
+    .nav-right .social-icons {
+        display: flex;
+        order: 1;
+        gap: clamp(0.5rem, 3vw, 1rem);
+    }
+
+    .nav-right .social-icon svg {
+        width: clamp(18px, 4vw, 22px);
+        height: clamp(18px, 4vw, 22px);
+    }
+
+    .nav-right .mobile-menu-toggle {
+        order: 2;
     }
 
     /* Universal header (other pages) mobile styles */
