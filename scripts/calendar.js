@@ -1325,6 +1325,7 @@ class MotoCoachCalendar {
             eventList.innerHTML = '';
             const noEventsP = this.createElementWithText('p', 'no-events', 'No available events scheduled');
             eventList.appendChild(noEventsP);
+            this.updateStructuredData([]);
             this.scheduleEventPanelHeightSync();
             return;
         }
@@ -1355,6 +1356,7 @@ class MotoCoachCalendar {
                 eventList.innerHTML = '';
                 const noEventsP = this.createElementWithText('p', 'no-events', 'No available events scheduled');
                 eventList.appendChild(noEventsP);
+                this.updateStructuredData([]);
                 this.scheduleEventPanelHeightSync();
                 return;
             }
@@ -1375,6 +1377,8 @@ class MotoCoachCalendar {
             eventList.appendChild(eventsHeader);
             eventList.appendChild(eventsScrollable);
 
+            this.updateStructuredData(availableEvents);
+
             this.scheduleEventPanelHeightSync();
 
         } catch (error) {
@@ -1382,6 +1386,7 @@ class MotoCoachCalendar {
             eventList.innerHTML = '';
             const errorP = this.createElementWithText('p', 'no-events', 'Error loading events');
             eventList.appendChild(errorP);
+            this.updateStructuredData([]);
             this.scheduleEventPanelHeightSync();
         }
     }
@@ -1590,6 +1595,87 @@ class MotoCoachCalendar {
             console.error('Error fetching registration count:', error);
             return 0; // Return 0 if there's an error
         }
+    }
+
+    updateStructuredData(events) {
+        const schemaElement = document.getElementById('event-schema');
+
+        if (!schemaElement) {
+            return;
+        }
+
+        if (!Array.isArray(events) || events.length === 0) {
+            schemaElement.textContent = '';
+            return;
+        }
+
+        const normalizedEvents = events
+            .filter(event => event && event.date instanceof Date && !this.isEventPast(event))
+            .sort((a, b) => a.date - b.date)
+            .slice(0, 10)
+            .map((event, index) => {
+                const eventId = this.generateEventId(event);
+                const eventUrl = `https://motocoach.com.au/calendar.html#${eventId}`;
+                const description = event.description || 'Moto Coach motocross coaching session in Sydney.';
+                const price = typeof event.ratePerRider === 'number' ? event.ratePerRider.toFixed(2) : '190.00';
+                const locationName = event.location && event.location.trim().length > 0 ? event.location.trim() : 'Moto Coach Training Venue';
+
+                const eventData = {
+                    '@type': 'Event',
+                    'name': event.title,
+                    'startDate': event.date.toISOString(),
+                    'eventAttendanceMode': 'https://schema.org/OfflineEventAttendanceMode',
+                    'eventStatus': 'https://schema.org/EventScheduled',
+                    'description': description,
+                    'organizer': {
+                        '@type': 'Organization',
+                        'name': 'Moto Coach',
+                        'url': 'https://motocoach.com.au'
+                    },
+                    'location': {
+                        '@type': 'Place',
+                        'name': locationName,
+                        'address': {
+                            '@type': 'PostalAddress',
+                            'addressLocality': 'Sydney',
+                            'addressRegion': 'NSW',
+                            'addressCountry': 'AU'
+                        }
+                    },
+                    'offers': {
+                        '@type': 'Offer',
+                        'priceCurrency': 'AUD',
+                        'price': price,
+                        'availability': 'https://schema.org/InStock',
+                        'url': eventUrl
+                    }
+                };
+
+                if (event.endDate instanceof Date) {
+                    eventData.endDate = event.endDate.toISOString();
+                }
+
+                return {
+                    '@type': 'ListItem',
+                    'position': index + 1,
+                    'url': eventUrl,
+                    'item': eventData
+                };
+            });
+
+        if (normalizedEvents.length === 0) {
+            schemaElement.textContent = '';
+            return;
+        }
+
+        const schema = {
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            'name': 'Upcoming Moto Coach Events',
+            'itemListElement': normalizedEvents
+        };
+
+        schemaElement.textContent = JSON.stringify(schema, null, 2);
     }
 
     getEventsForDate(date) {

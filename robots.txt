@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://motocoach.com.au/sitemap.xml

@@ -23,14 +23,14 @@
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="images/tall logo black.png">
+    <link rel="icon" type="image/png" href="images/tall-logo-black.png">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://motocoach.com.au/shop.html">
     <meta property="og:title" content="Shop - Moto Coach Gear & Equipment">
     <meta property="og:description" content="Browse our selection of premium motorcycle gear, training equipment, and Moto Coach branded merchandise. Quality products for serious riders.">
-    <meta property="og:image" content="https://motocoach.com.au/images/long logo.png">
+    <meta property="og:image" content="https://motocoach.com.au/images/long-logo.png">
     <meta property="og:site_name" content="Moto Coach">
     <meta property="og:locale" content="en_AU">
     
@@ -39,7 +39,7 @@
     <meta property="twitter:url" content="https://motocoach.com.au/shop.html">
     <meta property="twitter:title" content="Shop - Moto Coach Gear & Equipment">
     <meta property="twitter:description" content="Browse our selection of premium motorcycle gear, training equipment, and Moto Coach branded merchandise.">
-    <meta property="twitter:image" content="https://motocoach.com.au/images/long logo.png">
+    <meta property="twitter:image" content="https://motocoach.com.au/images/long-logo.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,12 +48,24 @@
     <link rel="stylesheet" href="styles/shop.css">
 </head>
 <body>
+    <noscript>
+        <style>
+            #loading-state,
+            #shop-controls,
+            #active-filter-breadcrumbs {
+                display: none !important;
+            }
+            #products-grid {
+                display: grid !important;
+            }
+        </style>
+    </noscript>
     <!-- Header -->
     <header class="main-header universal-header">
         <nav class="navbar">
             <div class="logo">
                 <a href="index.html">
-                    <img src="images/long logo.png" alt="Moto Coach" class="logo-img">
+                    <img src="images/long-logo.png" alt="Moto Coach" class="logo-img">
                 </a>
             </div>
             <div class="nav-right">
@@ -104,7 +116,9 @@
     <section class="shop-hero">
         <div class="hero-content">
             <h1>Moto Coach Shop</h1>
-            
+            <p class="shop-intro">Premium motocross training gear, trackside essentials, and Moto Coach merchandise curated for Australian riders chasing faster lap times.</p>
+            <p class="shop-intro highlight">Every product is vetted by our coaching staff so you can train with confidence on and off the bike.</p>
+
             <!-- Filter and Sort Controls - Now integrated into hero -->
             <div id="shop-controls" class="shop-controls" style="display: none;">
                 <div class="filters">
@@ -152,8 +166,43 @@
             <!-- (Inline results count now lives in filter bar; legacy container removed) -->
 
             <!-- Products Grid -->
-            <div id="products-grid" class="products-grid" style="display: none;">
-                <!-- Products will be dynamically inserted here -->
+            <div id="products-grid" class="products-grid">
+                <article id="product-flexfit-cap" class="product-card product-card--static">
+                    <div class="product-image">
+                        <img src="images/hat-mockup.jpg" alt="Moto Coach Flexfit cap for motocross riders" loading="lazy">
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-title">Moto Coach Flexfit Cap</h3>
+                        <div class="product-price">
+                            <span class="price-current">$39.00</span>
+                        </div>
+                        <div class="product-type">Apparel</div>
+                    </div>
+                </article>
+                <article id="product-skills-cone-set" class="product-card product-card--static">
+                    <div class="product-image">
+                        <img src="images/pexels-pixabay-258118.jpg" alt="Moto Coach motocross training cone and drill kit" loading="lazy">
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-title">Moto Coach Skills Cone Set</h3>
+                        <div class="product-price">
+                            <span class="price-current">$65.00</span>
+                        </div>
+                        <div class="product-type">Training Equipment</div>
+                    </div>
+                </article>
+                <article id="product-rider-development-pack" class="product-card product-card--static">
+                    <div class="product-image">
+                        <img src="images/pexels-pixelcop-1878293.jpg" alt="Moto Coach rider development workbook and strength band" loading="lazy">
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-title">Moto Coach Rider Development Pack</h3>
+                        <div class="product-price">
+                            <span class="price-current">$120.00</span>
+                        </div>
+                        <div class="product-type">Coaching Resources</div>
+                    </div>
+                </article>
             </div>
 
             <!-- Empty State -->
@@ -164,6 +213,25 @@
                 </div>
             </div>
         </div>
+        <section class="shop-faq" aria-labelledby="shop-faq-title">
+            <div class="shop-faq-container">
+                <h2 id="shop-faq-title">Moto Coach Shop FAQs</h2>
+                <div class="shop-faq-grid">
+                    <article class="faq-item">
+                        <h3>Do you ship across Australia?</h3>
+                        <p>Yes. We dispatch apparel and training equipment Australia-wide with tracking, and Sydney riders can arrange collection at a Moto Coach coaching session.</p>
+                    </article>
+                    <article class="faq-item">
+                        <h3>Can I try gear before buying?</h3>
+                        <p>Riders booked into our coaching programs can trial select items trackside so you can confirm sizing and fit before ordering online.</p>
+                    </article>
+                    <article class="faq-item">
+                        <h3>Which products suit my skill level?</h3>
+                        <p>Each listing includes coaching notes from Leigh that explain who the gear is designed for. Contact us if you need personalised recommendations for your riding goals.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
     </main>
 
     <!-- Product Modal -->
@@ -225,6 +293,125 @@
             </div>
         </div>
     </footer>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Moto Coach Shop Products",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "url": "https://motocoach.com.au/shop.html#product-flexfit-cap",
+                "item": {
+                    "@type": "Product",
+                    "name": "Moto Coach Flexfit Cap",
+                    "image": "https://motocoach.com.au/images/hat-mockup.jpg",
+                    "description": "Breathable Flexfit cap with embroidered Moto Coach crest to keep riders cool in the paddock.",
+                    "brand": {
+                        "@type": "Brand",
+                        "name": "Moto Coach"
+                    },
+                    "offers": {
+                        "@type": "Offer",
+                        "priceCurrency": "AUD",
+                        "price": "39.00",
+                        "availability": "https://schema.org/InStock",
+                        "url": "https://motocoach.com.au/shop.html#product-flexfit-cap",
+                        "seller": {
+                            "@type": "Organization",
+                            "name": "Moto Coach"
+                        }
+                    }
+                }
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "url": "https://motocoach.com.au/shop.html#product-skills-cone-set",
+                "item": {
+                    "@type": "Product",
+                    "name": "Moto Coach Skills Cone Set",
+                    "image": "https://motocoach.com.au/images/pexels-pixabay-258118.jpg",
+                    "description": "Twenty-piece cone kit used in Moto Coach drills to sharpen corner entry and braking technique.",
+                    "brand": {
+                        "@type": "Brand",
+                        "name": "Moto Coach"
+                    },
+                    "offers": {
+                        "@type": "Offer",
+                        "priceCurrency": "AUD",
+                        "price": "65.00",
+                        "availability": "https://schema.org/InStock",
+                        "url": "https://motocoach.com.au/shop.html#product-skills-cone-set",
+                        "seller": {
+                            "@type": "Organization",
+                            "name": "Moto Coach"
+                        }
+                    }
+                }
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "url": "https://motocoach.com.au/shop.html#product-rider-development-pack",
+                "item": {
+                    "@type": "Product",
+                    "name": "Moto Coach Rider Development Pack",
+                    "image": "https://motocoach.com.au/images/pexels-pixelcop-1878293.jpg",
+                    "description": "Complete training bundle with strength band, skills workbook, and goal tracking templates designed by Leigh Gainfort.",
+                    "brand": {
+                        "@type": "Brand",
+                        "name": "Moto Coach"
+                    },
+                    "offers": {
+                        "@type": "Offer",
+                        "priceCurrency": "AUD",
+                        "price": "120.00",
+                        "availability": "https://schema.org/InStock",
+                        "url": "https://motocoach.com.au/shop.html#product-rider-development-pack",
+                        "seller": {
+                            "@type": "Organization",
+                            "name": "Moto Coach"
+                        }
+                    }
+                }
+            }
+        ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Do you ship across Australia?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Yes. We dispatch apparel and training equipment Australia-wide with tracking, and Sydney riders can arrange collection at a Moto Coach coaching session."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Can I try gear before buying?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Riders booked into our coaching programs can trial select items trackside so you can confirm sizing and fit before ordering online."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Which products suit my skill level?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Each listing includes coaching notes from Leigh that explain who the gear is designed for. Contact us if you need personalised recommendations for your riding goals."
+                }
+            }
+        ]
+    }
+    </script>
     <script src="scripts/main.js"></script>
     <script src="scripts/shop.js"></script>
     <script src="scripts/analytics.js"></script>
