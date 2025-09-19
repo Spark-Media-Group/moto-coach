@@ -22,6 +22,19 @@
     letter-spacing: 3px;
 }
 
+.shop-intro {
+    max-width: 780px;
+    margin: 0 auto 0.85rem auto;
+    font-size: 1.05rem;
+    line-height: 1.8;
+    color: #555;
+}
+
+.shop-intro.highlight {
+    font-weight: 600;
+    color: #1f1f1f;
+}
+
 /* Shop Controls */
  .shop-controls {
     --chip-radius: 18px;
@@ -75,19 +88,6 @@
 /* Adjust inline sort variant (hide label visually) */
 .sort-controls.inline { margin: 0; }
 .sort-controls.inline label { display: none; }
-
-/* Visually hidden utility */
-.visually-hidden {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0 0 0 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
-}
 
 @media (max-width: 768px) {
     .filters-header { align-items: flex-start; }
@@ -1792,14 +1792,26 @@
     .gallery-next {
         right: 10px;
     }
-    
+
     .thumbnail {
         width: 60px;
         height: 60px;
     }
-    
+
     .image-thumbnails {
         gap: 8px;
+    }
+
+    .shop-faq {
+        padding: 3rem 1rem;
+    }
+
+    .shop-faq-grid {
+        gap: 1.25rem;
+    }
+
+    .faq-item {
+        padding: 1.5rem;
     }
 }
 
@@ -1807,7 +1819,11 @@
     .shop-hero h1 {
         font-size: 2rem;
     }
-    
+
+    .shop-intro {
+        font-size: 0.95rem;
+    }
+
     .shop-controls {
         padding: 1rem;
     }
@@ -1830,5 +1846,9 @@
         width: 100%;
         height: auto;
         padding: 0.75rem;
+    }
+
+    .faq-item {
+        padding: 1.3rem;
     }
 }

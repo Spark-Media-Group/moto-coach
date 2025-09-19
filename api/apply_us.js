@@ -92,7 +92,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
             attachments: [
                 {
                     filename: 'logo.png',
-                    path: './images/long logo.png',
+                    path: './images/long-logo.png',
                     cid: 'logo'
                 }
             ]
@@ -189,7 +189,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
             attachments: [
                 {
                     filename: 'logo.png',
-                    path: './images/long logo.png',
+                    path: './images/long-logo.png',
                     cid: 'logo'
                 }
             ]

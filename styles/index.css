@@ -514,6 +514,23 @@ main {
     filter: brightness(1.2) contrast(1.2);
 }
 
+.sponsors-copy {
+    margin-top: 2rem;
+    max-width: 720px;
+    color: #555;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.sponsors-copy p {
+    margin-bottom: 1rem;
+}
+
+.sponsors-copy .sponsor-trust {
+    font-weight: 600;
+    color: #2d2d2d;
+}
+
 /* Mobile Responsive Styles for index.html */
 @media (max-width: 768px) {
     .hero {
