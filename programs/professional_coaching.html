@@ -10,14 +10,14 @@
     <link rel="canonical" href="https://motocoach.com.au/programs/professional_coaching.html">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="../images/tall logo black.png">
+    <link rel="icon" type="image/png" href="../images/tall-logo-black.png">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://motocoach.com.au/programs/professional_coaching.html">
     <meta property="og:title" content="Professional Coaching - Expert Motorcycle Training">
     <meta property="og:description" content="Professional one-on-one motorcycle coaching with expert instructors. Personalized training sessions and skill development programs in Sydney.">
-    <meta property="og:image" content="https://motocoach.com.au/images/long logo.png">
+    <meta property="og:image" content="https://motocoach.com.au/images/long-logo.png">
     <meta property="og:site_name" content="Moto Coach">
     <meta property="og:locale" content="en_AU">
     
@@ -26,13 +26,45 @@
     <meta property="twitter:url" content="https://motocoach.com.au/programs/professional_coaching.html">
     <meta property="twitter:title" content="Professional Coaching - Expert Motorcycle Training">
     <meta property="twitter:description" content="Professional one-on-one motorcycle coaching with expert instructors. Personalized training sessions in Sydney.">
-    <meta property="twitter:image" content="https://motocoach.com.au/images/long logo.png">
+    <meta property="twitter:image" content="https://motocoach.com.au/images/long-logo.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/main.css">
     <link rel="stylesheet" href="../styles/coaching.css">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "What does the weekly after school program include?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Moto Coach operates weekly coaching at Penrith Mini Bike Club, Dargle, and Appin with both small group and private options for up to 12 riders per session."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "How does the small group coaching at Appin work?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Riders are grouped by bike size and ability for two-hour Fast 50 track sessions, capped at six riders with track entry and public track access included."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "What support is available beyond coaching sessions?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Moto Coach offers Motorcycling NSW Kickstarts, one-on-one training, loan gear, and insurance-backed permits with flexible Afterpay booking."
+                }
+            }
+        ]
+    }
+    </script>
 </head>
 <body>
     <!-- Header -->
@@ -40,7 +72,7 @@
         <nav class="navbar">
             <div class="logo">
                 <a href="../index.html">
-                    <img src="../images/long logo.png" alt="Moto Coach" class="logo-img">
+                    <img src="../images/long-logo.png" alt="Moto Coach" class="logo-img">
                 </a>
             </div>
             <div class="nav-right">
@@ -86,13 +118,13 @@
             <!-- Hero Images Side by Side -->
             <div class="coaching-hero-images">
                 <div class="coaching-hero-image">
-                    <img src="../images/coaching 5.jpg" alt="Track Training">
+                    <img src="../images/coaching 5.jpg" alt="Moto Coach instructor guiding motocross rider through track training drills" loading="eager">
                 </div>
                 <div class="coaching-hero-image">
-                    <img src="../images/coaching 4.jpg" alt="Motocross Coaching">
+                    <img src="../images/coaching 4.jpg" alt="Advanced motocross coaching session with Moto Coach in Sydney" loading="lazy">
                 </div>
                 <div class="coaching-hero-image">
-                    <img src="../images/coaching 6.jpg" alt="Rider Development">
+                    <img src="../images/coaching 6.jpg" alt="Moto Coach rider development workshop for young racers" loading="lazy">
                 </div>
             </div>
 
@@ -123,29 +155,35 @@
 
 
         <!-- How It Works Section -->
-        <section class="how-it-works-section">
+        <section class="how-it-works-section" itemscope itemtype="https://schema.org/FAQPage">
             <div class="works-container">
                 <div class="works-content-side">
                     <h2>Expert Instruction</h2>
                     <div class="works-process">
-                        <div class="process-step">
+                        <article class="process-step" itemprop="mainEntity" itemscope itemtype="https://schema.org/Question">
                             <div class="step-content">
-                                <h4>Regular Weekly After School Program</h4>
-                                <p>We run consistent weekly coaching at multiple venues: Penrith Mini Bike Club (Mondays & Wednesdays 4-6:30pm), Dargle (Thursday evenings 4-6:30pm), and Saturdays at Appin all day. Both small group sessions and private coaching available. Maximum of 12 riders per session.</p>
+                                <h4 itemprop="name">Regular Weekly After School Program</h4>
+                                <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+                                    <p itemprop="text">We run consistent weekly coaching at multiple venues: Penrith Mini Bike Club (Mondays & Wednesdays 4-6:30pm), Dargle (Thursday evenings 4-6:30pm), and Saturdays at Appin all day. Both small group sessions and private coaching available. Maximum of 12 riders per session.</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="process-step">
+                        </article>
+                        <article class="process-step" itemprop="mainEntity" itemscope itemtype="https://schema.org/Question">
                             <div class="step-content">
-                                <h4>Small Group Coaching at Appin</h4>
-                                <p>Specialized sessions for riders of similar bike size and ability on our Fast 50 track. Currently catering to 50cc-125cc bikes with 2-hour sessions (9:00-11:00am or 11:30-1:30pm). Maximum of 6 riders per session. Track entry included, plus all-day access to public tracks.</p>
+                                <h4 itemprop="name">Small Group Coaching at Appin</h4>
+                                <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+                                    <p itemprop="text">Specialized sessions for riders of similar bike size and ability on our Fast 50 track. Currently catering to 50cc-125cc bikes with 2-hour sessions (9:00-11:00am or 11:30-1:30pm). Maximum of 6 riders per session. Track entry included, plus all-day access to public tracks.</p>
+                                </div>
                             </div>
-                        </div>
-                        <div class="process-step">
+                        </article>
+                        <article class="process-step" itemprop="mainEntity" itemscope itemtype="https://schema.org/Question">
                             <div class="step-content">
-                                <h4>Comprehensive Support</h4>
-                                <p>We provide Motorcycling NSW Kickstarts and Endorsements, offer 1:1 training sessions, and can supply training bikes and helmets when needed. All coaching is done under Motorcycling New South Wales permits, which covers riders and spectators under the insurance policy. Flexible booking with Afterpay available for all coaching programs.</p>
+                                <h4 itemprop="name">Comprehensive Support</h4>
+                                <div itemprop="acceptedAnswer" itemscope itemtype="https://schema.org/Answer">
+                                    <p itemprop="text">We provide Motorcycling NSW Kickstarts and Endorsements, offer 1:1 training sessions, and can supply training bikes and helmets when needed. All coaching is done under Motorcycling New South Wales permits, which covers riders and spectators under the insurance policy. Flexible booking with Afterpay available for all coaching programs.</p>
+                                </div>
                             </div>
-                        </div>
+                        </article>
                     </div>
                     
                     <div class="works-cta-section">
