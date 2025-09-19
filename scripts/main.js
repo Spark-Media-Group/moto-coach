@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Close mobile menu when window is resized to desktop
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 768) {
+            if (window.innerWidth > 1100) {
                 mobileMenuToggle.classList.remove('active');
                 navLinksContainer.classList.remove('active');
                 document.body.style.overflow = '';
