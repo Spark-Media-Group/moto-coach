@@ -486,64 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
         vacationDetail.classList.add('active');
     }
     
-    // Contact form handling
-    const contactForm = document.querySelector('.contact-form');
-    if (contactForm) {
-        contactForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const submitButton = this.querySelector('button[type="submit"]');
-            const originalButtonText = submitButton.textContent;
-            
-            // Disable submit button and show loading state
-            submitButton.disabled = true;
-            submitButton.textContent = 'Sending...';
-            submitButton.style.opacity = '0.7';
-            
-            // Clear any previous error messages
-            clearFormErrors();
-            
-            // Get form data
-            const formData = new FormData(this);
-            const data = {
-                firstName: formData.get('firstName'),
-                lastName: formData.get('lastName'),
-                email: formData.get('email'),
-                phone: formData.get('phone'),
-                subject: formData.get('subject'),
-                message: formData.get('message')
-            };
-            
-            try {
-                const response = await fetch('/api/contact', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    // Success - show success message and reset form
-                    showFormSuccess(result.message);
-                    this.reset();
-                } else {
-                    // Error - show error message
-                    showFormError(result.error || 'Something went wrong. Please try again.');
-                }
-            } catch (error) {
-                console.error('Form submission error:', error);
-                showFormError('Network error. Please check your connection and try again.');
-            } finally {
-                // Re-enable submit button
-                submitButton.disabled = false;
-                submitButton.textContent = originalButtonText;
-                submitButton.style.opacity = '1';
-            }
-        });
-    }
+    // Contact form is handled by contact.js on contact page
     
     // Form error and success message functions
     function showFormError(message) {
