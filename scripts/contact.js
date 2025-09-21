@@ -115,51 +115,68 @@ async function loadRecaptchaSettings() {
 }
 
 function showSuccessMessage(message) {
-    // Remove any existing messages
-    removeExistingMessages();
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'alert alert-success';
-    messageDiv.innerHTML = `
-        <div class="alert-content">
-            <svg class="alert-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-            </svg>
-            <span>${message}</span>
-        </div>
-    `;
-    
-    const formContainer = document.querySelector('.contact-form-container');
-    formContainer.insertBefore(messageDiv, formContainer.firstChild);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 5000);
+    renderAlert('success', message);
 }
 
 function showErrorMessage(message) {
-    // Remove any existing messages
+    renderAlert('error', message);
+}
+
+function renderAlert(type, message) {
     removeExistingMessages();
-    
+
+    const formContainer = document.querySelector('.contact-form-container');
+    if (!formContainer) {
+        return;
+    }
+
+    const iconPaths = {
+        success: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.06 13.53-3.19-3.2 1.5-1.5 1.69 1.69 4.62-4.63 1.5 1.5-6.12 6.14z',
+        error: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm3.54 12.54-1.41 1.41L12 13.41l-2.12 2.12-1.41-1.41L10.59 12 8.46 9.88l1.41-1.41L12 10.59l2.12-2.12 1.41 1.41L13.41 12l2.13 2.12z'
+    };
+
+    const titles = {
+        success: 'Message sent successfully',
+        error: 'Something went wrong'
+    };
+
+    const ariaRole = type === 'error' ? 'alert' : 'status';
+    const ariaLive = type === 'error' ? 'assertive' : 'polite';
+
     const messageDiv = document.createElement('div');
-    messageDiv.className = 'alert alert-error';
+    messageDiv.className = `alert alert-${type}`;
+    messageDiv.setAttribute('role', ariaRole);
+    messageDiv.setAttribute('aria-live', ariaLive);
+    messageDiv.setAttribute('tabindex', '-1');
+
     messageDiv.innerHTML = `
         <div class="alert-content">
-            <svg class="alert-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            <svg class="alert-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="${iconPaths[type]}" />
             </svg>
-            <span>${message}</span>
+            <div class="alert-text">
+                <p class="alert-title">${titles[type]}</p>
+                <p class="alert-message">${message}</p>
+            </div>
         </div>
     `;
-    
-    const formContainer = document.querySelector('.contact-form-container');
+
     formContainer.insertBefore(messageDiv, formContainer.firstChild);
-    
-    // Auto-remove after 5 seconds
+
+    try {
+        messageDiv.focus({ preventScroll: true });
+    } catch (focusError) {
+        messageDiv.focus();
+    }
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const removalDelay = type === 'success' ? 8000 : 10000;
     setTimeout(() => {
-        messageDiv.remove();
-    }, 5000);
+        if (messageDiv.parentNode) {
+            messageDiv.classList.add('alert-hide');
+            setTimeout(() => messageDiv.remove(), 250);
+        }
+    }, removalDelay);
 }
 
 function removeExistingMessages() {
