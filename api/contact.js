@@ -1,7 +1,7 @@
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient;
 
 export default async function handler(req, res) {
   const cors = applyCors(req, res, {
@@ -19,6 +19,17 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!process.env.RESEND_API_KEY) {
+      console.error('Missing RESEND_API_KEY environment variable');
+      return res.status(500).json({
+        error: 'Email service is not configured. Please try again later.'
+      });
+    }
+
+    if (!resendClient) {
+      resendClient = new Resend(process.env.RESEND_API_KEY);
+    }
+
     const { firstName, lastName, email, phone, subject, message, recaptchaToken } = req.body;
 
     // Validate required fields
@@ -80,9 +91,12 @@ export default async function handler(req, res) {
 
     const subjectText = subjectMap[subject] || subject;
 
-    // Send email using Resend
-    const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev',
+    const fromAddress = process.env.FROM_EMAIL || 'Moto Coach <contact@motocoach.com.au>';
+    const senderName = [firstName, lastName].filter(Boolean).join(' ').trim();
+    const replyToAddress = senderName ? `${senderName} <${email}>` : email;
+
+    const emailPayload = {
+      from: fromAddress,
       to: [process.env.TO_EMAIL || 'leigh@motocoach.com.au'],
       subject: `New Contact Form Submission - ${subjectText}`,
       html: `
@@ -90,7 +104,7 @@ export default async function handler(req, res) {
           <div style="background: linear-gradient(135deg, #ff6b35 0%, #ff8a5c 100%); padding: 20px; text-align: center; margin-bottom: 20px;">
             <img src="cid:moto-coach-logo" alt="Moto Coach" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
           </div>
-          
+
           <h2 style="color: #ff6600; border-bottom: 2px solid #ff6600; padding-bottom: 10px;">
             New Contact Form Submission
           </h2>
@@ -136,7 +150,14 @@ This message was sent from the Moto Coach website contact form.
           contentId: 'moto-coach-logo',
         }
       ]
-    });
+    };
+
+    if (replyToAddress) {
+      emailPayload.reply_to = [replyToAddress];
+    }
+
+    // Send email using Resend
+    const { data, error } = await resendClient.emails.send(emailPayload);
 
     if (error) {
       console.error('Resend error:', error);
