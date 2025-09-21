@@ -95,16 +95,93 @@ function computeProductPricing(variants) {
 // Helper function to format money using proper Intl formatting
 function formatMoney(price, showFrom = false) {
     if (!price || !price.amount) return '$0.00';
-    
+
     const formatter = new Intl.NumberFormat('en-AU', {
         style: 'currency',
         currency: price.currencyCode || 'AUD',
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
-    
+
     const formattedPrice = formatter.format(parseFloat(price.amount));
     return showFrom ? `From ${formattedPrice}` : formattedPrice;
+}
+
+// Ensure URLs use HTTPS (handles http:// and protocol-relative URLs)
+function ensureSecureUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    const trimmed = url.trim();
+
+    if (trimmed.startsWith('http://')) {
+        return 'https://' + trimmed.slice(7);
+    }
+
+    if (trimmed.startsWith('//')) {
+        return 'https:' + trimmed.slice(2);
+    }
+
+    return trimmed;
+}
+
+// Sanitize product descriptions coming from Shopify to avoid insecure content
+function sanitizeProductDescription(descriptionHtml) {
+    if (!descriptionHtml) return '';
+
+    try {
+        const tempContainer = document.createElement('div');
+        tempContainer.innerHTML = descriptionHtml;
+
+        // Remove any script tags outright for safety
+        tempContainer.querySelectorAll('script').forEach(el => el.remove());
+
+        const updateAttributeToHttps = (element, attributeName) => {
+            if (!element.hasAttribute(attributeName)) return;
+            const originalValue = element.getAttribute(attributeName);
+            if (!originalValue) return;
+
+            const secureValue = ensureSecureUrl(originalValue);
+            if (secureValue !== originalValue) {
+                element.setAttribute(attributeName, secureValue);
+            }
+        };
+
+        // Normalise src, href and similar attributes
+        tempContainer.querySelectorAll('[src], [href], [data-src]').forEach(el => {
+            updateAttributeToHttps(el, 'src');
+            updateAttributeToHttps(el, 'href');
+            updateAttributeToHttps(el, 'data-src');
+
+            if (el.hasAttribute('srcset')) {
+                const srcset = el.getAttribute('srcset');
+                if (srcset) {
+                    const sanitisedSrcset = srcset.split(',').map(part => {
+                        const trimmedPart = part.trim();
+                        if (!trimmedPart) return '';
+
+                        const [url, descriptor] = trimmedPart.split(/\s+/, 2);
+                        const secureUrl = ensureSecureUrl(url);
+                        return descriptor ? `${secureUrl} ${descriptor}` : secureUrl;
+                    }).filter(Boolean).join(', ');
+
+                    el.setAttribute('srcset', sanitisedSrcset);
+                }
+            }
+        });
+
+        // Clean inline styles that reference insecure URLs
+        tempContainer.querySelectorAll('[style]').forEach(el => {
+            const styleValue = el.getAttribute('style');
+            if (!styleValue || !styleValue.includes('http://')) return;
+
+            const updatedStyle = styleValue.replace(/url\((\s*['"]?)http:\/\//gi, (_, prefix) => `url(${prefix}https://`);
+            el.setAttribute('style', updatedStyle);
+        });
+
+        return tempContainer.innerHTML;
+    } catch (error) {
+        console.warn('Shop: Failed to sanitise product description', error);
+        return descriptionHtml;
+    }
 }
 
 // Helper function to count products for a given filter
@@ -383,7 +460,7 @@ async function fetchProducts() {
             return {
                 id: edge.node.id,
                 title: edge.node.title,
-                description: edge.node.description,
+                description: sanitizeProductDescription(edge.node.description),
                 handle: edge.node.handle,
                 availableForSale: edge.node.availableForSale,
                 productType: edge.node.productType || 'General',
@@ -393,7 +470,10 @@ async function fetchProducts() {
                 collections: edge.node.collections.edges.map(collectionEdge => collectionEdge.node),
                 options: edge.node.options || [],
                 variants: variants,
-                images: edge.node.images.edges.map(imageEdge => imageEdge.node),
+                images: edge.node.images.edges.map(imageEdge => ({
+                    ...imageEdge.node,
+                    url: ensureSecureUrl(imageEdge.node.url)
+                })),
                 ...computeProductPricing(variants)
             };
         });
