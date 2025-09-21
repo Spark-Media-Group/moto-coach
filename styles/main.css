@@ -972,6 +972,89 @@ footer {
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 
+.contact-form-container .alert {
+    position: relative;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(15, 15, 15, 0.7);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 25px 45px rgba(0, 0, 0, 0.35);
+    color: #ffffff;
+    outline: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.contact-form-container .alert-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.contact-form-container .alert-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    color: inherit;
+}
+
+.contact-form-container .alert-text {
+    flex: 1;
+}
+
+.contact-form-container .alert-title {
+    margin: 0;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.contact-form-container .alert-message {
+    margin: 0.35rem 0 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.contact-form-container .alert-success {
+    border-color: rgba(34, 197, 94, 0.55);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(6, 95, 70, 0.4));
+    box-shadow: 0 25px 45px rgba(16, 185, 129, 0.35);
+}
+
+.contact-form-container .alert-error {
+    border-color: rgba(239, 68, 68, 0.55);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(127, 29, 29, 0.4));
+    box-shadow: 0 25px 45px rgba(239, 68, 68, 0.35);
+}
+
+.contact-form-container .alert-hide {
+    opacity: 0;
+    transform: translateY(-6px);
+}
+
+@media (max-width: 600px) {
+    .contact-form-container .alert {
+        padding: 1rem 1.1rem;
+    }
+
+    .contact-form-container .alert-icon {
+        width: 24px;
+        height: 24px;
+    }
+
+    .contact-form-container .alert-title {
+        font-size: 0.8rem;
+    }
+
+    .contact-form-container .alert-message {
+        font-size: 0.9rem;
+    }
+}
+
 .form-header {
     text-align: center;
     margin-bottom: 2.5rem;
