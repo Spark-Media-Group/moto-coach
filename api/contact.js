@@ -21,8 +21,18 @@ export default async function handler(req, res) {
   try {
     const { firstName, lastName, email, phone, subject, message, recaptchaToken } = req.body;
 
+    console.log('Contact form submission received:', {
+      hasFirstName: !!firstName,
+      hasLastName: !!lastName,
+      hasEmail: !!email,
+      hasSubject: !!subject,
+      hasMessage: !!message,
+      hasRecaptcha: !!recaptchaToken
+    });
+
     // Validate required fields
     if (!firstName || !lastName || !email || !subject || !message) {
+      console.log('Missing required fields');
       return res.status(400).json({ 
         error: 'Missing required fields. Please fill in all required fields.' 
       });
@@ -82,8 +92,8 @@ export default async function handler(req, res) {
 
     // Send email using Resend
     const { data, error } = await resend.emails.send({
-      from: 'onboarding@resend.dev',
-      to: [process.env.TO_EMAIL || 'leigh@motocoach.com.au'],
+      from: 'contact@motocoach.com.au',
+      to: [process.env.TO_EMAIL || 'contact@motocoach.com.au'],
       subject: `New Contact Form Submission - ${subjectText}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -131,7 +141,7 @@ This message was sent from the Moto Coach website contact form.
       `,
       attachments: [
         {
-          path: 'https://motocoach.com.au/images/long%20logo.png',
+          path: 'https://motocoach.com.au/images/long-logo.png',
           filename: 'moto-coach-logo.png',
           contentId: 'moto-coach-logo',
         }
