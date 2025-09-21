@@ -1,4 +1,5 @@
 import { applyCors } from './_utils/cors';
+import { isLiveEnvironment } from './_utils/environment';
 
 export default async function handler(req, res) {
     const cors = applyCors(req, res, {
@@ -16,8 +17,10 @@ export default async function handler(req, res) {
 
     try {
         // Only return public configuration that's safe to expose
+        const recaptchaEnabled = isLiveEnvironment();
         const config = {
-            recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY,
+            recaptchaEnabled,
+            recaptchaSiteKey: recaptchaEnabled ? process.env.RECAPTCHA_SITE_KEY : null,
             // Add other public config here if needed
         };
 

@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+import { isLiveEnvironment } from './_utils/environment';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -343,18 +344,22 @@ export default async function handler(req, res) {
         // Continue with regular registration processing
         // Verify reCAPTCHA v3 (skip in development)
         const { recaptchaToken } = req.body;
-        
+
         // Get the host from headers to determine if this is development
         const host = req.headers.host || '';
         const isDevelopment = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('192.168.');
         const isProduction = host.includes('vercel.app') || host.includes('motocoach.com.au');
-        
-        if (!isDevelopment && !recaptchaToken) {
+        const recaptchaRequired = isLiveEnvironment() && !isDevelopment;
+        const shouldVerifyRecaptcha = recaptchaRequired && isProduction;
+
+        if (recaptchaRequired && !recaptchaToken) {
             return res.status(400).json({ error: 'reCAPTCHA verification is required' });
+        } else if (!recaptchaRequired) {
+            console.log('Skipping reCAPTCHA requirement in non-live environment');
         }
 
-        // Verify reCAPTCHA v3 with Google API (skip in development)
-        if (!isDevelopment && recaptchaToken && isProduction) {
+        // Verify reCAPTCHA v3 with Google API when required
+        if (shouldVerifyRecaptcha && recaptchaToken) {
             try {
                 const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
                 const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
@@ -390,8 +395,12 @@ export default async function handler(req, res) {
                 console.error('reCAPTCHA verification error:', error);
                 // Continue without blocking for now - you can decide to block if needed
             }
+        } else if (!recaptchaRequired) {
+            console.log('Skipping reCAPTCHA verification in non-live environment');
         } else if (isDevelopment) {
             console.log('Development mode: skipping reCAPTCHA verification');
+        } else if (!isProduction) {
+            console.log('Skipping reCAPTCHA verification for non-production host:', host);
         }
 
         // Debug: Log environment variables (without sensitive data)

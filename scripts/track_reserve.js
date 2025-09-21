@@ -1,4 +1,5 @@
 let riderCount = 1;
+let recaptchaEnabled = true;
 let recaptchaSiteKey = null;
 let recaptchaToken = null;
 let ratePerRider = 190; // Default rate in AUD
@@ -215,9 +216,24 @@ async function initializeRecaptcha() {
     try {
         // Get configuration from API
         const configResponse = await fetch('/api/config');
+        if (!configResponse.ok) {
+            throw new Error('Failed to fetch reCAPTCHA configuration');
+        }
+
         const config = await configResponse.json();
+        if (typeof config.recaptchaEnabled === 'boolean') {
+            recaptchaEnabled = config.recaptchaEnabled;
+        }
+
+        if (!recaptchaEnabled) {
+            console.log('reCAPTCHA disabled for this environment');
+            recaptchaSiteKey = null;
+            recaptchaToken = null;
+            return;
+        }
+
         recaptchaSiteKey = config.recaptchaSiteKey;
-        
+
         if (!recaptchaSiteKey) {
             console.warn('reCAPTCHA site key not configured');
             return;
@@ -1490,11 +1506,16 @@ async function completeRegistration(form, paymentIntentId, totalAmount) {
     // Check reCAPTCHA v3 verification
     const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     
-    if (!isDev) {
+    if (recaptchaEnabled && !isDev) {
         // Execute reCAPTCHA v3 for this form submission
         try {
             console.log('Executing reCAPTCHA v3...');
             await new Promise((resolve, reject) => {
+                if (typeof grecaptcha === 'undefined' || !recaptchaSiteKey) {
+                    reject(new Error('reCAPTCHA configuration is missing'));
+                    return;
+                }
+
                 grecaptcha.ready(function() {
                     grecaptcha.execute(recaptchaSiteKey, {action: 'track_reservation'}).then(function(token) {
                         console.log('reCAPTCHA v3 token received');
@@ -1507,10 +1528,12 @@ async function completeRegistration(form, paymentIntentId, totalAmount) {
             console.error('reCAPTCHA execution failed:', error);
             throw new Error('Security verification failed. Please try again or contact us directly.');
         }
-        
+
         if (!recaptchaToken) {
             throw new Error('Security verification is required. Please try again.');
         }
+    } else if (!recaptchaEnabled) {
+        console.log('Skipping reCAPTCHA execution in non-live environment');
     } else {
         console.log('Development mode: skipping reCAPTCHA verification');
     }
@@ -1528,7 +1551,9 @@ async function completeRegistration(form, paymentIntentId, totalAmount) {
         // Add payment and security data
         data.paymentIntentId = paymentIntentId;
         data.totalAmount = totalAmount;
-        data.recaptchaToken = recaptchaToken;
+        if (recaptchaEnabled) {
+            data.recaptchaToken = recaptchaToken;
+        }
         
         // Handle multi-event vs single event data
         if (window.multiEventData) {

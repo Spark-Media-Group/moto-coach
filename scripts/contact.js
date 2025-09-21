@@ -1,17 +1,40 @@
 // Contact form handling with reCAPTCHA protection
-document.addEventListener('DOMContentLoaded', function() {
+let recaptchaEnabled = true;
+
+document.addEventListener('DOMContentLoaded', async function() {
     const contactForm = document.querySelector('.contact-form');
+    if (!contactForm) {
+        return;
+    }
+
     const submitButton = contactForm.querySelector('button[type="submit"]');
-    
+
+    await loadRecaptchaSettings();
+
+    if (!recaptchaEnabled) {
+        const recaptchaContainer = contactForm.querySelector('.g-recaptcha');
+        if (recaptchaContainer) {
+            recaptchaContainer.style.display = 'none';
+        }
+    }
+
     contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        // Get reCAPTCHA response
-        const recaptchaResponse = grecaptcha.getResponse();
-        
-        if (!recaptchaResponse) {
-            showErrorMessage('Please complete the reCAPTCHA verification.');
-            return;
+
+        let recaptchaResponse = '';
+        if (recaptchaEnabled) {
+            if (typeof grecaptcha === 'undefined') {
+                showErrorMessage('Security verification is unavailable. Please refresh and try again.');
+                return;
+            }
+
+            // Get reCAPTCHA response
+            recaptchaResponse = grecaptcha.getResponse();
+
+            if (!recaptchaResponse) {
+                showErrorMessage('Please complete the reCAPTCHA verification.');
+                return;
+            }
         }
         
         // Disable submit button and show loading state
@@ -28,9 +51,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 email: formData.get('email'),
                 phone: formData.get('phone'),
                 subject: formData.get('subject'),
-                message: formData.get('message'),
-                recaptchaToken: recaptchaResponse
+                message: formData.get('message')
             };
+
+            if (recaptchaEnabled) {
+                data.recaptchaToken = recaptchaResponse;
+            }
             
             // Submit form to API
             const response = await fetch('/api/contact', {
@@ -47,17 +73,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Success
                 showSuccessMessage(result.message || 'Thank you for your message! We\'ll get back to you soon.');
                 contactForm.reset();
-                grecaptcha.reset(); // Reset reCAPTCHA
+                if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset(); // Reset reCAPTCHA
+                }
             } else {
                 // Error from server
                 showErrorMessage(result.error || 'Failed to send message. Please try again.');
-                grecaptcha.reset(); // Reset reCAPTCHA on error
+                if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset(); // Reset reCAPTCHA on error
+                }
             }
-            
+
         } catch (error) {
             console.error('Contact form error:', error);
             showErrorMessage('Network error. Please check your connection and try again.');
-            grecaptcha.reset(); // Reset reCAPTCHA on error
+            if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
+                grecaptcha.reset(); // Reset reCAPTCHA on error
+            }
         } finally {
             // Re-enable submit button
             submitButton.disabled = false;
@@ -65,6 +97,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+async function loadRecaptchaSettings() {
+    try {
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+            return;
+        }
+
+        const config = await response.json();
+        if (typeof config.recaptchaEnabled === 'boolean') {
+            recaptchaEnabled = config.recaptchaEnabled;
+        }
+    } catch (error) {
+        console.error('Failed to load reCAPTCHA configuration:', error);
+    }
+}
 
 function showSuccessMessage(message) {
     // Remove any existing messages
