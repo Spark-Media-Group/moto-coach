@@ -12,11 +12,12 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' cdn.jsdelivr.net;
+                   script-src 'self' 'unsafe-inline' cdn.jsdelivr.net https://www.google.com https://www.gstatic.com;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
                    img-src 'self' data:;
-                   connect-src 'self';
+                   connect-src 'self' https://www.google.com;
                    font-src 'self' fonts.gstatic.com;
+                   frame-src https://www.google.com;
                    object-src 'none';
                    base-uri 'self';">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
