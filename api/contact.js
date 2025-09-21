@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
+import { isLiveEnvironment } from './_utils/environment';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -20,6 +21,7 @@ export default async function handler(req, res) {
 
   try {
     const { firstName, lastName, email, phone, subject, message, recaptchaToken } = req.body;
+    const recaptchaRequired = isLiveEnvironment();
 
     console.log('Contact form submission received:', {
       hasFirstName: !!firstName,
@@ -38,37 +40,41 @@ export default async function handler(req, res) {
       });
     }
 
-    // Validate reCAPTCHA
-    if (!recaptchaToken) {
-      return res.status(400).json({ 
-        error: 'Please complete the reCAPTCHA verification.' 
-      });
-    }
+    if (recaptchaRequired) {
+      // Validate reCAPTCHA
+      if (!recaptchaToken) {
+        return res.status(400).json({
+          error: 'Please complete the reCAPTCHA verification.'
+        });
+      }
 
-    // Verify reCAPTCHA with Google
-    const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
-    if (!recaptchaSecretKey) {
-      console.error('Missing RECAPTCHA_SECRET_KEY environment variable');
-      return res.status(500).json({ 
-        error: 'Server configuration error. Please try again later.' 
-      });
-    }
+      // Verify reCAPTCHA with Google
+      const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
+      if (!recaptchaSecretKey) {
+        console.error('Missing RECAPTCHA_SECRET_KEY environment variable');
+        return res.status(500).json({
+          error: 'Server configuration error. Please try again later.'
+        });
+      }
 
-    const recaptchaVerifyResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: `secret=${recaptchaSecretKey}&response=${recaptchaToken}`
-    });
-
-    const recaptchaResult = await recaptchaVerifyResponse.json();
-    
-    if (!recaptchaResult.success) {
-      console.error('reCAPTCHA verification failed:', recaptchaResult);
-      return res.status(400).json({ 
-        error: 'reCAPTCHA verification failed. Please try again.' 
+      const recaptchaVerifyResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `secret=${recaptchaSecretKey}&response=${recaptchaToken}`
       });
+
+      const recaptchaResult = await recaptchaVerifyResponse.json();
+
+      if (!recaptchaResult.success) {
+        console.error('reCAPTCHA verification failed:', recaptchaResult);
+        return res.status(400).json({
+          error: 'reCAPTCHA verification failed. Please try again.'
+        });
+      }
+    } else {
+      console.log('Skipping reCAPTCHA verification in non-live environment');
     }
 
     // Validate email format

@@ -1,23 +1,56 @@
 // US Travel Program Application Form Handler
+let recaptchaEnabled = true;
+let recaptchaSiteKey = '6LfOyLMrAAAAAOOYttmgC3piJmEf9NHYzeNqjEXm';
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const form = document.querySelector('.application-form');
-    const submitButton = form.querySelector('button[type="submit"]');
-    
-    // Load reCAPTCHA v3
-    loadRecaptcha();
-    
+    if (!form) {
+        return;
+    }
+
+    await initializeRecaptchaSettings();
+
+    if (recaptchaEnabled) {
+        loadRecaptcha();
+    } else {
+        console.log('reCAPTCHA disabled for this environment');
+    }
+
     // Handle form submission
     form.addEventListener('submit', handleFormSubmission);
-    
+
     // File upload handlers
     setupFileUpload();
 });
 
+async function initializeRecaptchaSettings() {
+    try {
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+            return;
+        }
+
+        const config = await response.json();
+        if (typeof config.recaptchaEnabled === 'boolean') {
+            recaptchaEnabled = config.recaptchaEnabled;
+        }
+
+        if (config.recaptchaSiteKey) {
+            recaptchaSiteKey = config.recaptchaSiteKey;
+        }
+    } catch (error) {
+        console.error('Failed to load reCAPTCHA configuration:', error);
+    }
+}
+
 // Load reCAPTCHA v3 script
 function loadRecaptcha() {
+    if (!recaptchaEnabled || !recaptchaSiteKey) {
+        return;
+    }
+
     const script = document.createElement('script');
-    script.src = 'https://www.google.com/recaptcha/api.js?render=6LfOyLMrAAAAAOOYttmgC3piJmEf9NHYzeNqjEXm';
+    script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`;
     script.onload = function() {
         window.grecaptcha.ready(function() {
             console.log('reCAPTCHA v3 loaded successfully');
@@ -37,16 +70,17 @@ async function handleFormSubmission(e) {
         // Disable submit button and show loading state
         submitButton.disabled = true;
         submitButton.textContent = 'Submitting Application...';
-        
-        // Get reCAPTCHA token
-        const recaptchaToken = await getRecaptchaToken();
-        if (!recaptchaToken) {
-            throw new Error('reCAPTCHA verification failed. Please try again.');
-        }
-        
+
         // Collect form data
         const formData = collectFormData(e.target);
-        formData.recaptchaToken = recaptchaToken;
+
+        if (recaptchaEnabled) {
+            const recaptchaToken = await getRecaptchaToken();
+            if (!recaptchaToken) {
+                throw new Error('reCAPTCHA verification failed. Please try again.');
+            }
+            formData.recaptchaToken = recaptchaToken;
+        }
         
         // Validate form data
         const validation = validateFormData(formData);
@@ -99,13 +133,23 @@ async function handleFormSubmission(e) {
 // Get reCAPTCHA token
 function getRecaptchaToken() {
     return new Promise((resolve, reject) => {
+        if (!recaptchaEnabled) {
+            resolve(null);
+            return;
+        }
+
         if (typeof window.grecaptcha === 'undefined') {
             reject(new Error('reCAPTCHA not loaded'));
             return;
         }
-        
+
         window.grecaptcha.ready(function() {
-            window.grecaptcha.execute('6LfOyLMrAAAAAOOYttmgC3piJmEf9NHYzeNqjEXm', {action: 'apply_us'}).then(function(token) {
+            if (!recaptchaSiteKey) {
+                reject(new Error('reCAPTCHA site key not configured'));
+                return;
+            }
+
+            window.grecaptcha.execute(recaptchaSiteKey, {action: 'apply_us'}).then(function(token) {
                 resolve(token);
             }).catch(function(error) {
                 reject(error);
