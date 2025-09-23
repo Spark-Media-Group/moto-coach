@@ -1,17 +1,40 @@
 // Contact form handling with reCAPTCHA protection
-document.addEventListener('DOMContentLoaded', function() {
+let recaptchaEnabled = true;
+
+document.addEventListener('DOMContentLoaded', async function() {
     const contactForm = document.querySelector('.contact-form');
+    if (!contactForm) {
+        return;
+    }
+
     const submitButton = contactForm.querySelector('button[type="submit"]');
-    
+
+    await loadRecaptchaSettings();
+
+    if (!recaptchaEnabled) {
+        const recaptchaContainer = contactForm.querySelector('.g-recaptcha');
+        if (recaptchaContainer) {
+            recaptchaContainer.style.display = 'none';
+        }
+    }
+
     contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
-        // Get reCAPTCHA response
-        const recaptchaResponse = grecaptcha.getResponse();
-        
-        if (!recaptchaResponse) {
-            showErrorMessage('Please complete the reCAPTCHA verification.');
-            return;
+
+        let recaptchaResponse = '';
+        if (recaptchaEnabled) {
+            if (typeof grecaptcha === 'undefined') {
+                showErrorMessage('Security verification is unavailable. Please refresh and try again.');
+                return;
+            }
+
+            // Get reCAPTCHA response
+            recaptchaResponse = grecaptcha.getResponse();
+
+            if (!recaptchaResponse) {
+                showErrorMessage('Please complete the reCAPTCHA verification.');
+                return;
+            }
         }
         
         // Disable submit button and show loading state
@@ -28,9 +51,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 email: formData.get('email'),
                 phone: formData.get('phone'),
                 subject: formData.get('subject'),
-                message: formData.get('message'),
-                recaptchaToken: recaptchaResponse
+                message: formData.get('message')
             };
+
+            if (recaptchaEnabled) {
+                data.recaptchaToken = recaptchaResponse;
+            }
             
             // Submit form to API
             const response = await fetch('/api/contact', {
@@ -47,17 +73,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Success
                 showSuccessMessage(result.message || 'Thank you for your message! We\'ll get back to you soon.');
                 contactForm.reset();
-                grecaptcha.reset(); // Reset reCAPTCHA
+                if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset(); // Reset reCAPTCHA
+                }
             } else {
                 // Error from server
                 showErrorMessage(result.error || 'Failed to send message. Please try again.');
-                grecaptcha.reset(); // Reset reCAPTCHA on error
+                if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset(); // Reset reCAPTCHA on error
+                }
             }
-            
+
         } catch (error) {
             console.error('Contact form error:', error);
             showErrorMessage('Network error. Please check your connection and try again.');
-            grecaptcha.reset(); // Reset reCAPTCHA on error
+            if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
+                grecaptcha.reset(); // Reset reCAPTCHA on error
+            }
         } finally {
             // Re-enable submit button
             submitButton.disabled = false;
@@ -66,52 +98,85 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+async function loadRecaptchaSettings() {
+    try {
+        const response = await fetch('/api/config');
+        if (!response.ok) {
+            return;
+        }
+
+        const config = await response.json();
+        if (typeof config.recaptchaEnabled === 'boolean') {
+            recaptchaEnabled = config.recaptchaEnabled;
+        }
+    } catch (error) {
+        console.error('Failed to load reCAPTCHA configuration:', error);
+    }
+}
+
 function showSuccessMessage(message) {
-    // Remove any existing messages
-    removeExistingMessages();
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'alert alert-success';
-    messageDiv.innerHTML = `
-        <div class="alert-content">
-            <svg class="alert-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-            </svg>
-            <span>${message}</span>
-        </div>
-    `;
-    
-    const formContainer = document.querySelector('.contact-form-container');
-    formContainer.insertBefore(messageDiv, formContainer.firstChild);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 5000);
+    renderAlert('success', message);
 }
 
 function showErrorMessage(message) {
-    // Remove any existing messages
+    renderAlert('error', message);
+}
+
+function renderAlert(type, message) {
     removeExistingMessages();
-    
+
+    const formContainer = document.querySelector('.contact-form-container');
+    if (!formContainer) {
+        return;
+    }
+
+    const iconPaths = {
+        success: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.06 13.53-3.19-3.2 1.5-1.5 1.69 1.69 4.62-4.63 1.5 1.5-6.12 6.14z',
+        error: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm3.54 12.54-1.41 1.41L12 13.41l-2.12 2.12-1.41-1.41L10.59 12 8.46 9.88l1.41-1.41L12 10.59l2.12-2.12 1.41 1.41L13.41 12l2.13 2.12z'
+    };
+
+    const titles = {
+        success: 'Message sent successfully',
+        error: 'Something went wrong'
+    };
+
+    const ariaRole = type === 'error' ? 'alert' : 'status';
+    const ariaLive = type === 'error' ? 'assertive' : 'polite';
+
     const messageDiv = document.createElement('div');
-    messageDiv.className = 'alert alert-error';
+    messageDiv.className = `alert alert-${type}`;
+    messageDiv.setAttribute('role', ariaRole);
+    messageDiv.setAttribute('aria-live', ariaLive);
+    messageDiv.setAttribute('tabindex', '-1');
+
     messageDiv.innerHTML = `
         <div class="alert-content">
-            <svg class="alert-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            <svg class="alert-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="${iconPaths[type]}" />
             </svg>
-            <span>${message}</span>
+            <div class="alert-text">
+                <p class="alert-title">${titles[type]}</p>
+                <p class="alert-message">${message}</p>
+            </div>
         </div>
     `;
-    
-    const formContainer = document.querySelector('.contact-form-container');
+
     formContainer.insertBefore(messageDiv, formContainer.firstChild);
-    
-    // Auto-remove after 5 seconds
+
+    try {
+        messageDiv.focus({ preventScroll: true });
+    } catch (focusError) {
+        messageDiv.focus();
+    }
+    messageDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    const removalDelay = type === 'success' ? 8000 : 10000;
     setTimeout(() => {
-        messageDiv.remove();
-    }, 5000);
+        if (messageDiv.parentNode) {
+            messageDiv.classList.add('alert-hide');
+            setTimeout(() => messageDiv.remove(), 250);
+        }
+    }, removalDelay);
 }
 
 function removeExistingMessages() {

@@ -1,6 +1,7 @@
 const { google } = require('googleapis');
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
+import { isLiveEnvironment } from './_utils/environment';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -225,6 +226,7 @@ export default async function handler(req, res) {
 
     try {
         const formData = req.body;
+        const recaptchaRequired = isLiveEnvironment();
         console.log('Received US Travel Program application (details redacted)');
 
         // Validate required fields
@@ -278,20 +280,24 @@ export default async function handler(req, res) {
             }
         }
 
-        // Verify reCAPTCHA
-        if (!formData.recaptchaToken) {
-            return res.status(400).json({ 
-                error: 'Missing reCAPTCHA verification',
-                details: 'Please complete the security verification.'
-            });
-        }
+        if (recaptchaRequired) {
+            // Verify reCAPTCHA
+            if (!formData.recaptchaToken) {
+                return res.status(400).json({
+                    error: 'Missing reCAPTCHA verification',
+                    details: 'Please complete the security verification.'
+                });
+            }
 
-        const recaptchaValid = await verifyRecaptcha(formData.recaptchaToken);
-        if (!recaptchaValid) {
-            return res.status(400).json({ 
-                error: 'reCAPTCHA verification failed',
-                details: 'Security verification failed. Please try again.'
-            });
+            const recaptchaValid = await verifyRecaptcha(formData.recaptchaToken);
+            if (!recaptchaValid) {
+                return res.status(400).json({
+                    error: 'reCAPTCHA verification failed',
+                    details: 'Security verification failed. Please try again.'
+                });
+            }
+        } else {
+            console.log('Skipping reCAPTCHA verification in non-live environment');
         }
 
         // Generate unique application ID
