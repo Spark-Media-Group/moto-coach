@@ -28,6 +28,22 @@
     <meta property="twitter:description" content="Expert motorcycle coaching, professional training programs, and exciting travel adventures across Australia and the US.">
     <meta property="twitter:image" content="https://motocoach.com.au/images/long-logo.png">
     
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self' 'unsafe-inline';
+                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+                   img-src 'self' data: https://motocoach.com.au https://img.redbull.com;
+                   connect-src 'self' https://*.vercel-insights.com https://*.vercel-analytics.com;
+                   font-src 'self' https://fonts.gstatic.com;
+                   frame-src 'none';
+                   object-src 'none';
+                   base-uri 'self';
+                   form-action 'self';
+                   upgrade-insecure-requests;">
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
