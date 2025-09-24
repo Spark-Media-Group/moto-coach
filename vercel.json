@@ -3,8 +3,91 @@
   "outputDirectory": ".",
   "rewrites": [
     {
+      "source": "/programs/professional_coaching",
+      "destination": "/programs/professional_coaching.html"
+    },
+    {
+      "source": "/programs/australia_travel_program",
+      "destination": "/programs/australia_travel_program.html"
+    },
+    {
+      "source": "/programs/us_travel_program",
+      "destination": "/programs/us_travel_program.html"
+    },
+    {
+      "source": "/programs/apply_us",
+      "destination": "/programs/apply_us.html"
+    },
+    {
+      "source": "/programs/track_reserve",
+      "destination": "/programs/track_reserve.html"
+    },
+    {
+      "source": "/contact",
+      "destination": "/contact.html"
+    },
+    {
+      "source": "/calendar",
+      "destination": "/calendar.html"
+    },
+    {
+      "source": "/shop",
+      "destination": "/shop.html"
+    },
+    {
+      "source": "/team",
+      "destination": "/team.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/$1"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/programs/professional_coaching.html",
+      "destination": "/programs/professional_coaching",
+      "permanent": true
+    },
+    {
+      "source": "/programs/australia_travel_program.html",
+      "destination": "/programs/australia_travel_program",
+      "permanent": true
+    },
+    {
+      "source": "/programs/us_travel_program.html",
+      "destination": "/programs/us_travel_program",
+      "permanent": true
+    },
+    {
+      "source": "/programs/apply_us.html",
+      "destination": "/programs/apply_us",
+      "permanent": true
+    },
+    {
+      "source": "/programs/track_reserve.html",
+      "destination": "/programs/track_reserve",
+      "permanent": true
+    },
+    {
+      "source": "/contact.html",
+      "destination": "/contact",
+      "permanent": true
+    },
+    {
+      "source": "/calendar.html",
+      "destination": "/calendar",
+      "permanent": true
+    },
+    {
+      "source": "/shop.html",
+      "destination": "/shop",
+      "permanent": true
+    },
+    {
+      "source": "/team.html",
+      "destination": "/team",
+      "permanent": true
     }
   ],
   "headers": [
