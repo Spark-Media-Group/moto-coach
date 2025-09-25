@@ -344,6 +344,11 @@ main {
     box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
     transition: transform 0.3s ease, box-shadow 0.3s ease, border 0.3s ease;
     border: 2px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .stat-item:hover {
@@ -367,6 +372,11 @@ main {
     margin-top: 0.5rem;
     font-weight: 500;
     color: #e8e8e8;
+    text-align: center;
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Services Section */
@@ -534,8 +544,8 @@ main {
 /* Mobile Responsive Styles for index.html */
 @media (max-width: 768px) {
     .hero {
-        align-items: flex-end;
-        padding-bottom: clamp(4rem, 18vw, 6.5rem);
+        align-items: center;
+        padding: clamp(3rem, 10vw, 4rem) 0;
     }
 
     .hero-content {
@@ -626,17 +636,17 @@ main {
     }
 
     .about-stats {
-        grid-template-columns: repeat(2, minmax(140px, 1fr));
-        gap: clamp(0.75rem, 4vw, 1.5rem);
-        margin-top: clamp(1.75rem, 6vw, 2.5rem);
-        max-width: 420px;
+        grid-template-columns: repeat(3, minmax(90px, 1fr));
+        gap: clamp(0.75rem, 4vw, 1.25rem);
+        margin-top: clamp(1.75rem, 6vw, 2.25rem);
+        max-width: 480px;
         margin-left: auto;
         margin-right: auto;
     }
 
     .stat-item {
-        padding: clamp(1rem, 4vw, 1.5rem);
-        aspect-ratio: auto;
+        padding: clamp(1rem, 4vw, 1.25rem);
+        aspect-ratio: 1 / 1;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -686,7 +696,7 @@ main {
     }
 
     .hero {
-        padding-bottom: clamp(3rem, 22vw, 5rem);
+        padding: clamp(2.5rem, 12vw, 3.5rem) 0;
     }
 
     .hero-content h1 {
@@ -707,14 +717,14 @@ main {
 
     /* Extra mobile centering for about stats on small screens */
     .about-stats {
-        grid-template-columns: 1fr;
-        max-width: 320px;
-        margin-top: clamp(1.5rem, 8vw, 2rem);
-        gap: clamp(0.65rem, 5vw, 1rem);
+        grid-template-columns: repeat(3, minmax(80px, 1fr));
+        max-width: 100%;
+        margin-top: clamp(1.5rem, 8vw, 1.85rem);
+        gap: clamp(0.5rem, 4.5vw, 0.85rem);
     }
 
     .stat-item {
-        padding: clamp(0.9rem, 5vw, 1.2rem);
+        padding: clamp(0.85rem, 4.5vw, 1.1rem);
     }
 
     .mobile-programs-subtitle {
