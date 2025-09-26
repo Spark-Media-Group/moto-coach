@@ -1010,8 +1010,15 @@
     
     .detail-info {
         padding: 0 1rem;
+        text-align: left !important;
+        margin-left: 0;
+        margin-right: 0;
     }
-    
+
+    .detail-info p {
+        text-align: left !important;
+    }
+
     .experience-detail {
         padding: 60px 0;
         min-height: auto;
@@ -1029,9 +1036,30 @@
     .us-travel-hero-combined {
         padding: 100px 1rem 60px;
     }
-    
+
+    .detail-intro {
+        text-align: left !important;
+        margin-left: 0;
+    }
+
+    .us-travel-hero-combined .container {
+        align-items: flex-start;
+        text-align: left !important;
+    }
+
+    .us-travel-hero-combined .hero-content {
+        text-align: left !important;
+    }
+
     .us-travel-hero-combined .hero-content h1 {
         letter-spacing: 2px;
+        justify-content: flex-start;
+        text-align: left !important;
+    }
+
+    .us-travel-hero-combined .hero-content p {
+        margin: 1rem 0 0;
+        text-align: left !important;
     }
     
     .us-travel-hero-combined .hero-content h1::after {

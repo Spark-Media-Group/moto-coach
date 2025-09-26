@@ -632,7 +632,11 @@ main {
     }
 
     .about-description p {
-        text-align: center;
+        text-align: left !important;
+    }
+
+    .about-content-side p {
+        text-align: left !important;
     }
 
     .about-stats {
