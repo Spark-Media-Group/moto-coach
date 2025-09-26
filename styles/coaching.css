@@ -24,6 +24,43 @@
     display: flex;
 }
 
+.mobile-coaching-hero-slideshow {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.mobile-hero-slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 1.8s ease-in-out;
+    overflow: hidden;
+}
+
+.mobile-hero-slide.active {
+    opacity: 1;
+    z-index: 2;
+}
+
+.mobile-hero-slide img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    transition: transform 5s ease;
+    transform: scale(1.05);
+}
+
+.mobile-hero-slide.active img {
+    transform: scale(1);
+}
+
 .coaching-hero-image {
     flex: 1;
     height: 100%;
@@ -332,15 +369,26 @@
 /* Responsive Design */
 @media (max-width: 768px) {
     .coaching-hero-images {
-        flex-direction: column;
+        display: none;
     }
-    
+
+    .mobile-coaching-hero-slideshow {
+        display: block;
+    }
+
     .coaching-hero-content {
         padding: 0 15px;
     }
-    
+
     .coaching-title-section {
         margin-bottom: 40px;
+    }
+
+    .coaching-main-title {
+        white-space: normal;
+        letter-spacing: 2px;
+        font-size: clamp(2.2rem, 8vw, 3.2rem);
+        line-height: 1;
     }
     
     .coaching-btn-primary {
@@ -360,23 +408,29 @@
 
 @media (max-width: 480px) {
     .coaching-hero-images {
-        flex-direction: column;
+        display: none;
     }
-    
+
+    .mobile-coaching-hero-slideshow {
+        display: block;
+    }
+
     .coaching-btn-primary {
         padding: 12px 25px;
         font-size: 1rem;
         letter-spacing: 1px;
     }
-    
+
     .coaching-btn-secondary {
         padding: 10px 20px;
         font-size: 0.85rem;
         letter-spacing: 1px;
     }
-    
+
     .coaching-main-title {
-        letter-spacing: 2px;
+        letter-spacing: 1px;
+        font-size: clamp(2rem, 9vw, 2.8rem);
+        line-height: 1.05;
     }
 }
 
@@ -940,6 +994,32 @@
   
   .works-image {
     height: 250px;
+  }
+}
+
+@media (max-width: 640px) {
+  .works-container,
+  .cert-container {
+    padding-inline: clamp(1.25rem, 6vw, 2.25rem);
+  }
+
+  .works-process,
+  .cert-benefits {
+    gap: clamp(1.75rem, 5vw, 2.5rem);
+  }
+
+  .process-step,
+  .benefit-item {
+    max-width: 360px;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .benefit-item h4,
+  .benefit-item p {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 
