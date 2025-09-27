@@ -161,54 +161,6 @@
     transform: translateY(-1px);
 }
 
-/* Scroll Indicator */
-.aussie-scroll-indicator {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 3;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: rgba(255, 255, 255, 0.8);
-    text-align: center;
-    width: 100%;
-    max-width: 200px;
-    margin-left: -100px;
-    animation: aussieBounce 2s infinite;
-}
-
-.aussie-scroll-mouse {
-    width: 26px;
-    height: 42px;
-    border: 2px solid rgba(255, 255, 255, 0.8);
-    border-radius: 13px;
-    position: relative;
-    margin-bottom: 8px;
-}
-
-.aussie-scroll-wheel {
-    width: 4px;
-    height: 8px;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 2px;
-    position: absolute;
-    top: 6px;
-    left: 50%;
-    transform: translateX(-50%);
-    animation: aussieScroll 2s infinite;
-}
-
-.aussie-scroll-indicator span {
-    font-family: 'Roboto Condensed', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 300;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
 /* Content Section */
 .aussie-content-section {
     min-height: 100vh;
@@ -258,29 +210,6 @@
     }
 }
 
-@keyframes aussieBounce {
-    0%, 20%, 50%, 80%, 100% {
-        transform: translateY(0);
-    }
-    40% {
-        transform: translateY(-10px);
-    }
-    60% {
-        transform: translateY(-5px);
-    }
-}
-
-@keyframes aussieScroll {
-    0% {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-    100% {
-        opacity: 0;
-        transform: translateX(-50%) translateY(20px);
-    }
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
     .aussie-hero-content {
@@ -296,9 +225,6 @@
         font-size: 1.1rem;
     }
     
-    .aussie-scroll-indicator {
-        bottom: 20px;
-    }
 }
 
 @media (max-width: 480px) {
@@ -338,14 +264,6 @@ html {
     
     .aussie-title-section,
     .aussie-cta-section {
-        animation: none;
-    }
-    
-    .aussie-scroll-indicator {
-        animation: none;
-    }
-    
-    .aussie-scroll-wheel {
         animation: none;
     }
     
