@@ -7,6 +7,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const LOGO_URL = 'https://motocoach.com.au/images/tall-logo-black.png';
 
+const BIKE_CHOICE_LABELS = {
+    'yamaha-yz250f': 'Yamaha YZ250F - $8,500',
+    'honda-crf250r': 'Honda CRF250R - $8,200',
+    'husky-tc250': 'Husky TC 250 - $8,800'
+};
+
 const HTML_ESCAPE_LOOKUP = {
     '&': '&amp;',
     '<': '&lt;',
@@ -25,6 +31,15 @@ function escapeHtml(value) {
 
 function toSafeString(value) {
     return escapeHtml(String(value ?? '').trim());
+}
+
+function toSafeMultilineString(value) {
+    const sanitized = escapeHtml(String(value ?? '').trim());
+    return sanitized.replace(/\r?\n/g, '<br>');
+}
+
+function normaliseBikeChoice(choice) {
+    return BIKE_CHOICE_LABELS[choice] || choice || '';
 }
 
 // Helper function for reCAPTCHA verification
@@ -49,52 +64,63 @@ async function verifyRecaptcha(token) {
 // Function to send confirmation email to applicant
 async function sendApplicantConfirmationEmail(formData, applicationId) {
     try {
+        const safeFirstName = toSafeString(formData.firstName);
+        const safeLastName = toSafeString(formData.lastName);
+        const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim();
+        const safeEmail = toSafeString(formData.email);
+        const safeDateOfBirth = toSafeString(formData.dateOfBirth);
+        const safeBikeChoice = toSafeString(normaliseBikeChoice(formData.bikeChoice));
+        const bringingSupporter = formData.bringingSupporter === 'yes' ? 'Yes' : 'No';
+        const safeBringingSupporter = toSafeString(bringingSupporter);
+        const safeSupporterCount = toSafeString(formData.supporterCount);
+        const safeApplicationId = toSafeString(applicationId);
+        const safeAdditionalComments = toSafeMultilineString(formData.additionalComments);
+
         const { data, error } = await resend.emails.send({
-            from: process.env.FROM_EMAIL,
+            from: 'Moto Coach <noreply@motocoach.com.au>',
             to: formData.email,
-            subject: 'US Travel Program Application Received - Moto Coach',
+            subject: 'US Travel Program Inquiry Received - Moto Coach',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px;">
                     <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                         <div style="text-align: center; margin-bottom: 30px;">
                             <img src="cid:logo" alt="Moto Coach" style="max-width: 200px; height: auto;">
                         </div>
-                        
-                        <h2 style="color: #ff6600; text-align: center; margin-bottom: 30px;">Application Received!</h2>
-                        
+
+                        <h2 style="color: #ff6600; text-align: center; margin-bottom: 30px;">Inquiry Received!</h2>
+
                         <p style="color: #333; font-size: 16px; line-height: 1.6;">
-                            Dear ${formData.firstName},
+                            Dear ${safeFirstName || 'Rider'},
                         </p>
-                        
+
                         <p style="color: #333; font-size: 16px; line-height: 1.6;">
-                            Thank you for applying to the <strong>US Training Camp</strong> at ClubMX! 
-                            We have successfully received your application.
+                            Thank you for sending an inquiry to the <strong>US Travel Program</strong> at ClubMX! We have successfully received your details and will be in touch if a spot becomes available.
                         </p>
-                        
+
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                            <h3 style="color: #ff6600; margin-top: 0;">Application Details:</h3>
-                            <p style="margin: 5px 0;"><strong>Application ID:</strong> ${applicationId}</p>
-                            <p style="margin: 5px 0;"><strong>Name:</strong> ${formData.firstName} ${formData.lastName}</p>
-                            <p style="margin: 5px 0;"><strong>Email:</strong> ${formData.email}</p>
-                            <p style="margin: 5px 0;"><strong>Date of Birth:</strong> ${formData.dateOfBirth}</p>
-                            <p style="margin: 5px 0;"><strong>Bike Choice:</strong> ${formData.bikeChoice}</p>
-                            <p style="margin: 5px 0;"><strong>Bringing Supporter:</strong> ${formData.bringingSupporter === 'yes' ? 'Yes' : 'No'}</p>
-                            ${formData.bringingSupporter === 'yes' ? `<p style="margin: 5px 0;"><strong>Number of Supporters:</strong> ${formData.supporterCount}</p>` : ''}
+                            <h3 style="color: #ff6600; margin-top: 0;">Inquiry Details:</h3>
+                            <p style="margin: 5px 0;"><strong>Inquiry ID:</strong> ${safeApplicationId}</p>
+                            <p style="margin: 5px 0;"><strong>Name:</strong> ${safeFullName || 'Not provided'}</p>
+                            <p style="margin: 5px 0;"><strong>Email:</strong> ${safeEmail || 'Not provided'}</p>
+                            <p style="margin: 5px 0;"><strong>Date of Birth:</strong> ${safeDateOfBirth || 'Not provided'}</p>
+                            <p style="margin: 5px 0;"><strong>Bike Choice:</strong> ${safeBikeChoice || 'Not provided'}</p>
+                            <p style="margin: 5px 0;"><strong>Bringing Supporter:</strong> ${safeBringingSupporter || 'No'}</p>
+                            ${formData.bringingSupporter === 'yes' ? `<p style="margin: 5px 0;"><strong>Number of Supporters:</strong> ${safeSupporterCount || 'Not provided'}</p>` : ''}
+                            ${safeAdditionalComments ? `<p style="margin: 5px 0;"><strong>Additional Comments:</strong><br>${safeAdditionalComments}</p>` : ''}
                         </div>
-                        
+
                         <p style="color: #333; font-size: 16px; line-height: 1.6;">
                             <strong>What happens next?</strong>
                         </p>
-                        
+
                         <ul style="color: #333; font-size: 16px; line-height: 1.6;">
-                            <li>Our team will review your application within 2-3 business days</li>
-                            <li>If there is an available spot, we will contact you to discuss next steps</li>
-                            <li>We will provide detailed information about travel arrangements, accommodation, and program schedule</li>
-                            <li>Payment and final confirmation details will be shared once your application is approved</li>
+                            <li>Our team will review your inquiry within 2-3 business days.</li>
+                            <li>If there is an available spot, we will contact you to discuss next steps.</li>
+                            <li>We will provide detailed information about travel arrangements, accommodation, and the program schedule once a place is confirmed.</li>
                         </ul>
-                        
+
                         <p style="color: #333; font-size: 16px; line-height: 1.6;">
-                            If you have any questions or need to update your application, please don't hesitate to contact us.
+                            If you have any questions or need to update your inquiry, please don't hesitate to contact us.
                         </p>
                         
                         <div style="background: #ff6600; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0;">
@@ -142,7 +168,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
         const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim() || 'Applicant';
         const safeEmail = toSafeString(formData.email);
         const safeDateOfBirth = toSafeString(formData.dateOfBirth);
-        const safeBikeChoice = toSafeString(formData.bikeChoice);
+        const safeBikeChoice = toSafeString(normaliseBikeChoice(formData.bikeChoice));
         const safePassportNumber = toSafeString(formData.passportNumber);
         const safeSupporterCount = toSafeString(formData.supporterCount);
         const safeEmergencyContact = toSafeString(formData.emergencyContact);
@@ -150,6 +176,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
         const safeApplicationId = toSafeString(applicationId);
         const bringingSupporter = formData.bringingSupporter === 'yes' ? 'Yes' : 'No';
         const safeBringingSupporter = toSafeString(bringingSupporter);
+        const safeAdditionalComments = toSafeMultilineString(formData.additionalComments);
 
         const supporterDetails = [];
         if (formData.bringingSupporter === 'yes') {
@@ -203,6 +230,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
 
         detailRows.push({ label: 'Emergency Contact Name', value: safeEmergencyContact || 'N/A' });
         detailRows.push({ label: 'Emergency Contact Phone', value: safeEmergencyPhone || 'N/A' });
+        detailRows.push({ label: 'Additional Comments', value: safeAdditionalComments || 'None provided' });
 
         const detailRowsHtml = detailRows
             .map((row, index) => {
@@ -224,6 +252,16 @@ async function sendAdminNotificationEmail(formData, applicationId) {
         const replyButtonLabel = safeFirstName || 'the applicant';
         const mailtoHref = formData.email ? `mailto:${encodeURIComponent(formData.email)}` : 'mailto:inquiries@motocoach.com.au';
 
+        const attachments = [];
+
+        if (formData.passportPicture && formData.passportPicture.data) {
+            attachments.push({
+                filename: formData.passportPicture.filename || 'passport-picture',
+                content: formData.passportPicture.data,
+                type: formData.passportPicture.contentType || 'application/octet-stream'
+            });
+        }
+
         const html = `
             <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f4f5f7; padding:32px 0; font-family: 'Helvetica Neue', Arial, sans-serif;">
                 <tr>
@@ -242,7 +280,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
                                         ${safeFullName} has sent an inquiry for the US Training Camp at ClubMX.
                                     </p>
                                     <div style="margin:16px 0 24px; text-align:center;">
-                                        <span style="display:inline-block; padding:8px 18px; border-radius:999px; background-color:#fff3eb; color:#c2410c; font-weight:600; text-transform:uppercase; letter-spacing:1px; font-size:12px;">Application ID: ${safeApplicationId}</span>
+                                        <span style="display:inline-block; padding:8px 18px; border-radius:999px; background-color:#fff3eb; color:#c2410c; font-weight:600; text-transform:uppercase; letter-spacing:1px; font-size:12px;">Inquiry ID: ${safeApplicationId}</span>
                                     </div>
                                     <div style="margin:24px 0 0;">
                                         <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
@@ -260,7 +298,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
                                         </div>
                                     ` : ''}
                                     <p style="margin:0; font-size:13px; color:#6b7280; text-align:center;">
-                                        This inquiry was submitted via the US Training Camp application page on the Moto Coach website.
+                                        This inquiry was submitted via the US Training Camp inquiry page on the Moto Coach website.
                                     </p>
                                 </td>
                             </tr>
@@ -270,12 +308,15 @@ async function sendAdminNotificationEmail(formData, applicationId) {
             </table>
         `;
 
-        const { data, error } = await resend.emails.send({
+        const emailOptions = {
             from: 'Moto Coach Inquiries <inquiries@motocoach.com.au>',
             to: process.env.TO_EMAIL,
             subject: 'New Inquiry - US Training Camp',
-            html
-        });
+            html,
+            ...(attachments.length ? { attachments } : {})
+        };
+
+        const { data, error } = await resend.emails.send(emailOptions);
 
         if (error) {
             console.error('Error sending admin notification email:', error);
@@ -308,7 +349,7 @@ export default async function handler(req, res) {
     try {
         const formData = req.body;
         const recaptchaRequired = isLiveEnvironment();
-        console.log('Received US Travel Program application (details redacted)');
+        console.log('Received US Travel Program inquiry (details redacted)');
 
         // Validate required fields
         const requiredFields = [
@@ -318,11 +359,18 @@ export default async function handler(req, res) {
 
         for (const field of requiredFields) {
             if (!formData[field]) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     error: `Missing required field: ${field}`,
                     details: 'Please fill in all required fields.'
                 });
             }
+        }
+
+        if (!formData.passportPicture || !formData.passportPicture.data) {
+            return res.status(400).json({
+                error: 'Missing passport picture',
+                details: 'Please include your passport picture with the inquiry.'
+            });
         }
 
         // Validate email format
@@ -428,6 +476,12 @@ export default async function handler(req, res) {
             supporterData = supporters.join('; ');
         }
 
+        const additionalComments = typeof formData.additionalComments === 'string'
+            ? formData.additionalComments.trim()
+            : '';
+
+        formData.additionalComments = additionalComments;
+
         const rowData = [
             timestamp, // Column A: Timestamp
             applicationId, // Column B: Application ID
@@ -435,21 +489,22 @@ export default async function handler(req, res) {
             formData.lastName, // Column D: Last Name
             formData.dateOfBirth, // Column E: Date of Birth
             formData.email, // Column F: Email
-            formData.bikeChoice, // Column G: Bike Choice
+            normaliseBikeChoice(formData.bikeChoice), // Column G: Bike Choice
             formData.passportNumber, // Column H: Passport Number
             formData.bringingSupporter, // Column I: Bringing Supporter (Yes/No)
             formData.supporterCount || '', // Column J: Number of Supporters
             supporterData, // Column K: Supporter Details
             formData.emergencyContact, // Column L: Emergency Contact Name
             formData.emergencyPhone, // Column M: Emergency Contact Phone
-            'Pending Review' // Column N: Application Status
+            additionalComments, // Column N: Additional Comments
+            'Pending Review' // Column O: Application Status
         ];
 
         // Write to Google Sheets (create new sheet if it doesn't exist)
         try {
             await sheets.spreadsheets.values.append({
                 spreadsheetId,
-                range: 'US Travel Applications!A2:N', // Start from row 2, columns A through N
+                range: 'US Travel Applications!A2:O', // Start from row 2, columns A through O
                 valueInputOption: 'RAW',
                 requestBody: {
                     values: [rowData],
@@ -479,12 +534,12 @@ export default async function handler(req, res) {
                     'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Date of Birth',
                     'Email', 'Bike Choice', 'Passport Number', 'Bringing Supporter',
                     'Number of Supporters', 'Supporter Details', 'Emergency Contact Name',
-                    'Emergency Contact Phone', 'Application Status'
+                    'Emergency Contact Phone', 'Additional Comments', 'Application Status'
                 ];
 
                 await sheets.spreadsheets.values.update({
                     spreadsheetId,
-                    range: 'US Travel Applications!A1:N1',
+                    range: 'US Travel Applications!A1:O1',
                     valueInputOption: 'RAW',
                     requestBody: {
                         values: [headers],
@@ -494,7 +549,7 @@ export default async function handler(req, res) {
                 // Now add the application data
                 await sheets.spreadsheets.values.append({
                     spreadsheetId,
-                    range: 'US Travel Applications!A2:N',
+                    range: 'US Travel Applications!A2:O',
                     valueInputOption: 'RAW',
                     requestBody: {
                         values: [rowData],
@@ -515,9 +570,9 @@ export default async function handler(req, res) {
             adminEmail: adminEmailSent ? 'sent' : 'failed'
         });
 
-        res.status(200).json({ 
-            success: true, 
-            message: 'Application submitted successfully! You will receive a confirmation email shortly.',
+        res.status(200).json({
+            success: true,
+            message: "Inquiry submitted successfully! Thank you for your inquiry. We'll be in touch if there are openings.",
             applicationId: applicationId,
             emailStatus: {
                 applicantEmail: applicantEmailSent,
@@ -526,10 +581,10 @@ export default async function handler(req, res) {
         });
 
     } catch (error) {
-        console.error('Error processing US Travel Program application:', error);
-        res.status(500).json({ 
+        console.error('Error processing US Travel Program inquiry:', error);
+        res.status(500).json({
             error: 'Internal server error',
-            details: 'An error occurred while processing your application. Please try again or contact support.'
+            details: 'An error occurred while processing your inquiry. Please try again or contact support.'
         });
     }
 }
