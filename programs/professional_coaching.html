@@ -156,13 +156,6 @@
                 </div>
             </div>
 
-            <!-- Scroll Indicator -->
-            <div class="coaching-scroll-indicator" onclick="scrollToSection('.how-it-works-section')">
-                <div class="coaching-scroll-mouse">
-                    <div class="coaching-scroll-wheel"></div>
-                </div>
-                <span>Scroll Down</span>
-            </div>
         </section>
 
 
@@ -259,7 +252,7 @@
             window.addEventListener('resize', apply);
         })();
 
-        // Scroll to section function for coaching scroll indicator
+        // Smooth scroll helper for hero buttons
         function scrollToSection(selector) {
             const targetSection = document.querySelector(selector);
             if (targetSection) {
