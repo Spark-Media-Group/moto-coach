@@ -5,6 +5,28 @@ import { isLiveEnvironment } from './_utils/environment';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const LOGO_URL = 'https://motocoach.com.au/images/tall-logo-black.png';
+
+const HTML_ESCAPE_LOOKUP = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+};
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    return String(value).replace(/[&<>"']/g, (char) => HTML_ESCAPE_LOOKUP[char] || char);
+}
+
+function toSafeString(value) {
+    return escapeHtml(String(value ?? '').trim());
+}
+
 // Helper function for reCAPTCHA verification
 async function verifyRecaptcha(token) {
     try {
@@ -115,85 +137,144 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
 // Function to send notification email to admin
 async function sendAdminNotificationEmail(formData, applicationId) {
     try {
-        // Format supporter information if applicable
-        let supporterInfo = '';
+        const safeFirstName = toSafeString(formData.firstName);
+        const safeLastName = toSafeString(formData.lastName);
+        const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim() || 'Applicant';
+        const safeEmail = toSafeString(formData.email);
+        const safeDateOfBirth = toSafeString(formData.dateOfBirth);
+        const safeBikeChoice = toSafeString(formData.bikeChoice);
+        const safePassportNumber = toSafeString(formData.passportNumber);
+        const safeSupporterCount = toSafeString(formData.supporterCount);
+        const safeEmergencyContact = toSafeString(formData.emergencyContact);
+        const safeEmergencyPhone = toSafeString(formData.emergencyPhone);
+        const safeApplicationId = toSafeString(applicationId);
+        const bringingSupporter = formData.bringingSupporter === 'yes' ? 'Yes' : 'No';
+        const safeBringingSupporter = toSafeString(bringingSupporter);
+
+        const supporterDetails = [];
         if (formData.bringingSupporter === 'yes') {
-            supporterInfo = `
-                <h3 style="color: #ff6600;">Supporter Information:</h3>
-                <p><strong>Number of Supporters:</strong> ${formData.supporterCount}</p>
-            `;
-            
-            // Add individual supporter details if they exist
-            for (let i = 1; i <= parseInt(formData.supporterCount); i++) {
+            const supporterCount = parseInt(formData.supporterCount, 10);
+            for (let i = 1; i <= supporterCount; i++) {
                 if (formData[`supporterFirstName${i}`]) {
-                    supporterInfo += `
-                        <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 10px 0;">
-                            <h4 style="margin-top: 0;">Supporter ${i}:</h4>
-                            <p><strong>Name:</strong> ${formData[`supporterFirstName${i}`]} ${formData[`supporterLastName${i}`]}</p>
-                            <p><strong>Date of Birth:</strong> ${formData[`supporterDateOfBirth${i}`]}</p>
-                            <p><strong>Passport Number:</strong> ${formData[`supporterPassportNumber${i}`]}</p>
+                    const supporterName = [
+                        toSafeString(formData[`supporterFirstName${i}`]),
+                        toSafeString(formData[`supporterLastName${i}`])
+                    ].filter(Boolean).join(' ').trim();
+                    const supporterDob = toSafeString(formData[`supporterDateOfBirth${i}`]);
+                    const supporterPassport = toSafeString(formData[`supporterPassportNumber${i}`]);
+
+                    supporterDetails.push(`
+                        <div style="margin-bottom: 12px;">
+                            <div style="font-weight: 600; color: #111827;">Supporter ${i}</div>
+                            <div style="color: #374151; font-size: 14px; line-height: 1.5;">
+                                ${supporterName ? `<div><strong>Name:</strong> ${supporterName}</div>` : ''}
+                                ${supporterDob ? `<div><strong>Date of Birth:</strong> ${supporterDob}</div>` : ''}
+                                ${supporterPassport ? `<div><strong>Passport Number:</strong> ${supporterPassport}</div>` : ''}
+                            </div>
                         </div>
-                    `;
+                    `);
                 }
             }
         }
 
+        const detailRows = [
+            { label: 'Applicant', value: safeFullName },
+            {
+                label: 'Email',
+                value: safeEmail
+                    ? `<a href="mailto:${safeEmail}" style="color:#ff6b35; text-decoration:none;">${safeEmail}</a>`
+                    : 'N/A'
+            },
+            { label: 'Date of Birth', value: safeDateOfBirth || 'N/A' },
+            { label: 'Bike Choice', value: safeBikeChoice || 'N/A' },
+            { label: 'Passport Number', value: safePassportNumber || 'N/A' },
+            { label: 'Bringing Supporter', value: safeBringingSupporter || 'No' }
+        ];
+
+        if (formData.bringingSupporter === 'yes') {
+            detailRows.push({ label: 'Number of Supporters', value: safeSupporterCount || 'N/A' });
+            if (supporterDetails.length > 0) {
+                detailRows.push({
+                    label: 'Supporter Details',
+                    value: supporterDetails.join('')
+                });
+            }
+        }
+
+        detailRows.push({ label: 'Emergency Contact Name', value: safeEmergencyContact || 'N/A' });
+        detailRows.push({ label: 'Emergency Contact Phone', value: safeEmergencyPhone || 'N/A' });
+
+        const detailRowsHtml = detailRows
+            .map((row, index) => {
+                const isLastRow = index === detailRows.length - 1;
+                const borderBottom = isLastRow ? '' : 'border-bottom: 1px solid #e5e7eb;';
+                return `
+                    <tr>
+                        <td style="padding: 12px 16px; background-color: #f9fafb; font-weight: 600; font-size: 14px; color: #111827; border-right: 1px solid #e5e7eb; ${borderBottom}">
+                            ${escapeHtml(row.label)}
+                        </td>
+                        <td style="padding: 12px 16px; font-size: 14px; color: #374151; ${borderBottom}">
+                            ${row.value || 'N/A'}
+                        </td>
+                    </tr>
+                `;
+            })
+            .join('');
+
+        const replyButtonLabel = safeFirstName || 'the applicant';
+        const mailtoHref = formData.email ? `mailto:${encodeURIComponent(formData.email)}` : 'mailto:inquiries@motocoach.com.au';
+
+        const html = `
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f4f5f7; padding:32px 0; font-family: 'Helvetica Neue', Arial, sans-serif;">
+                <tr>
+                    <td align="center" style="padding:0 16px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #f2f4f7; box-shadow:0 18px 38px rgba(15, 23, 42, 0.12);">
+                            <tr>
+                                <td style="padding:36px 24px 28px; text-align:center; background:linear-gradient(135deg, #fef3ec 0%, #ffffff 100%); border-bottom:1px solid #f5d0c5;">
+                                    <img src="${LOGO_URL}" alt="Moto Coach" style="width:72px; height:auto; display:block; margin:0 auto 12px;" />
+                                    <p style="margin:0; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#ff6b35;">Moto Coach</p>
+                                    <h1 style="margin:12px 0 0; font-size:24px; font-weight:700; color:#111827;">New Inquiry - US Training Camp</h1>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:32px 28px;">
+                                    <p style="margin:0 0 20px; font-size:15px; color:#374151; line-height:1.6;">
+                                        ${safeFullName} has sent an inquiry for the US Training Camp at ClubMX.
+                                    </p>
+                                    <div style="margin:16px 0 24px; text-align:center;">
+                                        <span style="display:inline-block; padding:8px 18px; border-radius:999px; background-color:#fff3eb; color:#c2410c; font-weight:600; text-transform:uppercase; letter-spacing:1px; font-size:12px;">Application ID: ${safeApplicationId}</span>
+                                    </div>
+                                    <div style="margin:24px 0 0;">
+                                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+                                            <tbody>
+                                                ${detailRowsHtml}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <p style="margin:28px 0 24px; font-size:15px; color:#374151; line-height:1.6;">
+                                        Please review the inquiry and respond to the applicant at your earliest convenience.
+                                    </p>
+                                    ${safeEmail ? `
+                                        <div style="text-align:center; margin-bottom:24px;">
+                                            <a href="${mailtoHref}" style="display:inline-block; padding:12px 28px; border-radius:999px; background-color:#ff6b35; color:#ffffff; font-weight:600; text-decoration:none;">Reply to ${replyButtonLabel}</a>
+                                        </div>
+                                    ` : ''}
+                                    <p style="margin:0; font-size:13px; color:#6b7280; text-align:center;">
+                                        This inquiry was submitted via the US Training Camp application page on the Moto Coach website.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        `;
+
         const { data, error } = await resend.emails.send({
-            from: process.env.FROM_EMAIL,
+            from: 'Moto Coach Inquiries <inquiries@motocoach.com.au>',
             to: process.env.TO_EMAIL,
-            subject: `New US Travel Program Application - ${formData.firstName} ${formData.lastName}`,
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px;">
-                    <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                        <div style="text-align: center; margin-bottom: 30px;">
-                            <img src="cid:logo" alt="Moto Coach" style="max-width: 200px; height: auto;">
-                        </div>
-                        
-                        <h2 style="color: #ff6600; text-align: center; margin-bottom: 30px;">New US Travel Program Application</h2>
-                        
-                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
-                            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #ff6600;">Application ID: ${applicationId}</p>
-                        </div>
-                        
-                        <h3 style="color: #ff6600;">Personal Information:</h3>
-                        <p><strong>Name:</strong> ${formData.firstName} ${formData.lastName}</p>
-                        <p><strong>Date of Birth:</strong> ${formData.dateOfBirth}</p>
-                        <p><strong>Email:</strong> ${formData.email}</p>
-                        <p><strong>Passport Number:</strong> ${formData.passportNumber}</p>
-                        
-                        <h3 style="color: #ff6600;">Program Details:</h3>
-                        <p><strong>Bike Choice:</strong> ${formData.bikeChoice}</p>
-                        <p><strong>Bringing Supporter:</strong> ${formData.bringingSupporter === 'yes' ? 'Yes' : 'No'}</p>
-                        
-                        ${supporterInfo}
-                        
-                        <h3 style="color: #ff6600;">Emergency Contact:</h3>
-                        <p><strong>Name:</strong> ${formData.emergencyContact}</p>
-                        <p><strong>Phone:</strong> ${formData.emergencyPhone}</p>
-                        
-                        <div style="background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 30px 0;">
-                            <h3 style="color: #28a745; margin-top: 0;">Next Steps:</h3>
-                            <ul style="margin: 0;">
-                                <li>Review the application details</li>
-                                <li>Check availability for the program dates</li>
-                                <li>Contact the applicant within 2-3 business days</li>
-                                <li>Process passport documentation if approved</li>
-                            </ul>
-                        </div>
-                        
-                        <p style="color: #666; font-size: 14px; text-align: center; margin-top: 30px;">
-                            Application submitted via Moto Coach website
-                        </p>
-                    </div>
-                </div>
-            `,
-            attachments: [
-                {
-                    filename: 'logo.png',
-                    path: './images/long-logo.png',
-                    cid: 'logo'
-                }
-            ]
+            subject: 'New Inquiry - US Training Camp',
+            html
         });
 
         if (error) {
