@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moto Coach Checkout</title>
-    <meta name="description" content="Review your Moto Coach cart and complete your purchase through our integrated Shopify checkout experience.">
+    <meta name="description" content="Secure your Moto Coach gear with Stripe payments and automatic Shopify order creation.">
     <meta name="author" content="Moto Coach">
     <link rel="icon" type="image/png" href="images/tall-logo-black.png">
 
@@ -41,7 +41,7 @@
                 <div class="social-icons">
                     <a href="https://www.instagram.com/sydneymotocoach/" target="_blank" class="social-icon" aria-label="Follow Moto Coach on Instagram">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z" />
+                            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                         </svg>
                     </a>
                     <a href="https://www.facebook.com/TheMotocoach/" target="_blank" class="social-icon" aria-label="Follow Moto Coach on Facebook">
@@ -62,35 +62,99 @@
     <main class="checkout-main">
         <section class="checkout-hero">
             <div class="hero-content">
-                <h1>Secure Checkout</h1>
-                <p>Review your cart and finish payment through Shopify without leaving the Moto Coach experience.</p>
+                <h1>Stripe Checkout</h1>
+                <p>Pay securely with Stripe and we’ll record the order inside Shopify as soon as payment succeeds.</p>
             </div>
         </section>
 
         <section class="checkout-content">
-            <div class="checkout-summary" id="checkout-summary" aria-live="polite"></div>
-            <div class="checkout-kit-panel">
-                <div class="kit-header">
-                    <h2>Complete Your Order</h2>
-                    <p class="kit-subtitle">We launch Shopify checkout in a secure in-app browser so payments stay fast and familiar.</p>
+            <div class="order-summary" id="checkout-summary" aria-live="polite"></div>
+
+            <div class="checkout-panel">
+                <div class="panel-header">
+                    <h2>Billing &amp; Payment</h2>
+                    <p>Enter your contact details and submit payment through Stripe. A Shopify order will be created automatically.</p>
                 </div>
 
-                <div class="checkout-kit-shell">
-                    <div id="checkout-kit-loading" class="checkout-kit-loading" role="status" aria-live="polite">
-                        <div class="loading-spinner" aria-hidden="true"></div>
-                        <p>Preparing secure checkout…</p>
-                    </div>
-                    <div id="checkout-kit-host" class="checkout-kit-host" aria-live="polite"></div>
-                </div>
+                <div id="checkout-status" class="checkout-status" role="status" aria-live="polite"></div>
 
-                <div id="checkout-fallback" class="checkout-fallback" role="region" aria-live="polite">
-                    <p id="checkout-message">If the in-app checkout doesn’t appear, open it in a trusted browser tab.</p>
-                    <div class="checkout-actions">
-                        <a id="checkout-link" class="btn-primary" href="#" target="_blank" rel="noreferrer noopener">Open secure checkout</a>
-                        <button id="checkout-copy" class="btn-secondary" type="button">Copy checkout link</button>
-                    </div>
-                    <p id="checkout-note" class="kit-note">Mobile apps should use Safari View Controller or Chrome Custom Tabs for a seamless experience.</p>
-                    <p id="checkout-copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
+                <form id="checkout-form" novalidate>
+                    <fieldset class="form-section">
+                        <legend>Contact</legend>
+                        <div class="form-grid">
+                            <label>
+                                <span>Email</span>
+                                <input type="email" name="email" autocomplete="email" required>
+                            </label>
+                            <label>
+                                <span>Phone (optional)</span>
+                                <input type="tel" name="phone" autocomplete="tel">
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <legend>Customer Details</legend>
+                        <div class="form-grid">
+                            <label>
+                                <span>First name</span>
+                                <input type="text" name="firstName" autocomplete="given-name" required>
+                            </label>
+                            <label>
+                                <span>Last name</span>
+                                <input type="text" name="lastName" autocomplete="family-name" required>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <legend>Shipping Address</legend>
+                        <div class="form-grid">
+                            <label class="full">
+                                <span>Address line 1</span>
+                                <input type="text" name="address1" autocomplete="address-line1" required>
+                            </label>
+                            <label class="full">
+                                <span>Address line 2 (optional)</span>
+                                <input type="text" name="address2" autocomplete="address-line2">
+                            </label>
+                            <label>
+                                <span>City</span>
+                                <input type="text" name="city" autocomplete="address-level2" required>
+                            </label>
+                            <label>
+                                <span>State</span>
+                                <input type="text" name="state" autocomplete="address-level1" required>
+                            </label>
+                            <label>
+                                <span>Postcode</span>
+                                <input type="text" name="postalCode" autocomplete="postal-code" required>
+                            </label>
+                            <label>
+                                <span>Country</span>
+                                <select name="country" autocomplete="country" required>
+                                    <option value="">Select country</option>
+                                    <option value="Australia" selected>Australia</option>
+                                    <option value="New Zealand">New Zealand</option>
+                                    <option value="United States">United States</option>
+                                </select>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="form-section">
+                        <legend>Payment</legend>
+                        <div id="payment-element" class="payment-element" aria-live="polite"></div>
+                        <div id="payment-errors" class="payment-errors" role="alert"></div>
+                    </fieldset>
+
+                    <button id="checkout-submit" type="submit" class="btn-primary checkout-submit" disabled>Loading payment…</button>
+                </form>
+
+                <div id="checkout-success" class="checkout-success" hidden>
+                    <h3>Payment Received</h3>
+                    <p id="success-message">Thank you! Your payment went through and we recorded the order in Shopify.</p>
+                    <a href="/shop" class="btn-secondary">Back to shop</a>
                 </div>
             </div>
         </section>
@@ -102,7 +166,7 @@
             <div class="footer-social-icons">
                 <a href="https://www.instagram.com/sydneymotocoach/" target="_blank" class="social-icon" aria-label="Follow Moto Coach on Instagram">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.40s-.644-1.44-1.439-1.40z" />
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                     </svg>
                 </a>
                 <a href="https://www.facebook.com/TheMotocoach/" target="_blank" class="social-icon" aria-label="Follow Moto Coach on Facebook">
@@ -115,6 +179,7 @@
     </footer>
 
     <script src="scripts/main.js" defer></script>
+    <script src="https://js.stripe.com/v3/"></script>
     <script src="scripts/checkout.js" defer></script>
 </body>
 </html>
