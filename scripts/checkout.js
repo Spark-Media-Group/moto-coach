@@ -289,48 +289,76 @@ async function createPaymentIntent(metadata = {}) {
 }
 
 async function recordShopifyOrder(paymentIntentId, customerDetails) {
-    const response = await fetch('/api/create-shopify-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            cartId: checkoutData?.cartId || null,
-            paymentIntentId,
-            amount: orderTotal,
-            currency: currencyCode,
-            customer: {
-                email: customerDetails.email,
-                phone: customerDetails.phone,
-                firstName: customerDetails.firstName,
-                lastName: customerDetails.lastName
-            },
-            shippingAddress: {
-                firstName: customerDetails.firstName,
-                lastName: customerDetails.lastName,
-                address1: customerDetails.address1,
-                address2: customerDetails.address2,
-                city: customerDetails.city,
-                state: customerDetails.state,
-                postalCode: customerDetails.postalCode,
-                country: customerDetails.country,
-                phone: customerDetails.phone
-            },
-            lineItems: (checkoutData?.lines || []).map(line => ({
-                merchandiseId: line.merchandiseId,
-                quantity: line.quantity,
-                price: parseFloat(line.price?.amount ?? '0'),
-                currency: line.price?.currencyCode || currencyCode,
-                title: line.title,
-                variantTitle: line.variantTitle
-            }))
-        })
-    });
+    let response;
+
+    try {
+        response = await fetch('/api/create-shopify-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cartId: checkoutData?.cartId || null,
+                paymentIntentId,
+                amount: orderTotal,
+                currency: currencyCode,
+                customer: {
+                    email: customerDetails.email,
+                    phone: customerDetails.phone,
+                    firstName: customerDetails.firstName,
+                    lastName: customerDetails.lastName
+                },
+                shippingAddress: {
+                    firstName: customerDetails.firstName,
+                    lastName: customerDetails.lastName,
+                    address1: customerDetails.address1,
+                    address2: customerDetails.address2,
+                    city: customerDetails.city,
+                    state: customerDetails.state,
+                    postalCode: customerDetails.postalCode,
+                    country: customerDetails.country,
+                    phone: customerDetails.phone
+                },
+                lineItems: (checkoutData?.lines || []).map(line => ({
+                    merchandiseId: line.merchandiseId,
+                    quantity: line.quantity,
+                    price: parseFloat(line.price?.amount ?? '0'),
+                    currency: line.price?.currencyCode || currencyCode,
+                    title: line.title,
+                    variantTitle: line.variantTitle
+                }))
+            })
+        });
+    } catch (networkError) {
+        throw new Error('Payment captured, but we could not reach Shopify to record the order. Please contact support with your receipt.');
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+    const payload = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
-        const errorText = await response.text();
+        if (response.status >= 500) {
+            const message = typeof payload === 'string' ? payload : payload?.error || payload?.message;
+            const messageText = typeof message === 'string' ? message : '';
+            if (messageText.toLowerCase().includes('misconfiguration')) {
+                return {
+                    success: false,
+                    message: 'Payment received! Our team will finalise your order in Shopify as soon as admin access is configured.'
+                };
+            }
+        }
+
+        const errorText = typeof payload === 'string' ? payload : JSON.stringify(payload);
         throw new Error(`Failed to create Shopify order: ${errorText}`);
     }
 
-    return response.json();
+    if (payload && typeof payload === 'object') {
+        return {
+            ...payload,
+            success: payload.success ?? true
+        };
+    }
+
+    return { success: true };
 }
 
 function setProcessingState(isProcessing) {
@@ -387,12 +415,18 @@ function showSuccess(orderData) {
     }
 
     if (successMessage && orderData) {
-        const { orderName, orderId } = orderData;
-        if (orderName) {
+        const { orderName, orderId, message, success } = orderData;
+        if (success === false) {
+            successMessage.textContent = message || 'Thank you! We received your payment and will confirm your booking shortly.';
+        } else if (orderName) {
             successMessage.textContent = `Thank you! We received your payment and created Shopify order ${orderName}.`;
         } else if (orderId) {
             successMessage.textContent = `Thank you! We received your payment and created Shopify order ${orderId}.`;
+        } else {
+            successMessage.textContent = 'Thank you! We received your payment.';
         }
+    } else if (successMessage) {
+        successMessage.textContent = 'Thank you! We received your payment.';
     }
 
     sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
@@ -453,7 +487,13 @@ async function handleFormSubmit(event) {
 
         showStatusMessage('Recording your order in Shopify…');
         const orderData = await recordShopifyOrder(intent.id || paymentIntentId, customerDetails);
-        showStatusMessage('Order complete!');
+
+        if (orderData?.success === false) {
+            showStatusMessage(orderData.message || 'Payment received! We will finish your order manually.');
+        } else {
+            showStatusMessage('Order complete!');
+        }
+
         showSuccess(orderData);
     } catch (error) {
         console.error('Checkout submission failed', error);
