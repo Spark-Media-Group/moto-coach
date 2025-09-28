@@ -63,7 +63,7 @@
         <section class="checkout-hero">
             <div class="hero-content">
                 <h1>Secure Checkout</h1>
-                <p>Review your cart, confirm your details, and then finish securely on Shopify in a new tab.</p>
+                <p>Review your cart and finish payment through Shopify without leaving the Moto Coach experience.</p>
             </div>
         </section>
 
@@ -72,15 +72,24 @@
             <div class="checkout-kit-panel">
                 <div class="kit-header">
                     <h2>Complete Your Order</h2>
-                    <p class="kit-subtitle">Shopify’s security policy doesn’t allow this store’s checkout to load inside another site, so we open it in a dedicated secure tab.</p>
+                    <p class="kit-subtitle">We launch Shopify checkout in a secure in-app browser so payments stay fast and familiar.</p>
                 </div>
+
+                <div class="checkout-kit-shell">
+                    <div id="checkout-kit-loading" class="checkout-kit-loading" role="status" aria-live="polite">
+                        <div class="loading-spinner" aria-hidden="true"></div>
+                        <p>Preparing secure checkout…</p>
+                    </div>
+                    <div id="checkout-kit-host" class="checkout-kit-host" aria-live="polite"></div>
+                </div>
+
                 <div id="checkout-fallback" class="checkout-fallback" role="region" aria-live="polite">
-                    <p id="checkout-message">We’ll open Shopify checkout in a new tab with your cart details.</p>
+                    <p id="checkout-message">If the in-app checkout doesn’t appear, open it in a trusted browser tab.</p>
                     <div class="checkout-actions">
                         <a id="checkout-link" class="btn-primary" href="#" target="_blank" rel="noreferrer noopener">Open secure checkout</a>
                         <button id="checkout-copy" class="btn-secondary" type="button">Copy checkout link</button>
                     </div>
-                    <p id="checkout-note" class="kit-note">If a new tab doesn’t appear automatically, use the button above or copy the link.</p>
+                    <p id="checkout-note" class="kit-note">Mobile apps should use Safari View Controller or Chrome Custom Tabs for a seamless experience.</p>
                     <p id="checkout-copy-feedback" class="copy-feedback" role="status" aria-live="polite"></p>
                 </div>
             </div>
