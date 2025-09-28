@@ -1,4 +1,4 @@
-// US Travel Program Application Form Handler
+// US Travel Program Inquiry Form Handler
 let recaptchaEnabled = true;
 let recaptchaSiteKey = '6LfOyLMrAAAAAOOYttmgC3piJmEf9NHYzeNqjEXm';
 
@@ -69,10 +69,10 @@ async function handleFormSubmission(e) {
     try {
         // Disable submit button and show loading state
         submitButton.disabled = true;
-        submitButton.textContent = 'Submitting Application...';
+        submitButton.textContent = 'Submitting Inquiry...';
 
         // Collect form data
-        const formData = collectFormData(e.target);
+        const formData = await collectFormData(e.target);
 
         if (recaptchaEnabled) {
             const recaptchaToken = await getRecaptchaToken();
@@ -100,7 +100,7 @@ async function handleFormSubmission(e) {
         const result = await response.json();
         
         if (!response.ok) {
-            throw new Error(result.details || result.error || 'Application submission failed');
+            throw new Error(result.details || result.error || 'Inquiry submission failed');
         }
         
         // Show success message
@@ -119,6 +119,15 @@ async function handleFormSubmission(e) {
         document.getElementById('bringingSupporter').value = '';
         document.getElementById('supporterCount').value = '';
         document.getElementById('supporterCountGroup').style.display = 'none';
+
+        const passportInput = document.getElementById('passportPicture');
+        if (passportInput) {
+            passportInput.value = '';
+            const uploadText = passportInput.previousElementSibling?.querySelector('.file-upload-text');
+            if (uploadText) {
+                uploadText.textContent = 'Click to upload';
+            }
+        }
         
     } catch (error) {
         console.error('Form submission error:', error);
@@ -159,14 +168,21 @@ function getRecaptchaToken() {
 }
 
 // Collect all form data
-function collectFormData(form) {
+async function collectFormData(form) {
     const formData = {};
     const inputs = form.querySelectorAll('input, select, textarea');
-    
-    inputs.forEach(input => {
+
+    for (const input of inputs) {
         if (input.type === 'file') {
-            // Handle file inputs separately if needed
-            formData[input.name] = input.files[0] ? input.files[0].name : '';
+            const file = input.files[0];
+            if (file) {
+                const base64 = await readFileAsBase64(file);
+                formData[input.name] = {
+                    filename: file.name,
+                    contentType: file.type,
+                    data: base64
+                };
+            }
         } else if (input.type === 'checkbox') {
             formData[input.name] = input.checked;
         } else if (input.type === 'radio') {
@@ -174,11 +190,27 @@ function collectFormData(form) {
                 formData[input.name] = input.value;
             }
         } else {
-            formData[input.name] = input.value;
+            formData[input.name] = typeof input.value === 'string' ? input.value.trim() : input.value;
         }
-    });
-    
+    }
+
     return formData;
+}
+
+function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+            if (typeof reader.result === 'string') {
+                const base64Data = reader.result.split(',')[1] || '';
+                resolve(base64Data);
+            } else {
+                reject(new Error('Unable to process uploaded file.'));
+            }
+        };
+        reader.onerror = () => reject(reader.error || new Error('Failed to read the uploaded file.'));
+        reader.readAsDataURL(file);
+    });
 }
 
 // Validate form data
@@ -234,6 +266,13 @@ function validateFormData(formData) {
         }
     }
     
+    if (!formData.passportPicture || !formData.passportPicture.data) {
+        return {
+            isValid: false,
+            message: 'Please upload your passport picture.'
+        };
+    }
+
     return { isValid: true };
 }
 
@@ -255,9 +294,9 @@ function showSuccessMessage(applicationId) {
             width: 90%;
         ">
             <div style="color: #28a745; font-size: 60px; margin-bottom: 20px;">✓</div>
-            <h3 style="color: #333; margin-bottom: 15px;">Application Submitted Successfully!</h3>
+            <h3 style="color: #333; margin-bottom: 15px;">Inquiry Submitted</h3>
             <p style="color: #666; margin-bottom: 20px;">
-                Thank you for applying to the US Travel Program. Your application ID is:
+                Thank you for sending an Inquiry to the US Travel Program. We'll be in touch with you if there are openings. Your inquiry ID is:
             </p>
             <div style="
                 background: #f8f9fa;
@@ -269,7 +308,7 @@ function showSuccessMessage(applicationId) {
                 margin-bottom: 20px;
             ">${applicationId}</div>
             <p style="color: #666; font-size: 14px;">
-                You will receive a confirmation email shortly. We will review your application and contact you within 2-3 business days.
+                You will receive a confirmation email shortly summarising your inquiry.
             </p>
             <button onclick="closeSuccessMessage()" style="
                 background: #ff6600;
@@ -280,7 +319,7 @@ function showSuccessMessage(applicationId) {
                 cursor: pointer;
                 font-size: 16px;
                 margin-top: 20px;
-            ">Close</button>
+            ">Return Home</button>
         </div>
         <div class="overlay" style="
             position: fixed;
@@ -314,7 +353,7 @@ function showErrorMessage(errorMessage) {
             width: 90%;
         ">
             <div style="color: #dc3545; font-size: 60px; margin-bottom: 20px;">⚠</div>
-            <h3 style="color: #333; margin-bottom: 15px;">Application Error</h3>
+            <h3 style="color: #333; margin-bottom: 15px;">Inquiry Error</h3>
             <p style="color: #666; margin-bottom: 20px;">${errorMessage}</p>
             <button onclick="closeErrorMessage()" style="
                 background: #dc3545;
@@ -346,6 +385,7 @@ window.closeSuccessMessage = function() {
     const overlay = document.querySelector('.overlay');
     if (successMessage) successMessage.remove();
     if (overlay) overlay.remove();
+    window.location.href = '/';
 };
 
 // Close error message
