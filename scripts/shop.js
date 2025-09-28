@@ -1356,6 +1356,10 @@ const CART_CREATE = `
                     }
                 }
                 cost {
+                    subtotalAmount {
+                        amount
+                        currencyCode
+                    }
                     totalAmount {
                         amount
                         currencyCode
@@ -1408,6 +1412,10 @@ const CART_LINES_ADD = `
                     }
                 }
                 cost {
+                    subtotalAmount {
+                        amount
+                        currencyCode
+                    }
                     totalAmount {
                         amount
                         currencyCode
@@ -1459,6 +1467,10 @@ const CART_LINES_UPDATE = `
                     }
                 }
                 cost {
+                    subtotalAmount {
+                        amount
+                        currencyCode
+                    }
                     totalAmount {
                         amount
                         currencyCode
@@ -1510,6 +1522,10 @@ const CART_LINES_REMOVE = `
                     }
                 }
                 cost {
+                    subtotalAmount {
+                        amount
+                        currencyCode
+                    }
                     totalAmount {
                         amount
                         currencyCode
@@ -1835,17 +1851,57 @@ function updateCartUI() {
     cartFooter.style.display = 'block';
 
     // Update subtotal
-    if (currentCart.cost && currentCart.cost.totalAmount) {
-        cartSubtotal.textContent = `$${parseFloat(currentCart.cost.totalAmount.amount).toFixed(2)} ${currentCart.cost.totalAmount.currencyCode}`;
+    if (cartSubtotal) {
+        const subtotalMoney = currentCart.cost?.subtotalAmount || currentCart.cost?.totalAmount;
+        if (subtotalMoney?.amount) {
+            const amount = parseFloat(subtotalMoney.amount);
+            const formatted = amount.toLocaleString('en-AU', {
+                style: 'currency',
+                currency: subtotalMoney.currencyCode || 'AUD'
+            });
+            cartSubtotal.textContent = formatted;
+        } else {
+            cartSubtotal.textContent = '$0.00';
+        }
     }
 }
 
 // Proceed to checkout
 function proceedToCheckout() {
-    if (currentCart && currentCart.checkoutUrl) {
-        window.open(currentCart.checkoutUrl, '_blank');
-    } else {
+    if (!currentCart || !currentCart.checkoutUrl) {
         alert('No items in cart');
+        return;
+    }
+
+    try {
+        const checkoutSummary = {
+            cartId: currentCart.id,
+            checkoutUrl: currentCart.checkoutUrl,
+            totalQuantity: currentCart.totalQuantity,
+            cost: currentCart.cost || null,
+            lines: currentCart.lines?.edges?.map(edge => {
+                const line = edge.node;
+                const merchandise = line.merchandise || {};
+                const product = merchandise.product || {};
+                const imageEdge = product.images?.edges?.[0]?.node || null;
+
+                return {
+                    id: line.id,
+                    quantity: line.quantity,
+                    title: product.title || 'Item',
+                    variantTitle: merchandise.title || '',
+                    price: merchandise.price || null,
+                    image: imageEdge,
+                    merchandiseId: merchandise.id || null
+                };
+            }) || []
+        };
+
+        sessionStorage.setItem('motocoach_checkout', JSON.stringify(checkoutSummary));
+        window.location.href = '/checkout.html';
+    } catch (error) {
+        console.error('Failed to initialize checkout page payload', error);
+        window.open(currentCart.checkoutUrl, '_blank');
     }
 }
 
