@@ -100,7 +100,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
                         </p>
 
                         <p style="color: #333; font-size: 16px; line-height: 1.6;">
-                            Thank you for sending an inquiry to the <strong>US Travel Program</strong> at ClubMX! We have successfully received your details and will be in touch if a spot becomes available.
+                            Thank you for sending an inquiry to the <strong>US Travel Program</strong> at ClubMX! We will review your details and will be in touch if a spot is available.
                         </p>
 
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 25px 0;">
@@ -120,13 +120,13 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
                         </p>
 
                         <ul style="color: #333; font-size: 16px; line-height: 1.6;">
-                            <li>Our team will review your inquiry within 2-3 business days.</li>
+                            <li>Our team will review your inquiry.</li>
                             <li>If there is an available spot, we will contact you to discuss next steps.</li>
                             <li>We will provide detailed information about travel arrangements, accommodation, and the program schedule once a place is confirmed.</li>
                         </ul>
 
                         <p style="color: #333; font-size: 16px; line-height: 1.6;">
-                            If you have any questions or need to update your inquiry, please don't hesitate to contact us.
+                            If you have any questions or need to update your inquiry, please don't hesitate to <a href="https://motocoach.com.au/contact" style="color: #ff6600; text-decoration: none;">contact</a> us.
                         </p>
                         
                         <div style="background: #ff6600; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0;">
