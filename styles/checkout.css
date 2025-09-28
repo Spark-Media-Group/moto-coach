@@ -156,38 +156,48 @@
     line-height: 1.6;
 }
 
-.checkout-kit {
-    min-height: 520px;
-    border: 1px dashed rgba(228, 26, 74, 0.35);
-    border-radius: 16px;
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: repeating-linear-gradient(135deg, rgba(15, 23, 42, 0.02), rgba(15, 23, 42, 0.02) 12px, transparent 12px, transparent 24px);
-}
-
-.checkout-kit.loading::after {
-    content: 'Loading secure checkout…';
-    font-family: 'Oswald', sans-serif;
-    font-size: 1.25rem;
-    letter-spacing: 0.08em;
-    color: #1f2937;
-}
-
 .checkout-fallback {
     margin-top: 1.5rem;
-    padding: 1.5rem;
-    border-radius: 14px;
-    background-color: #0f172a;
+    padding: 1.75rem;
+    border-radius: 16px;
+    background: #0f172a;
     color: #fff;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
 }
 
-.checkout-fallback .btn-primary {
-    align-self: flex-start;
+.checkout-fallback p {
+    margin: 0;
+}
+
+.checkout-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.checkout-actions .btn-primary,
+.checkout-actions .btn-secondary {
+    flex-shrink: 0;
+}
+
+.kit-note {
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.6;
+}
+
+.copy-feedback {
+    font-size: 0.95rem;
+    color: rgba(148, 163, 184, 0.95);
+}
+
+.copy-feedback.success {
+    color: #4ade80;
+}
+
+.copy-feedback.error {
+    color: #fbbf24;
 }
 
 .checkout-summary .btn-secondary {
@@ -209,12 +219,8 @@
     color: #fff;
 }
 
-@media (max-width: 768px) {
-    .checkout-item {
-        grid-template-columns: 72px 1fr;
+    @media (max-width: 768px) {
+        .checkout-item {
+            grid-template-columns: 72px 1fr;
+        }
     }
-
-    .checkout-kit {
-        min-height: 420px;
-    }
-}

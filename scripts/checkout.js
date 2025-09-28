@@ -7,7 +7,7 @@ function readCheckoutData() {
             return JSON.parse(stored);
         }
     } catch (error) {
-        console.warn('Unable to access checkout session storage', error);
+        console.warn('Checkout: Unable to access session storage', error);
     }
     return null;
 }
@@ -28,7 +28,7 @@ function formatMoney(money) {
             currency: money.currencyCode || 'AUD'
         });
     } catch (error) {
-        console.warn('Unable to format amount', money, error);
+        console.warn('Checkout: Unable to format amount', money, error);
         return `${money.currencyCode || 'AUD'} ${money.amount}`;
     }
 }
@@ -174,89 +174,47 @@ function renderSummary(container, data) {
     container.appendChild(note);
 }
 
-function mountCheckoutKit(checkoutUrl, kitContainer, fallbackContainer, fallbackLink) {
-    if (!checkoutUrl) {
-        kitContainer.classList.remove('loading');
-        fallbackContainer.hidden = false;
-        return;
-    }
-
-    fallbackLink.href = checkoutUrl;
-
-    let attempts = 0;
-    const maxAttempts = 6;
-
-    function tryMount() {
-        attempts += 1;
-        const kit = window.ShopifyCheckoutKit || window.ShopifyCheckout || window.ShopifyCheckoutKitLoader;
-
-        if (kit) {
-            try {
-                if (typeof kit.mount === 'function') {
-                    kit.mount('#checkout-kit', { checkoutUrl });
-                    kitContainer.classList.remove('loading');
-                    return true;
-                }
-
-                if (kit.UI && typeof kit.UI.init === 'function') {
-                    kit.UI.init({ container: '#checkout-kit', checkoutUrl });
-                    kitContainer.classList.remove('loading');
-                    return true;
-                }
-
-                if (typeof kit.render === 'function') {
-                    kit.render('#checkout-kit', { url: checkoutUrl });
-                    kitContainer.classList.remove('loading');
-                    return true;
-                }
-
-                if (typeof kit.load === 'function') {
-                    kit.load({ container: '#checkout-kit', checkoutUrl });
-                    kitContainer.classList.remove('loading');
-                    return true;
-                }
-            } catch (error) {
-                console.error('Shopify checkout kit failed to mount', error);
-            }
-        }
-
-        if (attempts < maxAttempts) {
-            setTimeout(tryMount, 250 * attempts);
-        } else {
-            kitContainer.classList.remove('loading');
-            kitContainer.innerHTML = '';
-            fallbackContainer.hidden = false;
-
-            const iframe = document.createElement('iframe');
-            iframe.src = checkoutUrl;
-            iframe.title = 'Shopify secure checkout';
-            iframe.loading = 'lazy';
-            iframe.referrerPolicy = 'no-referrer-when-downgrade';
-            iframe.style.width = '100%';
-            iframe.style.minHeight = '520px';
-            iframe.style.border = '0';
-
-            iframe.onerror = () => {
-                iframe.remove();
-            };
-
-            kitContainer.appendChild(iframe);
-        }
+async function copyCheckoutLinkToClipboard(url) {
+    if (!url) {
         return false;
     }
 
-    kitContainer.classList.add('loading');
-    tryMount();
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(url);
+            return true;
+        }
+    } catch (error) {
+        console.warn('Checkout: navigator.clipboard failed', error);
+    }
+
+    try {
+        const tempInput = document.createElement('input');
+        tempInput.type = 'text';
+        tempInput.value = url;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        tempInput.setSelectionRange(0, url.length);
+        const result = document.execCommand('copy');
+        tempInput.remove();
+        return result;
+    } catch (error) {
+        console.warn('Checkout: Fallback copy failed', error);
+        return false;
+    }
 }
 
 function bootstrapCheckoutPage() {
     const summaryContainer = document.getElementById('checkout-summary');
-    const kitContainer = document.getElementById('checkout-kit');
     const fallbackContainer = document.getElementById('checkout-fallback');
     const fallbackLink = document.getElementById('checkout-link');
+    const copyButton = document.getElementById('checkout-copy');
+    const messageEl = document.getElementById('checkout-message');
+    const noteEl = document.getElementById('checkout-note');
+    const feedbackEl = document.getElementById('checkout-copy-feedback');
 
-    if (!summaryContainer || !kitContainer || !fallbackContainer || !fallbackLink) {
-        console.error('Checkout containers missing');
+    if (!summaryContainer || !fallbackContainer || !fallbackLink || !messageEl || !noteEl || !feedbackEl) {
+        console.error('Checkout: Required containers missing');
         return;
     }
 
@@ -267,15 +225,90 @@ function bootstrapCheckoutPage() {
 
     if (!data) {
         renderEmptyState(summaryContainer);
-        kitContainer.classList.remove('loading');
-        fallbackContainer.hidden = false;
+        fallbackContainer.classList.add('empty');
+        messageEl.textContent = 'We could not find an active checkout session.';
         fallbackLink.href = '/shop';
+        fallbackLink.removeAttribute('target');
+        fallbackLink.removeAttribute('rel');
         fallbackLink.textContent = 'Return to shop';
+        if (copyButton) {
+            copyButton.hidden = true;
+        }
+        noteEl.textContent = 'Add items to your cart and try again.';
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'copy-feedback';
         return;
     }
 
     renderSummary(summaryContainer, data);
-    mountCheckoutKit(data.checkoutUrl, kitContainer, fallbackContainer, fallbackLink);
+
+    const checkoutUrl = data.checkoutUrl;
+
+    if (!checkoutUrl) {
+        messageEl.textContent = 'We generated your order summary, but a checkout link was not provided.';
+        fallbackLink.href = '/contact';
+        fallbackLink.removeAttribute('target');
+        fallbackLink.removeAttribute('rel');
+        fallbackLink.textContent = 'Contact support';
+        noteEl.textContent = 'Reach out so we can help you finish the order manually.';
+        if (copyButton) {
+            copyButton.hidden = true;
+        }
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'copy-feedback';
+        return;
+    }
+
+    fallbackLink.href = checkoutUrl;
+    fallbackLink.target = '_blank';
+    fallbackLink.rel = 'noreferrer noopener';
+    fallbackLink.textContent = 'Open secure checkout';
+
+    if (copyButton) {
+        copyButton.hidden = false;
+        copyButton.addEventListener('click', async () => {
+            feedbackEl.className = 'copy-feedback';
+            feedbackEl.textContent = '';
+            const success = await copyCheckoutLinkToClipboard(checkoutUrl);
+            if (success) {
+                feedbackEl.textContent = 'Checkout link copied to your clipboard.';
+                feedbackEl.classList.add('success');
+            } else {
+                feedbackEl.textContent = checkoutUrl;
+                feedbackEl.classList.add('error');
+                noteEl.textContent = 'Copy the link above manually if the automatic copy fails.';
+            }
+        });
+    }
+
+    fallbackLink.addEventListener('click', () => {
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'copy-feedback';
+    });
+
+    if (useDemo) {
+        messageEl.textContent = 'Use the buttons below to preview how checkout opens in a new tab.';
+        noteEl.textContent = 'Demo mode leaves the checkout closed until you choose to open it.';
+        return;
+    }
+
+    let openedAutomatically = false;
+    try {
+        const popup = window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
+        if (popup) {
+            openedAutomatically = true;
+        }
+    } catch (error) {
+        console.warn('Checkout: Automatic popup failed', error);
+    }
+
+    if (openedAutomatically) {
+        messageEl.textContent = 'We opened Shopify checkout in a new tab with your cart details.';
+        noteEl.textContent = 'If it didn’t appear, use the button below or copy the link.';
+    } else {
+        messageEl.textContent = 'Click below to open Shopify’s secure checkout in a new tab.';
+        noteEl.textContent = 'Some browsers block automatic pop-ups. The link above is safe to use, or copy it to share.';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', bootstrapCheckoutPage);
