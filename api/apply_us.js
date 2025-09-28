@@ -64,10 +64,16 @@ async function verifyRecaptcha(token) {
 // Function to send confirmation email to applicant
 async function sendApplicantConfirmationEmail(formData, applicationId) {
     try {
+        const recipientEmail = (formData.email || '').trim();
+        if (!recipientEmail) {
+            console.warn('No applicant email provided; skipping confirmation email.');
+            return false;
+        }
+
         const safeFirstName = toSafeString(formData.firstName);
         const safeLastName = toSafeString(formData.lastName);
         const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim();
-        const safeEmail = toSafeString(formData.email);
+        const safeEmail = toSafeString(recipientEmail);
         const safeDateOfBirth = toSafeString(formData.dateOfBirth);
         const safeBikeChoice = toSafeString(normaliseBikeChoice(formData.bikeChoice));
         const bringingSupporter = formData.bringingSupporter === 'yes' ? 'Yes' : 'No';
@@ -77,14 +83,14 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
         const safeAdditionalComments = toSafeMultilineString(formData.additionalComments);
 
         const { data, error } = await resend.emails.send({
-            from: 'Moto Coach <noreply@motocoach.com.au>',
-            to: formData.email,
+            from: 'noreply@motocoach.com.au',
+            to: recipientEmail,
             subject: 'US Travel Program Inquiry Received - Moto Coach',
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px;">
                     <div style="background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
                         <div style="text-align: center; margin-bottom: 30px;">
-                            <img src="cid:logo" alt="Moto Coach" style="max-width: 200px; height: auto;">
+                            <img src="${LOGO_URL}" alt="Moto Coach" style="max-width: 200px; height: auto;">
                         </div>
 
                         <h2 style="color: #ff6600; text-align: center; margin-bottom: 30px;">Inquiry Received!</h2>
@@ -137,14 +143,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
                         </p>
                     </div>
                 </div>
-            `,
-            attachments: [
-                {
-                    filename: 'logo.png',
-                    path: './images/long-logo.png',
-                    cid: 'logo'
-                }
-            ]
+            `
         });
 
         if (error) {
@@ -309,7 +308,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
         `;
 
         const emailOptions = {
-            from: 'Moto Coach Inquiries <inquiries@motocoach.com.au>',
+            from: 'inquiries@motocoach.com.au',
             to: process.env.TO_EMAIL,
             subject: 'New Inquiry - US Training Camp',
             html,

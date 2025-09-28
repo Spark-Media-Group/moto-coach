@@ -294,9 +294,9 @@ function showSuccessMessage(applicationId) {
             width: 90%;
         ">
             <div style="color: #28a745; font-size: 60px; margin-bottom: 20px;">✓</div>
-            <h3 style="color: #333; margin-bottom: 15px;">Inquiry Submitted Successfully!</h3>
+            <h3 style="color: #333; margin-bottom: 15px;">Inquiry Submitted</h3>
             <p style="color: #666; margin-bottom: 20px;">
-                Thank you for sending an inquiry to the US Travel Program. We'll be in touch with you if there are openings. Your inquiry ID is:
+                Thank you for sending an Inquiry to the US Travel Program. We'll be in touch with you if there are openings. Your inquiry ID is:
             </p>
             <div style="
                 background: #f8f9fa;
