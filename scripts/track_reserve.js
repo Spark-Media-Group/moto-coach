@@ -6,6 +6,86 @@ let ratePerRider = 190; // Default rate in AUD
 let maxSpots = null; // Maximum spots available for the event
 let remainingSpots = null; // Remaining spots available
 
+const EVENT_STORAGE_KEY = 'trackReserveEventDetails';
+let cachedEventDetails = null;
+
+function sanitizeStoredEvent(event) {
+    return {
+        title: event?.title || '',
+        date: event?.date || '',
+        time: event?.time || '',
+        location: event?.location || '',
+        description: event?.description || ''
+    };
+}
+
+function persistEventDetails(details) {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    if (!details || !Array.isArray(details.events) || details.events.length === 0) {
+        cachedEventDetails = null;
+        try {
+            window.sessionStorage.removeItem(EVENT_STORAGE_KEY);
+        } catch (error) {
+            console.warn('Unable to clear stored event details:', error);
+        }
+        return;
+    }
+
+    const sanitized = {
+        type: details.type || (details.events.length > 1 ? 'multi' : 'single'),
+        events: details.events.map(sanitizeStoredEvent),
+        pricingInfo: details.pricingInfo || null
+    };
+
+    cachedEventDetails = sanitized;
+
+    try {
+        window.sessionStorage.setItem(EVENT_STORAGE_KEY, JSON.stringify(sanitized));
+    } catch (error) {
+        console.warn('Unable to persist calendar event details:', error);
+    }
+}
+
+function restoreStoredEventDetails() {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    if (cachedEventDetails) {
+        return cachedEventDetails;
+    }
+
+    try {
+        const stored = window.sessionStorage.getItem(EVENT_STORAGE_KEY);
+        if (stored) {
+            cachedEventDetails = JSON.parse(stored);
+            return cachedEventDetails;
+        }
+    } catch (error) {
+        console.warn('Unable to restore calendar event details:', error);
+    }
+
+    return null;
+}
+
+function getStoredEventDetails() {
+    return cachedEventDetails || restoreStoredEventDetails();
+}
+
+function updateStoredEventDetails(updater) {
+    const current = getStoredEventDetails();
+    if (!current) {
+        return;
+    }
+
+    const clone = JSON.parse(JSON.stringify(current));
+    const updated = updater(clone) || clone;
+    persistEventDetails(updated);
+}
+
 // Check if returning from payment redirect (for Afterpay, etc.)
 function checkPaymentStatus() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -96,6 +176,9 @@ function getEventsForSubmission() {
 
 // Add rider functionality
 document.addEventListener('DOMContentLoaded', function() {
+    // Restore any stored event details before handling redirects
+    restoreStoredEventDetails();
+
     // Check if returning from payment redirect
     checkPaymentStatus();
     
@@ -456,7 +539,7 @@ async function initializePricing() {
                             
                             validatedEvents.push(validatedEvent);
                             totalRate += serverData.event.rate;
-                            
+
                             // Track the minimum remaining spots across all events
                             minRemainingSpots = Math.min(minRemainingSpots, serverData.event.remainingSpots);
                             
@@ -489,6 +572,14 @@ async function initializePricing() {
             ratePerRider = totalRate;
             remainingSpots = minRemainingSpots === Infinity ? 0 : minRemainingSpots;
             maxSpots = Math.max(...validatedEvents.map(e => e.serverMaxSpots || e.maxSpots || 10));
+
+            if (validatedEvents.length > 0) {
+                persistEventDetails({
+                    type: 'multi',
+                    events: validatedEvents,
+                    pricingInfo: window.multiEventData?.pricingInfo || pricingInfo
+                });
+            }
             
             // Update validation text
             const validationText = document.getElementById('pricingValidationText');
@@ -562,9 +653,23 @@ async function initializePricing() {
                     if (eventDisplayElement) {
                         eventDisplayElement.textContent = serverData.event.name;
                     }
-                    
+
                     console.log('Event security validation succeeded (URL parameters overridden with server data)');
-                    
+
+                    updateStoredEventDetails(details => {
+                        if (!details || !Array.isArray(details.events) || details.events.length === 0) {
+                            return details;
+                        }
+
+                        details.events[0].title = serverData.event.name || details.events[0].title;
+                        details.events[0].date = serverData.event.date || details.events[0].date;
+                        if (serverData.event.description) {
+                            details.events[0].description = serverData.event.description;
+                        }
+
+                        return details;
+                    });
+
                     console.log('Event data validated from server:', {
                         rate: ratePerRider,
                         maxSpots: maxSpots,
@@ -725,22 +830,39 @@ function populateEventDetails() {
     const urlParams = new URLSearchParams(window.location.search);
     const multiEventsParam = urlParams.get('multiEvents');
     const pricingParam = urlParams.get('pricing');
-    
+
     if (multiEventsParam && pricingParam) {
         // Handle multi-event registration
         try {
             const events = JSON.parse(decodeURIComponent(multiEventsParam));
             const pricingInfo = JSON.parse(decodeURIComponent(pricingParam));
-            
+
             populateMultiEventDetails(events, pricingInfo);
+            return;
         } catch (error) {
             console.error('Error parsing multi-event data:', error);
             // Fallback to single event
             populateSingleEventDetails();
+            return;
         }
-    } else {
+    }
+
+    const hasSingleParams = ['event', 'date', 'time', 'location', 'description'].some(param => urlParams.get(param));
+
+    if (hasSingleParams) {
         // Handle single event registration
         populateSingleEventDetails();
+        return;
+    }
+
+    // Fallback to stored event details (e.g., returning from payment redirect)
+    const storedDetails = getStoredEventDetails();
+    if (storedDetails && Array.isArray(storedDetails.events) && storedDetails.events.length > 0) {
+        if (storedDetails.type === 'multi' && storedDetails.pricingInfo) {
+            populateMultiEventDetails(storedDetails.events, storedDetails.pricingInfo);
+        } else {
+            populateSingleEventDetails(storedDetails.events[0]);
+        }
     }
 }
 
@@ -792,16 +914,22 @@ function populateMultiEventDetails(events, pricingInfo) {
         hiddenEventName.value = `Multi-Event Registration: ${events.map(e => e.title).join(', ')}`;
     }
     
-    // Store multi-event data for form submission
+    // Store multi-event data for form submission and calendar tools
     window.multiEventData = { events, pricingInfo };
+    persistEventDetails({
+        type: 'multi',
+        events,
+        pricingInfo
+    });
 }
 
-function populateSingleEventDetails() {
-    const eventName = getUrlParameter('event');
-    const eventTime = getUrlParameter('time');
-    const eventLocation = getUrlParameter('location');
-    const eventDescription = getUrlParameter('description');
-    
+function populateSingleEventDetails(preloadedEvent) {
+    const eventName = preloadedEvent ? preloadedEvent.title : getUrlParameter('event');
+    const eventDate = preloadedEvent ? preloadedEvent.date : getUrlParameter('date');
+    const eventTime = preloadedEvent ? preloadedEvent.time : getUrlParameter('time');
+    const eventLocation = preloadedEvent ? preloadedEvent.location : getUrlParameter('location');
+    const eventDescriptionRaw = preloadedEvent ? preloadedEvent.description : getUrlParameter('description');
+
     if (eventName) {
         document.getElementById('eventDisplay').textContent = eventName;
         // Make sure to populate the hidden field for form validation
@@ -811,18 +939,40 @@ function populateSingleEventDetails() {
         }
     }
     
-    if (eventTime) {
-        document.getElementById('timeDisplay').textContent = `🕒 ${eventTime}`;
+    const timeDisplay = document.getElementById('timeDisplay');
+    if (timeDisplay) {
+        const timeParts = [];
+        if (eventDate) {
+            timeParts.push(`📅 ${eventDate}`);
+        }
+        if (eventTime) {
+            timeParts.push(`🕒 ${eventTime}`);
+        }
+        timeDisplay.textContent = timeParts.join('   ');
     }
-    
+
     if (eventLocation) {
         document.getElementById('locationDisplay').textContent = `📍 ${eventLocation}`;
     }
-    
-    if (eventDescription) {
-        document.getElementById('descriptionDisplay').textContent = eventDescription.toLowerCase();
+
+    if (eventDescriptionRaw) {
+        document.getElementById('descriptionDisplay').textContent = eventDescriptionRaw.toLowerCase();
     }
-    
+
+    const eventDetailsForStorage = {
+        title: eventName || '',
+        date: eventDate || '',
+        time: eventTime || '',
+        location: eventLocation || '',
+        description: eventDescriptionRaw || ''
+    };
+
+    if (preloadedEvent) {
+        persistEventDetails({ type: 'single', events: [eventDetailsForStorage] });
+    } else if (eventName || eventDate || eventTime || eventLocation || eventDescriptionRaw) {
+        persistEventDetails({ type: 'single', events: [eventDetailsForStorage] });
+    }
+
     // Clear any multi-event data
     window.multiEventData = null;
 }
@@ -1622,12 +1772,324 @@ async function completeRegistration(form, paymentIntentId, totalAmount) {
     }
 }
 
+function renderCalendarActions() {
+    const container = document.getElementById('calendarActionsContainer');
+    if (!container) {
+        return;
+    }
+
+    const storedDetails = getStoredEventDetails();
+
+    if (!storedDetails || !Array.isArray(storedDetails.events) || storedDetails.events.length === 0) {
+        container.innerHTML = '<p class="calendar-action-note">Event details are unavailable. Please refer to your confirmation email for scheduling information.</p>';
+        return;
+    }
+
+    container.innerHTML = '';
+
+    storedDetails.events.forEach(event => {
+        const parsedTimes = parseEventDateTime(event.date, event.time);
+        const card = document.createElement('div');
+        card.className = 'calendar-action-card';
+
+        const titleEl = document.createElement('div');
+        titleEl.className = 'calendar-action-title';
+        titleEl.textContent = event.title || 'Moto Coach Event';
+        card.appendChild(titleEl);
+
+        const metaParts = [];
+        if (event.date) {
+            metaParts.push(`📅 ${event.date}`);
+        }
+        if (event.time) {
+            metaParts.push(`🕒 ${event.time}`);
+        }
+        if (event.location) {
+            metaParts.push(`📍 ${event.location}`);
+        }
+
+        if (metaParts.length > 0) {
+            const metaEl = document.createElement('div');
+            metaEl.className = 'calendar-action-meta';
+            metaEl.textContent = metaParts.join('   •   ');
+            card.appendChild(metaEl);
+        }
+
+        if (!parsedTimes) {
+            const note = document.createElement('p');
+            note.className = 'calendar-action-note';
+            note.textContent = 'Calendar downloads are unavailable for this event. Please check your confirmation email for exact timing.';
+            card.appendChild(note);
+            container.appendChild(card);
+            return;
+        }
+
+        const buttonsWrapper = document.createElement('div');
+        buttonsWrapper.className = 'calendar-action-buttons';
+
+        const googleLink = document.createElement('a');
+        googleLink.className = 'btn-calendar';
+        googleLink.href = buildGoogleCalendarLink(event, parsedTimes);
+        googleLink.target = '_blank';
+        googleLink.rel = 'noopener noreferrer';
+        googleLink.textContent = 'Google Calendar';
+
+        const icsButton = document.createElement('button');
+        icsButton.type = 'button';
+        icsButton.className = 'btn-calendar secondary';
+        icsButton.textContent = 'Download .ics';
+        icsButton.addEventListener('click', () => {
+            const icsContent = generateICSContent(event, parsedTimes);
+            if (!icsContent) {
+                alert('Unable to create a calendar file for this event. Please check your confirmation email for details.');
+                return;
+            }
+
+            const safeTitle = (event.title || 'motocoach-event').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'motocoach-event';
+            const dateSuffix = event.date ? event.date.replace(/[^0-9]/g, '') : Date.now();
+            downloadICSFile(`${safeTitle}-${dateSuffix}.ics`, icsContent);
+        });
+
+        buttonsWrapper.appendChild(googleLink);
+        buttonsWrapper.appendChild(icsButton);
+        card.appendChild(buttonsWrapper);
+
+        container.appendChild(card);
+    });
+}
+
+function parseEventDateTime(dateStr, timeStr) {
+    if (!dateStr) {
+        return null;
+    }
+
+    const dateParts = dateStr.split(/[\/\-]/).map(part => parseInt(part, 10));
+    if (dateParts.length < 3 || dateParts.some(part => Number.isNaN(part))) {
+        return null;
+    }
+
+    const [day, month, year] = dateParts;
+    const startDate = new Date(year, month - 1, day);
+    if (Number.isNaN(startDate.getTime()) || startDate.getDate() !== day || (startDate.getMonth() + 1) !== month) {
+        return null;
+    }
+
+    const normalizedTime = (timeStr || '').trim();
+
+    if (!normalizedTime || /all\s*day/i.test(normalizedTime)) {
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1);
+        return {
+            allDay: true,
+            start: {
+                year: startDate.getFullYear(),
+                month: startDate.getMonth() + 1,
+                day: startDate.getDate()
+            },
+            end: {
+                year: endDate.getFullYear(),
+                month: endDate.getMonth() + 1,
+                day: endDate.getDate()
+            }
+        };
+    }
+
+    const rangeParts = normalizedTime
+        .replace(/[–—]/g, '-')
+        .split(/\s?(?:-|to)\s?/i)
+        .filter(Boolean);
+
+    const startTime = parseTimeComponent(rangeParts[0]);
+    if (!startTime) {
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + 1);
+        return {
+            allDay: true,
+            start: {
+                year: startDate.getFullYear(),
+                month: startDate.getMonth() + 1,
+                day: startDate.getDate()
+            },
+            end: {
+                year: endDate.getFullYear(),
+                month: endDate.getMonth() + 1,
+                day: endDate.getDate()
+            }
+        };
+    }
+
+    const endTime = rangeParts.length > 1 ? parseTimeComponent(rangeParts[1]) : null;
+
+    const startDateTime = new Date(year, month - 1, day, startTime.hour, startTime.minute);
+    if (Number.isNaN(startDateTime.getTime())) {
+        return null;
+    }
+
+    let endDateTime;
+    if (endTime) {
+        endDateTime = new Date(year, month - 1, day, endTime.hour, endTime.minute);
+        if (endDateTime <= startDateTime) {
+            endDateTime.setDate(endDateTime.getDate() + 1);
+        }
+    } else {
+        endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+    }
+
+    return {
+        allDay: false,
+        start: {
+            year: startDateTime.getFullYear(),
+            month: startDateTime.getMonth() + 1,
+            day: startDateTime.getDate(),
+            hour: startDateTime.getHours(),
+            minute: startDateTime.getMinutes()
+        },
+        end: {
+            year: endDateTime.getFullYear(),
+            month: endDateTime.getMonth() + 1,
+            day: endDateTime.getDate(),
+            hour: endDateTime.getHours(),
+            minute: endDateTime.getMinutes()
+        }
+    };
+}
+
+function parseTimeComponent(component) {
+    if (!component) {
+        return null;
+    }
+
+    const cleaned = component
+        .toUpperCase()
+        .replace(/\./g, '')
+        .replace(/HRS?/g, '')
+        .replace(/HOURS?/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const match = cleaned.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?/);
+    if (!match) {
+        return null;
+    }
+
+    let hour = parseInt(match[1], 10);
+    const minute = match[2] ? parseInt(match[2], 10) : 0;
+    const meridian = match[3] || null;
+
+    if (meridian === 'PM' && hour < 12) {
+        hour += 12;
+    }
+    if (meridian === 'AM' && hour === 12) {
+        hour = 0;
+    }
+
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+        return null;
+    }
+
+    return { hour, minute };
+}
+
+function formatDateParts(parts) {
+    const year = String(parts.year).padStart(4, '0');
+    const month = String(parts.month).padStart(2, '0');
+    const day = String(parts.day).padStart(2, '0');
+    return `${year}${month}${day}`;
+}
+
+function formatDateTimeParts(parts) {
+    const date = formatDateParts(parts);
+    const hour = String(parts.hour ?? 0).padStart(2, '0');
+    const minute = String(parts.minute ?? 0).padStart(2, '0');
+    return `${date}T${hour}${minute}00`;
+}
+
+function buildGoogleCalendarLink(event, parsed) {
+    if (!parsed) {
+        return '#';
+    }
+
+    const params = new URLSearchParams({
+        action: 'TEMPLATE',
+        text: event.title || 'Moto Coach Event',
+        details: event.description || '',
+        location: event.location || '',
+        ctz: 'Australia/Sydney'
+    });
+
+    if (parsed.allDay) {
+        params.set('dates', `${formatDateParts(parsed.start)}/${formatDateParts(parsed.end)}`);
+    } else {
+        params.set('dates', `${formatDateTimeParts(parsed.start)}/${formatDateTimeParts(parsed.end)}`);
+    }
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function escapeIcsText(text) {
+    return text
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\r?\n/g, '\\n');
+}
+
+function generateICSContent(event, parsed) {
+    if (!parsed) {
+        return null;
+    }
+
+    const dtStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const lines = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Moto Coach//Track Reservation//EN',
+        'CALSCALE:GREGORIAN',
+        'BEGIN:VEVENT',
+        `UID:${Date.now()}-${Math.floor(Math.random() * 10000)}@motocoach.com.au`,
+        `DTSTAMP:${dtStamp}`,
+        `SUMMARY:${escapeIcsText(event.title || 'Moto Coach Event')}`
+    ];
+
+    if (parsed.allDay) {
+        lines.push(`DTSTART;VALUE=DATE:${formatDateParts(parsed.start)}`);
+        lines.push(`DTEND;VALUE=DATE:${formatDateParts(parsed.end)}`);
+    } else {
+        lines.push(`DTSTART;TZID=Australia/Sydney:${formatDateTimeParts(parsed.start)}`);
+        lines.push(`DTEND;TZID=Australia/Sydney:${formatDateTimeParts(parsed.end)}`);
+    }
+
+    if (event.location) {
+        lines.push(`LOCATION:${escapeIcsText(event.location)}`);
+    }
+
+    if (event.description) {
+        lines.push(`DESCRIPTION:${escapeIcsText(event.description)}`);
+    }
+
+    lines.push('END:VEVENT', 'END:VCALENDAR');
+    return lines.join('\r\n');
+}
+
+function downloadICSFile(filename, content) {
+    const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
 // Function to show success modal
 function showSuccessModal() {
     const modal = document.getElementById('successModal');
     if (modal) {
+        renderCalendarActions();
         modal.style.display = 'flex';
-        
+
         // Blur the main content (excluding header and footer)
         const mainContent = document.querySelector('main');
         if (mainContent) {

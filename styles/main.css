@@ -1750,6 +1750,91 @@ input[placeholder="DD/MM/YYYY"]:valid {
     line-height: 1.5;
 }
 
+.modal-body {
+    margin-top: 1.5rem;
+    text-align: left;
+    color: #d9d9d9;
+}
+
+.calendar-action-intro {
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    color: #f0f0f0;
+    font-weight: 600;
+}
+
+.calendar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.calendar-action-card {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+}
+
+.calendar-action-title {
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 0.35rem;
+    font-size: 1rem;
+}
+
+.calendar-action-meta {
+    font-size: 0.9rem;
+    color: #cccccc;
+    margin-bottom: 0.75rem;
+    line-height: 1.4;
+}
+
+.calendar-action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-start;
+}
+
+.btn-calendar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.65rem 1.25rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: linear-gradient(135deg, #ff6b35 0%, #e55a2b 100%);
+    color: #ffffff;
+}
+
+.btn-calendar.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btn-calendar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 107, 53, 0.25);
+}
+
+.btn-calendar.secondary:hover {
+    box-shadow: 0 6px 18px rgba(255, 255, 255, 0.15);
+}
+
+.calendar-action-note {
+    font-size: 0.85rem;
+    color: #ffcf99;
+    line-height: 1.5;
+}
+
 .modal-actions {
     margin-top: 2rem;
 }
