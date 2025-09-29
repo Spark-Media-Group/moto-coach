@@ -354,7 +354,8 @@ async function recordShopifyOrder(paymentIntentId, customerDetails) {
     if (payload && typeof payload === 'object') {
         return {
             ...payload,
-            success: payload.success ?? true
+            success: payload.success ?? true,
+            transactionRecorded: payload.transactionRecorded ?? true
         };
     }
 
@@ -415,9 +416,11 @@ function showSuccess(orderData) {
     }
 
     if (successMessage && orderData) {
-        const { orderName, orderId, message, success } = orderData;
+        const { orderName, orderId, message, success, transactionRecorded } = orderData;
         if (success === false) {
             successMessage.textContent = message || 'Thank you! We received your payment and will confirm your booking shortly.';
+        } else if (transactionRecorded === false) {
+            successMessage.textContent = 'Thank you! We created your Shopify order and will finish recording the payment shortly.';
         } else if (orderName) {
             successMessage.textContent = `Thank you! We received your payment and created Shopify order ${orderName}.`;
         } else if (orderId) {
@@ -490,6 +493,8 @@ async function handleFormSubmit(event) {
 
         if (orderData?.success === false) {
             showStatusMessage(orderData.message || 'Payment received! We will finish your order manually.');
+        } else if (orderData?.transactionRecorded === false) {
+            showStatusMessage('Order created! We will finish recording the payment in Shopify shortly.');
         } else {
             showStatusMessage('Order complete!');
         }

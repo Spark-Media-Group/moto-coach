@@ -4,21 +4,6 @@ const SHOPIFY_STORE_URL = process.env.SHOPIFY_STORE_URL;
 const SHOPIFY_ADMIN_ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN || process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
 const SHOPIFY_ADMIN_API_VERSION = '2025-07';
 
-function normaliseStoreBaseUrl(storeUrl) {
-    if (!storeUrl) {
-        return null;
-    }
-
-    try {
-        const urlString = storeUrl.startsWith('http') ? storeUrl : `https://${storeUrl}`;
-        const url = new URL(urlString);
-        return `https://${url.host}`;
-    } catch (error) {
-        console.error('Checkout: Invalid Shopify store URL configured', error);
-        return null;
-    }
-}
-
 function sanitiseCurrencyAmount(amount) {
     const value = typeof amount === 'number' ? amount : parseFloat(amount ?? '0');
     if (!Number.isFinite(value) || value <= 0) {
@@ -177,15 +162,23 @@ export default async function handler(req, res) {
         });
     }
 
+    let shopHost;
     try {
-        const adminBase = normaliseStoreBaseUrl(SHOPIFY_STORE_URL);
-        if (!adminBase) {
-            console.error('Checkout: Shopify store URL could not be normalised – returning manual fulfilment fallback');
-            return res.status(200).json({
-                success: false,
-                message: 'Payment received! Our team will finalise your order in Shopify as soon as the store URL is configured.'
-            });
-        }
+        const urlString = SHOPIFY_STORE_URL.startsWith('http') ? SHOPIFY_STORE_URL : `https://${SHOPIFY_STORE_URL}`;
+        shopHost = new URL(urlString).host;
+    } catch (error) {
+        console.error('Checkout: Invalid SHOPIFY_STORE_URL configured', error);
+        return res.status(500).json({ error: 'Shopify store URL misconfiguration. Use your myshopify.com domain.' });
+    }
+
+    if (!shopHost.endsWith('.myshopify.com')) {
+        console.error('Checkout: Admin API must use {shop}.myshopify.com, got:', shopHost);
+        return res.status(500).json({ error: 'Shopify store URL misconfiguration. Use your myshopify.com domain.' });
+    }
+
+    const adminBase = `https://${shopHost}`;
+
+    try {
 
         const payload = buildShopifyPayload(req.body);
         if (payload.error) {
@@ -202,17 +195,26 @@ export default async function handler(req, res) {
             body: JSON.stringify(payload.orderPayload)
         });
 
+        const createBodyText = await createResponse.text();
+        const orderData = safeJsonParse(createBodyText);
+        const order = orderData && typeof orderData === 'object' ? orderData.order : undefined;
+
         if (!createResponse.ok) {
-            const errorDetails = safeJsonParse(await createResponse.text());
-            console.error('Checkout: Shopify order creation failed', createResponse.status, errorDetails);
+            console.error('Checkout: Shopify order creation failed', createResponse.status, orderData);
             return res.status(createResponse.status).json({
                 error: 'Failed to create Shopify order',
-                details: errorDetails
+                details: orderData
             });
         }
 
-        const orderData = await createResponse.json();
-        const order = orderData?.order;
+        console.info('Checkout: Shopify order created', {
+            host: shopHost,
+            status: createResponse.status,
+            id: order?.id,
+            name: order?.name,
+            gid: order?.admin_graphql_api_id,
+            adminUrl: order?.id ? `${adminBase}/admin/orders/${order.id}` : undefined
+        });
 
         if (!order?.id) {
             console.error('Checkout: Shopify order response missing id', orderData);
@@ -229,19 +231,22 @@ export default async function handler(req, res) {
             body: JSON.stringify(payload.transactionPayload)
         });
 
-        if (!transactionResponse.ok) {
-            const errorDetails = safeJsonParse(await transactionResponse.text());
-            console.error('Checkout: Shopify transaction recording failed', transactionResponse.status, errorDetails);
-            return res.status(transactionResponse.status).json({
-                error: 'Failed to record Shopify transaction',
-                details: errorDetails
-            });
-        }
+        const transactionBodyText = await transactionResponse.text();
+        const transactionData = safeJsonParse(transactionBodyText);
 
-        // Consume the response to surface potential Shopify validation warnings in logs.
-        const transactionData = await transactionResponse.json().catch(() => null);
-        if (transactionData) {
-            console.info('Checkout: Recorded Shopify transaction', transactionData?.transaction?.id || 'unknown');
+        if (!transactionResponse.ok) {
+            console.error('Checkout: Shopify transaction recording failed', transactionResponse.status, {
+                host: shopHost,
+                orderId: order.id,
+                details: transactionData
+            });
+        } else {
+            console.info('Checkout: Shopify transaction recorded', {
+                host: shopHost,
+                status: transactionResponse.status,
+                orderId: order.id,
+                transactionId: transactionData && typeof transactionData === 'object' ? transactionData?.transaction?.id : undefined
+            });
         }
 
         return res.status(200).json({
@@ -249,7 +254,11 @@ export default async function handler(req, res) {
             orderId: order?.id,
             orderName: order?.name,
             orderNumber: order?.order_number,
-            orderStatusUrl: order?.order_status_url
+            orderStatusUrl: order?.order_status_url,
+            adminUrl: order?.id ? `${adminBase}/admin/orders/${order.id}` : undefined,
+            transactionRecorded: transactionResponse.ok,
+            transactionStatus: transactionResponse.status,
+            transactionDetails: transactionResponse.ok ? undefined : transactionData
         });
     } catch (error) {
         console.error('Checkout: Unexpected error creating Shopify order', error);
