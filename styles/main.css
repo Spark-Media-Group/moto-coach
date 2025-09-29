@@ -1145,36 +1145,6 @@ footer {
     min-height: 120px;
 }
 
-/* Human verification / reCAPTCHA styling */
-.verification-group {
-    margin: 1.5rem 0;
-    text-align: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-
-/* reCAPTCHA widget styling */
-.g-recaptcha {
-    display: inline-block;
-    transform-origin: center;
-}
-
-/* Make reCAPTCHA responsive */
-@media (max-width: 768px) {
-    .g-recaptcha {
-        transform: scale(0.85);
-        transform-origin: center;
-    }
-}
-
-@media (max-width: 480px) {
-    .g-recaptcha {
-        transform: scale(0.75);
-        transform-origin: center;
-    }
-}
-
 /* Legacy checkbox styles (keeping for fallback) */
 .checkbox-label {
     display: inline-flex;

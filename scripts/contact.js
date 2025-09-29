@@ -1,5 +1,7 @@
-// Contact form handling with reCAPTCHA protection
-let recaptchaEnabled = true;
+import { ensureBotIdClient } from './botid-client.js';
+
+// Contact form handling with Vercel BotID protection
+let botProtectionEnabled = true;
 
 document.addEventListener('DOMContentLoaded', async function() {
     const contactForm = document.querySelector('.contact-form');
@@ -9,34 +11,17 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     const submitButton = contactForm.querySelector('button[type="submit"]');
 
-    await loadRecaptchaSettings();
+    await loadBotProtectionSettings();
 
-    if (!recaptchaEnabled) {
-        const recaptchaContainer = contactForm.querySelector('.g-recaptcha');
-        if (recaptchaContainer) {
-            recaptchaContainer.style.display = 'none';
-        }
+    if (botProtectionEnabled) {
+        await ensureBotIdClient([
+            { path: '/api/contact', method: 'POST' }
+        ]);
     }
 
     contactForm.addEventListener('submit', async function(e) {
         e.preventDefault();
 
-        let recaptchaResponse = '';
-        if (recaptchaEnabled) {
-            if (typeof grecaptcha === 'undefined') {
-                showErrorMessage('Security verification is unavailable. Please refresh and try again.');
-                return;
-            }
-
-            // Get reCAPTCHA response
-            recaptchaResponse = grecaptcha.getResponse();
-
-            if (!recaptchaResponse) {
-                showErrorMessage('Please complete the reCAPTCHA verification.');
-                return;
-            }
-        }
-        
         // Disable submit button and show loading state
         submitButton.disabled = true;
         const originalText = submitButton.textContent;
@@ -54,10 +39,6 @@ document.addEventListener('DOMContentLoaded', async function() {
                 message: formData.get('message')
             };
 
-            if (recaptchaEnabled) {
-                data.recaptchaToken = recaptchaResponse;
-            }
-            
             // Submit form to API
             const response = await fetch('/api/contact', {
                 method: 'POST',
@@ -73,23 +54,14 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Success
                 showSuccessMessage(result.message || 'Thank you for your message! We\'ll get back to you soon.');
                 contactForm.reset();
-                if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
-                    grecaptcha.reset(); // Reset reCAPTCHA
-                }
             } else {
                 // Error from server
                 showErrorMessage(result.error || 'Failed to send message. Please try again.');
-                if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
-                    grecaptcha.reset(); // Reset reCAPTCHA on error
-                }
             }
 
         } catch (error) {
             console.error('Contact form error:', error);
             showErrorMessage('Network error. Please check your connection and try again.');
-            if (recaptchaEnabled && typeof grecaptcha !== 'undefined') {
-                grecaptcha.reset(); // Reset reCAPTCHA on error
-            }
         } finally {
             // Re-enable submit button
             submitButton.disabled = false;
@@ -98,7 +70,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
 });
 
-async function loadRecaptchaSettings() {
+async function loadBotProtectionSettings() {
     try {
         const response = await fetch('/api/config');
         if (!response.ok) {
@@ -106,11 +78,11 @@ async function loadRecaptchaSettings() {
         }
 
         const config = await response.json();
-        if (typeof config.recaptchaEnabled === 'boolean') {
-            recaptchaEnabled = config.recaptchaEnabled;
+        if (typeof config.botProtectionEnabled === 'boolean') {
+            botProtectionEnabled = config.botProtectionEnabled;
         }
     } catch (error) {
-        console.error('Failed to load reCAPTCHA configuration:', error);
+        console.error('Failed to load bot protection configuration:', error);
     }
 }
 

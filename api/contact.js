@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
 import { isLiveEnvironment } from './_utils/environment';
+import { checkBotProtection } from './_utils/botid';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -42,16 +43,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { firstName, lastName, email, phone, subject, message, recaptchaToken } = req.body;
-    const recaptchaRequired = isLiveEnvironment();
+    const { firstName, lastName, email, phone, subject, message } = req.body;
+    const botProtectionRequired = isLiveEnvironment();
 
     console.log('Contact form submission received:', {
       hasFirstName: !!firstName,
       hasLastName: !!lastName,
       hasEmail: !!email,
       hasSubject: !!subject,
-      hasMessage: !!message,
-      hasRecaptcha: !!recaptchaToken
+      hasMessage: !!message
     });
 
     // Validate required fields
@@ -62,41 +62,20 @@ export default async function handler(req, res) {
       });
     }
 
-    if (recaptchaRequired) {
-      // Validate reCAPTCHA
-      if (!recaptchaToken) {
-        return res.status(400).json({
-          error: 'Please complete the reCAPTCHA verification.'
+    if (botProtectionRequired) {
+      const botCheck = await checkBotProtection(req, { feature: 'contact-form' });
+      if (botCheck.isBot) {
+        console.warn('BotID blocked contact form submission', {
+          feature: 'contact-form',
+          action: botCheck.action,
+          skipped: botCheck.skipped
         });
-      }
-
-      // Verify reCAPTCHA with Google
-      const recaptchaSecretKey = process.env.RECAPTCHA_SECRET_KEY;
-      if (!recaptchaSecretKey) {
-        console.error('Missing RECAPTCHA_SECRET_KEY environment variable');
-        return res.status(500).json({
-          error: 'Server configuration error. Please try again later.'
-        });
-      }
-
-      const recaptchaVerifyResponse = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `secret=${recaptchaSecretKey}&response=${recaptchaToken}`
-      });
-
-      const recaptchaResult = await recaptchaVerifyResponse.json();
-
-      if (!recaptchaResult.success) {
-        console.error('reCAPTCHA verification failed:', recaptchaResult);
-        return res.status(400).json({
-          error: 'reCAPTCHA verification failed. Please try again.'
+        return res.status(403).json({
+          error: 'Suspicious activity detected. Please try again later.'
         });
       }
     } else {
-      console.log('Skipping reCAPTCHA verification in non-live environment');
+      console.log('Skipping bot protection in non-live environment');
     }
 
     // Validate email format
