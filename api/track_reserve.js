@@ -3,40 +3,9 @@ import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 import { isLiveEnvironment } from './_utils/environment';
+import { checkBotProtection } from './_utils/botid';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-// Helper function for fetch in case it's not available globally
-const fetchPolyfill = async (url, options) => {
-    if (typeof fetch !== 'undefined') {
-        return fetch(url, options);
-    }
-    // Use node-fetch or other polyfill if needed
-    const https = require('https');
-    const querystring = require('querystring');
-    
-    return new Promise((resolve, reject) => {
-        const data = options.body;
-        const req = https.request(url, {
-            method: options.method,
-            headers: options.headers
-        }, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
-            res.on('end', () => {
-                resolve({
-                    ok: res.statusCode >= 200 && res.statusCode < 300,
-                    status: res.statusCode,
-                    json: () => Promise.resolve(JSON.parse(body))
-                });
-            });
-        });
-        
-        req.on('error', reject);
-        if (data) req.write(data);
-        req.end();
-    });
-};
 
 // Function to validate event details against Google Calendar
 async function validateEventDetails(eventData) {
@@ -342,65 +311,25 @@ export default async function handler(req, res) {
         }
 
         // Continue with regular registration processing
-        // Verify reCAPTCHA v3 (skip in development)
-        const { recaptchaToken } = req.body;
-
-        // Get the host from headers to determine if this is development
         const host = req.headers.host || '';
         const isDevelopment = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('192.168.');
-        const isProduction = host.includes('vercel.app') || host.includes('motocoach.com.au');
-        const recaptchaRequired = isLiveEnvironment() && !isDevelopment;
-        const shouldVerifyRecaptcha = recaptchaRequired && isProduction;
+        const botProtectionRequired = isLiveEnvironment() && !isDevelopment;
 
-        if (recaptchaRequired && !recaptchaToken) {
-            return res.status(400).json({ error: 'reCAPTCHA verification is required' });
-        } else if (!recaptchaRequired) {
-            console.log('Skipping reCAPTCHA requirement in non-live environment');
-        }
-
-        // Verify reCAPTCHA v3 with Google API when required
-        if (shouldVerifyRecaptcha && recaptchaToken) {
-            try {
-                const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
-                const recaptchaVerification = await fetchPolyfill(recaptchaVerifyUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        if (botProtectionRequired) {
+            const botCheck = await checkBotProtection(req, { feature: 'track-reserve' });
+            if (botCheck.isBot) {
+                console.warn('BotID blocked track reservation submission', {
+                    feature: 'track-reserve',
+                    action: botCheck.action,
+                    skipped: botCheck.skipped
                 });
-
-                const recaptchaResult = await recaptchaVerification.json();
-                
-                if (!recaptchaResult.success) {
-                    return res.status(400).json({ 
-                        error: 'reCAPTCHA verification failed',
-                        details: recaptchaResult['error-codes'] || 'Unknown error'
-                    });
-                }
-                
-                // For reCAPTCHA v3, check the score (0.0 = bot, 1.0 = human)
-                const score = recaptchaResult.score || 0;
-                console.log('reCAPTCHA v3 score:', score);
-                
-                // You can set your own threshold. Google recommends 0.5
-                if (score < 0.5) {
-                    console.warn(`Low reCAPTCHA score: ${score}. This might be a bot.`);
-                    // For now, we'll log but not block. You can decide to block if needed.
-                }
-                
-                console.log('reCAPTCHA v3 verification successful, score:', score);
-                
-            } catch (error) {
-                console.error('reCAPTCHA verification error:', error);
-                // Continue without blocking for now - you can decide to block if needed
+                return res.status(403).json({
+                    error: 'Suspicious activity detected. Please try again later.',
+                    success: false
+                });
             }
-        } else if (!recaptchaRequired) {
-            console.log('Skipping reCAPTCHA verification in non-live environment');
-        } else if (isDevelopment) {
-            console.log('Development mode: skipping reCAPTCHA verification');
-        } else if (!isProduction) {
-            console.log('Skipping reCAPTCHA verification for non-production host:', host);
+        } else {
+            console.log('Skipping bot protection in non-live environment');
         }
 
         // Debug: Log environment variables (without sensitive data)

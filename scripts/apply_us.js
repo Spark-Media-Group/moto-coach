@@ -1,6 +1,7 @@
+import { ensureBotIdClient } from './botid-client.js';
+
 // US Travel Program Inquiry Form Handler
-let recaptchaEnabled = true;
-let recaptchaSiteKey = '6LfOyLMrAAAAAOOYttmgC3piJmEf9NHYzeNqjEXm';
+let botProtectionEnabled = true;
 
 document.addEventListener('DOMContentLoaded', async function() {
     const form = document.querySelector('.application-form');
@@ -8,13 +9,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
 
-    await initializeRecaptchaSettings();
-
-    if (recaptchaEnabled) {
-        loadRecaptcha();
-    } else {
-        console.log('reCAPTCHA disabled for this environment');
-    }
+    await initialiseBotProtection();
 
     // Handle form submission
     form.addEventListener('submit', handleFormSubmission);
@@ -23,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     setupFileUpload();
 });
 
-async function initializeRecaptchaSettings() {
+async function initialiseBotProtection() {
     try {
         const response = await fetch('/api/config');
         if (!response.ok) {
@@ -31,32 +26,20 @@ async function initializeRecaptchaSettings() {
         }
 
         const config = await response.json();
-        if (typeof config.recaptchaEnabled === 'boolean') {
-            recaptchaEnabled = config.recaptchaEnabled;
+        if (typeof config.botProtectionEnabled === 'boolean') {
+            botProtectionEnabled = config.botProtectionEnabled;
         }
 
-        if (config.recaptchaSiteKey) {
-            recaptchaSiteKey = config.recaptchaSiteKey;
+        if (botProtectionEnabled) {
+            await ensureBotIdClient([
+                { path: '/api/apply_us', method: 'POST' }
+            ]);
+        } else {
+            console.log('Bot protection disabled for this environment');
         }
     } catch (error) {
-        console.error('Failed to load reCAPTCHA configuration:', error);
+        console.error('Failed to load bot protection configuration:', error);
     }
-}
-
-// Load reCAPTCHA v3 script
-function loadRecaptcha() {
-    if (!recaptchaEnabled || !recaptchaSiteKey) {
-        return;
-    }
-
-    const script = document.createElement('script');
-    script.src = `https://www.google.com/recaptcha/api.js?render=${recaptchaSiteKey}`;
-    script.onload = function() {
-        window.grecaptcha.ready(function() {
-            console.log('reCAPTCHA v3 loaded successfully');
-        });
-    };
-    document.head.appendChild(script);
 }
 
 // Handle form submission
@@ -74,14 +57,6 @@ async function handleFormSubmission(e) {
         // Collect form data
         const formData = await collectFormData(e.target);
 
-        if (recaptchaEnabled) {
-            const recaptchaToken = await getRecaptchaToken();
-            if (!recaptchaToken) {
-                throw new Error('reCAPTCHA verification failed. Please try again.');
-            }
-            formData.recaptchaToken = recaptchaToken;
-        }
-        
         // Validate form data
         const validation = validateFormData(formData);
         if (!validation.isValid) {
@@ -137,34 +112,6 @@ async function handleFormSubmission(e) {
         submitButton.disabled = false;
         submitButton.textContent = originalButtonText;
     }
-}
-
-// Get reCAPTCHA token
-function getRecaptchaToken() {
-    return new Promise((resolve, reject) => {
-        if (!recaptchaEnabled) {
-            resolve(null);
-            return;
-        }
-
-        if (typeof window.grecaptcha === 'undefined') {
-            reject(new Error('reCAPTCHA not loaded'));
-            return;
-        }
-
-        window.grecaptcha.ready(function() {
-            if (!recaptchaSiteKey) {
-                reject(new Error('reCAPTCHA site key not configured'));
-                return;
-            }
-
-            window.grecaptcha.execute(recaptchaSiteKey, {action: 'apply_us'}).then(function(token) {
-                resolve(token);
-            }).catch(function(error) {
-                reject(error);
-            });
-        });
-    });
 }
 
 // Collect all form data

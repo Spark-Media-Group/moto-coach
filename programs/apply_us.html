@@ -12,12 +12,12 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' cdn.jsdelivr.net https://www.google.com https://www.gstatic.com;
+                   script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.jsdelivr.net https://cdn.vercel-insights.com https://va.vercel-scripts.com https://vercel.live;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-                   img-src 'self' data:;
-                   connect-src 'self' https://www.google.com;
+                   img-src 'self' data: https://cdn.vercel-insights.com;
+                   connect-src 'self' https://va.vercel-scripts.com https://cdn.vercel-insights.com;
                    font-src 'self' fonts.gstatic.com;
-                   frame-src https://www.google.com;
+                   frame-src 'none';
                    object-src 'none';
                    base-uri 'self';">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
@@ -219,7 +219,7 @@
                     <!-- Human Verification -->
                     <div class="form-section-header">
                         <h3>Security</h3>
-                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">This form is protected by reCAPTCHA</p>
+                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">This form is protected by Vercel BotID</p>
                     </div>
 
                     <div class="form-submit">
@@ -249,9 +249,9 @@
     </footer>
 
     <script src="../scripts/main.js"></script>
-    <script src="../scripts/apply_us.js"></script>
+    <script type="module" src="../scripts/apply_us.js"></script>
     <script src="../scripts/analytics.js"></script>
     
-    <!-- reCAPTCHA v3 will be loaded dynamically with site key from API -->
+    <!-- Vercel BotID client initialises inside apply_us.js -->
 </body>
 </html>

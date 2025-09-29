@@ -17,10 +17,9 @@ export default async function handler(req, res) {
 
     try {
         // Only return public configuration that's safe to expose
-        const recaptchaEnabled = isLiveEnvironment();
+        const botProtectionEnabled = isLiveEnvironment();
         const config = {
-            recaptchaEnabled,
-            recaptchaSiteKey: recaptchaEnabled ? process.env.RECAPTCHA_SITE_KEY : null,
+            botProtectionEnabled,
             // Add other public config here if needed
         };
 

@@ -12,12 +12,12 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.google.com https://www.gstatic.com cdn.jsdelivr.net;
+                   script-src 'self' 'unsafe-inline' 'unsafe-eval' https://esm.sh https://cdn.jsdelivr.net https://cdn.vercel-insights.com https://va.vercel-scripts.com https://vercel.live;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-                   img-src 'self' data:;
-                   connect-src 'self';
+                   img-src 'self' data: https://cdn.vercel-insights.com;
+                   connect-src 'self' https://va.vercel-scripts.com https://cdn.vercel-insights.com;
                    font-src 'self' fonts.gstatic.com;
-                   frame-src https://www.google.com;
+                   frame-src 'none';
                    object-src 'none';
                    base-uri 'self';">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
@@ -79,8 +79,6 @@
     }
     </script>
 
-    <!-- reCAPTCHA -->
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
     <!-- Header -->
@@ -224,7 +222,6 @@
                             <textarea id="message" name="message" rows="6" placeholder="Tell us about your riding experience, goals, or any questions you have..." required></textarea>
                         </div>
                         <div class="form-group">
-                            <div class="g-recaptcha" data-sitekey="6LfLbKAqAAAAALHCBJPnyU6mf4fqW0Z10jOEPEW7"></div>
                         </div>
                         <div class="form-submit">
                             <button type="submit" class="btn-primary btn-large">Send Message</button>
@@ -255,7 +252,7 @@
     </footer>
 
     <script src="scripts/main.js"></script>
-    <script src="scripts/contact.js"></script>
+    <script type="module" src="scripts/contact.js"></script>
     <script src="scripts/analytics.js"></script>
 </body>
 </html>

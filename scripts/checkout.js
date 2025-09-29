@@ -1,3 +1,5 @@
+import { ensureBotIdClient } from './botid-client.js';
+
 const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
 const TRACK_RESERVE_EVENT_STORAGE_KEY = 'trackReserveEventDetails';
 let stripe = null;
@@ -1138,7 +1140,15 @@ async function handleFormSubmit(event) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await ensureBotIdClient([
+            { path: '/api/track_reserve', method: 'POST' }
+        ]);
+    } catch (error) {
+        console.warn('Bot protection initialisation failed for checkout:', error);
+    }
+
     checkoutData = readCheckoutData();
     renderSummary(checkoutData);
     initialiseStripe();
