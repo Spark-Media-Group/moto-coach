@@ -2,6 +2,7 @@ const { google } = require('googleapis');
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
 import { isLiveEnvironment } from './_utils/environment';
+import { checkBotProtection } from './_utils/botid';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -40,25 +41,6 @@ function toSafeMultilineString(value) {
 
 function normaliseBikeChoice(choice) {
     return BIKE_CHOICE_LABELS[choice] || choice || '';
-}
-
-// Helper function for reCAPTCHA verification
-async function verifyRecaptcha(token) {
-    try {
-        const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${token}`
-        });
-
-        const data = await response.json();
-        return data.success && data.score > 0.5; // reCAPTCHA v3 score threshold
-    } catch (error) {
-        console.error('reCAPTCHA verification error:', error);
-        return false;
-    }
 }
 
 // Function to send confirmation email to applicant
@@ -132,7 +114,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
                         <div style="background: #ff6600; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0;">
                             <h3 style="margin: 0 0 10px 0;">Ready for the Adventure?</h3>
                             <p style="margin: 0; font-size: 16px;">
-                                Get ready for an unforgettable motorcycle training experience at ClubMX in the USA!
+                                Get ready for an unforgettable motocross training experience at ClubMX in the USA!
                             </p>
                         </div>
                         
@@ -347,7 +329,7 @@ export default async function handler(req, res) {
 
     try {
         const formData = req.body;
-        const recaptchaRequired = isLiveEnvironment();
+        const botProtectionRequired = isLiveEnvironment();
         console.log('Received US Travel Program inquiry (details redacted)');
 
         // Validate required fields
@@ -408,24 +390,21 @@ export default async function handler(req, res) {
             }
         }
 
-        if (recaptchaRequired) {
-            // Verify reCAPTCHA
-            if (!formData.recaptchaToken) {
-                return res.status(400).json({
-                    error: 'Missing reCAPTCHA verification',
-                    details: 'Please complete the security verification.'
+        if (botProtectionRequired) {
+            const botCheck = await checkBotProtection(req, { feature: 'apply-us' });
+            if (botCheck.isBot) {
+                console.warn('BotID blocked US travel program inquiry', {
+                    feature: 'apply-us',
+                    action: botCheck.action,
+                    skipped: botCheck.skipped
                 });
-            }
-
-            const recaptchaValid = await verifyRecaptcha(formData.recaptchaToken);
-            if (!recaptchaValid) {
-                return res.status(400).json({
-                    error: 'reCAPTCHA verification failed',
-                    details: 'Security verification failed. Please try again.'
+                return res.status(403).json({
+                    error: 'Suspicious activity detected. Please try again later.',
+                    details: 'Bot protection blocked this submission.'
                 });
             }
         } else {
-            console.log('Skipping reCAPTCHA verification in non-live environment');
+            console.log('Skipping bot protection in non-live environment');
         }
 
         // Generate unique application ID

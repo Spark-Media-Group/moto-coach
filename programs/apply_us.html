@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inquire About the US Travel Program - Join American Motorcycle Adventure | Moto Coach</title>
-    <meta name="description" content="Inquire about Moto Coach's exclusive US Travel Program. Join our American motorcycle adventure tour with expert guides from Sydney. Limited spots available for this premium experience.">
-    <meta name="keywords" content="inquire US travel program, American motorcycle tour inquiry, US motorcycle adventure booking, international motorcycle tour inquiry, premium motorcycle experience, Sydney to USA tour inquiry">
+    <title>Inquire About the US Travel Program - Join American Motocross Adventure | Moto Coach</title>
+    <meta name="description" content="Inquire about Moto Coach's exclusive US Travel Program. Join our American motocross adventure tour with expert guides from Sydney. Limited spots available for this premium experience.">
+    <meta name="keywords" content="inquire US travel program, American motocross tour inquiry, US motocross adventure booking, international motocross tour inquiry, premium dirt bike experience, Sydney to USA tour inquiry">
     <meta name="author" content="Moto Coach">
     <link rel="canonical" href="https://motocoach.com.au/programs/apply_us">
     
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' cdn.jsdelivr.net https://www.google.com https://www.gstatic.com;
+                   script-src 'self' 'unsafe-inline' https://esm.sh cdn.jsdelivr.net;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
                    img-src 'self' data:;
-                   connect-src 'self' https://www.google.com;
+                   connect-src 'self';
                    font-src 'self' fonts.gstatic.com;
-                   frame-src https://www.google.com;
+                   frame-src 'none';
                    object-src 'none';
                    base-uri 'self';">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
@@ -29,8 +29,8 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://motocoach.com.au/programs/apply_us">
-    <meta property="og:title" content="Inquire About the US Travel Program - Join American Motorcycle Adventure">
-    <meta property="og:description" content="Inquire about Moto Coach's exclusive US Travel Program. Join our American motorcycle adventure tour with expert guides from Sydney.">
+    <meta property="og:title" content="Inquire About the US Travel Program - Join American Motocross Adventure">
+    <meta property="og:description" content="Inquire about Moto Coach's exclusive US Travel Program. Join our American motocross adventure tour with expert guides from Sydney.">
     <meta property="og:image" content="https://motocoach.com.au/images/long-logo.png">
     <meta property="og:site_name" content="Moto Coach">
     <meta property="og:locale" content="en_AU">
@@ -38,8 +38,8 @@
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://motocoach.com.au/programs/apply_us">
-    <meta property="twitter:title" content="Inquire About the US Travel Program - Join American Motorcycle Adventure">
-    <meta property="twitter:description" content="Inquire about Moto Coach's exclusive US Travel Program. Limited spots available for this premium experience.">
+    <meta property="twitter:title" content="Inquire About the US Travel Program - Join American Motocross Adventure">
+    <meta property="twitter:description" content="Inquire about Moto Coach's exclusive US Travel Program. Limited spots available for this premium motocross experience.">
     <meta property="twitter:image" content="https://motocoach.com.au/images/long-logo.png">
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -219,7 +219,7 @@
                     <!-- Human Verification -->
                     <div class="form-section-header">
                         <h3>Security</h3>
-                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">This form is protected by reCAPTCHA</p>
+                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">This form is protected by Vercel BotID</p>
                     </div>
 
                     <div class="form-submit">
@@ -249,9 +249,9 @@
     </footer>
 
     <script src="../scripts/main.js"></script>
-    <script src="../scripts/apply_us.js"></script>
+    <script type="module" src="../scripts/apply_us.js"></script>
     <script src="../scripts/analytics.js"></script>
     
-    <!-- reCAPTCHA v3 will be loaded dynamically with site key from API -->
+    <!-- Vercel BotID client initialises inside apply_us.js -->
 </body>
 </html>

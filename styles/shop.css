@@ -1322,10 +1322,21 @@
     padding: 0.5rem;
     border-radius: 8px;
     transition: background 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
 }
 
 .cart-icon:hover {
     background: rgba(255, 255, 255, 0.1);
+}
+
+.cart-icon svg {
+    display: block;
+    width: 24px;
+    height: 24px;
+    fill: currentColor;
 }
 
 .cart-count {
