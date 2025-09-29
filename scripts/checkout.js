@@ -6,6 +6,102 @@ let checkoutData = null;
 let orderTotal = 0;
 let currencyCode = 'AUD';
 
+const REGION_CONFIG = {
+    Australia: {
+        label: 'State / Territory',
+        placeholder: 'state or territory',
+        options: [
+            'Australian Capital Territory',
+            'New South Wales',
+            'Northern Territory',
+            'Queensland',
+            'South Australia',
+            'Tasmania',
+            'Victoria',
+            'Western Australia'
+        ]
+    },
+    'New Zealand': {
+        label: 'Region',
+        placeholder: 'region',
+        options: [
+            'Auckland',
+            'Bay of Plenty',
+            'Canterbury',
+            'Gisborne',
+            "Hawke's Bay",
+            'Manawatū-Whanganui',
+            'Marlborough',
+            'Nelson',
+            'Northland',
+            'Otago',
+            'Southland',
+            'Taranaki',
+            'Tasman',
+            'Waikato',
+            'Wellington',
+            'West Coast'
+        ]
+    },
+    'United States': {
+        label: 'State',
+        placeholder: 'state',
+        options: [
+            'Alabama',
+            'Alaska',
+            'Arizona',
+            'Arkansas',
+            'California',
+            'Colorado',
+            'Connecticut',
+            'Delaware',
+            'District of Columbia',
+            'Florida',
+            'Georgia',
+            'Hawaii',
+            'Idaho',
+            'Illinois',
+            'Indiana',
+            'Iowa',
+            'Kansas',
+            'Kentucky',
+            'Louisiana',
+            'Maine',
+            'Maryland',
+            'Massachusetts',
+            'Michigan',
+            'Minnesota',
+            'Mississippi',
+            'Missouri',
+            'Montana',
+            'Nebraska',
+            'Nevada',
+            'New Hampshire',
+            'New Jersey',
+            'New Mexico',
+            'New York',
+            'North Carolina',
+            'North Dakota',
+            'Ohio',
+            'Oklahoma',
+            'Oregon',
+            'Pennsylvania',
+            'Rhode Island',
+            'South Carolina',
+            'South Dakota',
+            'Tennessee',
+            'Texas',
+            'Utah',
+            'Vermont',
+            'Virginia',
+            'Washington',
+            'West Virginia',
+            'Wisconsin',
+            'Wyoming'
+        ]
+    }
+};
+
 function readCheckoutData() {
     try {
         const stored = sessionStorage.getItem(CHECKOUT_STORAGE_KEY);
@@ -64,6 +160,71 @@ function calculateOrderTotal(summary) {
         total: totalAmount,
         currency
     };
+}
+
+function setupRegionField() {
+    const countrySelect = document.getElementById('country-select');
+    const stateSelect = document.getElementById('state-select');
+    const stateLabel = document.getElementById('state-label');
+
+    if (!countrySelect || !stateSelect || !stateLabel) {
+        return;
+    }
+
+    const updateStateOptions = (country, preserveSelection = false) => {
+        const config = REGION_CONFIG[country];
+        const previousValue = preserveSelection ? stateSelect.value : '';
+
+        stateSelect.innerHTML = '';
+
+        if (!config) {
+            stateLabel.textContent = 'State / Province';
+            stateSelect.disabled = true;
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = country ? 'Enter state or province' : 'Select country first';
+            stateSelect.appendChild(placeholder);
+            stateSelect.value = '';
+            return;
+        }
+
+        stateLabel.textContent = config.label;
+        stateSelect.disabled = false;
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        const descriptor = config.placeholder || config.label.toLowerCase();
+        placeholder.textContent = `Select ${descriptor}`;
+        stateSelect.appendChild(placeholder);
+
+        config.options.forEach(option => {
+            const optionEl = document.createElement('option');
+            if (typeof option === 'string') {
+                optionEl.value = option;
+                optionEl.textContent = option;
+            } else {
+                optionEl.value = option.value;
+                optionEl.textContent = option.label;
+            }
+            stateSelect.appendChild(optionEl);
+        });
+
+        if (preserveSelection && previousValue) {
+            const stillExists = Array.from(stateSelect.options).some(opt => opt.value === previousValue);
+            if (stillExists) {
+                stateSelect.value = previousValue;
+                return;
+            }
+        }
+
+        stateSelect.value = '';
+    };
+
+    countrySelect.addEventListener('change', () => {
+        updateStateOptions(countrySelect.value, false);
+    });
+
+    updateStateOptions(countrySelect.value, true);
 }
 
 function renderEmptyState() {
@@ -234,7 +395,7 @@ function collectFormData(form) {
     }
 
     const formData = new FormData(form);
-    const requiredFields = ['email', 'firstName', 'lastName', 'address1', 'city', 'state', 'postalCode', 'country'];
+    const requiredFields = ['email', 'firstName', 'lastName', 'address1', 'city', 'country', 'state', 'postalCode'];
     for (const field of requiredFields) {
         const value = formData.get(field);
         if (!value || !String(value).trim()) {
@@ -513,6 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkoutData = readCheckoutData();
     renderSummary(checkoutData);
     initialiseStripe();
+    setupRegionField();
 
     const form = document.getElementById('checkout-form');
     if (form) {

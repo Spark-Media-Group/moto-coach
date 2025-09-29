@@ -226,6 +226,12 @@
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.form-grid select:disabled {
+    background: #f3f4f6;
+    color: rgba(31, 41, 55, 0.5);
+    cursor: not-allowed;
+}
+
 .form-grid input:focus,
 .form-grid select:focus {
     outline: none;

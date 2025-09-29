@@ -120,21 +120,23 @@
                                 <input type="text" name="city" autocomplete="address-level2" required>
                             </label>
                             <label>
-                                <span>State</span>
-                                <input type="text" name="state" autocomplete="address-level1" required>
+                                <span>Country</span>
+                                <select name="country" id="country-select" autocomplete="country" required>
+                                    <option value="">Select country</option>
+                                    <option value="Australia">Australia</option>
+                                    <option value="New Zealand">New Zealand</option>
+                                    <option value="United States">United States</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span id="state-label">State / Territory</span>
+                                <select name="state" id="state-select" autocomplete="address-level1" required disabled>
+                                    <option value="">Select country first</option>
+                                </select>
                             </label>
                             <label>
                                 <span>Postcode</span>
                                 <input type="text" name="postalCode" autocomplete="postal-code" required>
-                            </label>
-                            <label>
-                                <span>Country</span>
-                                <select name="country" autocomplete="country" required>
-                                    <option value="">Select country</option>
-                                    <option value="Australia" selected>Australia</option>
-                                    <option value="New Zealand">New Zealand</option>
-                                    <option value="United States">United States</option>
-                                </select>
                             </label>
                         </div>
                     </fieldset>
