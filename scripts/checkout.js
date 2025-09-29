@@ -1,4 +1,5 @@
 const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
+const TRACK_RESERVE_EVENT_STORAGE_KEY = 'trackReserveEventDetails';
 let stripe = null;
 let elements = null;
 let paymentElement = null;
@@ -7,6 +8,7 @@ let orderTotal = 0;
 let currencyCode = 'AUD';
 let shippingRequired = true;
 let shippingFieldsInitialised = false;
+let stripePublishableKey = null;
 
 function hasShopLineItems(summary) {
     return Boolean(summary?.lines && Array.isArray(summary.lines) && summary.lines.length > 0);
@@ -19,6 +21,99 @@ function getEventRegistration(summary) {
 function toNumber(value) {
     const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function isCheckoutEmpty(summary) {
+    return !hasShopLineItems(summary) && !getEventRegistration(summary);
+}
+
+function clearCheckoutStorage() {
+    checkoutData = null;
+    try {
+        sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+    } catch (error) {
+        console.warn('Checkout: Unable to clear session storage', error);
+    }
+}
+
+function saveCheckoutData(data) {
+    if (!data || isCheckoutEmpty(data)) {
+        clearCheckoutStorage();
+        return;
+    }
+
+    checkoutData = data;
+
+    try {
+        sessionStorage.setItem(CHECKOUT_STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+        console.warn('Checkout: Unable to persist session storage', error);
+    }
+}
+
+function clearStoredEventRegistrationDetails() {
+    try {
+        sessionStorage.removeItem(TRACK_RESERVE_EVENT_STORAGE_KEY);
+    } catch (error) {
+        console.warn('Checkout: Unable to clear stored event registration details', error);
+    }
+}
+
+function computeLineTotals(lines = []) {
+    const totals = lines.reduce((acc, line) => {
+        const price = parseFloat(line.price?.amount ?? '0');
+        const quantity = Number(line.quantity) || 0;
+        acc.total += price * quantity;
+        if (!acc.currency && line.price?.currencyCode) {
+            acc.currency = line.price.currencyCode;
+        }
+        return acc;
+    }, { total: 0, currency: null });
+
+    totals.currency = totals.currency || 'AUD';
+    return totals;
+}
+
+function toggleCheckoutPanelVisibility(show) {
+    const panel = document.querySelector('.checkout-panel');
+    const form = document.getElementById('checkout-form');
+    const submitButton = document.getElementById('checkout-submit');
+
+    if (panel) {
+        panel.hidden = !show;
+    }
+
+    if (form) {
+        if (show) {
+            form.removeAttribute('aria-disabled');
+        } else {
+            form.setAttribute('aria-disabled', 'true');
+        }
+    }
+
+    if (!show && submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'No items to pay for';
+    }
+}
+
+function setCheckoutLayoutEmpty(isEmpty) {
+    const content = document.querySelector('.checkout-content');
+    if (content) {
+        content.classList.toggle('checkout-empty', Boolean(isEmpty));
+    }
+}
+
+function teardownPaymentElement() {
+    if (paymentElement) {
+        try {
+            paymentElement.unmount();
+        } catch (error) {
+            console.warn('Checkout: Unable to unmount payment element', error);
+        }
+    }
+    paymentElement = null;
+    elements = null;
 }
 
 const REGION_CONFIG = {
@@ -276,27 +371,30 @@ function setShippingSectionVisibility(requireShipping) {
 
 function renderEmptyState() {
     const summaryEl = document.getElementById('checkout-summary');
-    const form = document.getElementById('checkout-form');
-    const submitButton = document.getElementById('checkout-submit');
 
     orderTotal = 0;
+    setCheckoutLayoutEmpty(true);
+    toggleCheckoutPanelVisibility(false);
+    teardownPaymentElement();
+    setShippingSectionVisibility(false);
+    clearPaymentError();
+
+    const statusEl = document.getElementById('checkout-status');
+    if (statusEl) {
+        statusEl.textContent = '';
+        statusEl.classList.remove('error');
+    }
 
     if (summaryEl) {
         summaryEl.classList.add('empty');
         summaryEl.innerHTML = `
-            <h2>Your cart is empty</h2>
-            <p>Add items in the shop or register for events to continue to checkout.</p>
-            <a href="/shop" class="btn-primary">Back to shop</a>
+            <h2>Your Cart is empty</h2>
+            <p>Visit the store or register for an event to add items to your cart.</p>
+            <div class="empty-actions">
+                <a href="/shop" class="btn-primary empty-link">Store</a>
+                <a href="/calendar" class="btn-secondary empty-link">Register for Events</a>
+            </div>
         `;
-    }
-
-    if (form) {
-        form.setAttribute('aria-disabled', 'true');
-    }
-
-    if (submitButton) {
-        submitButton.disabled = true;
-        submitButton.textContent = 'No items to pay for';
     }
 }
 
@@ -305,12 +403,13 @@ function buildShopItemsMarkup(summary, lineCurrency) {
         return '';
     }
 
-    return summary.lines.map(line => {
+    return summary.lines.map((line, index) => {
         const image = line.image || {};
         const linePrice = parseFloat(line.price?.amount ?? '0');
         const lineCurrencyCode = line.price?.currencyCode || lineCurrency || currencyCode;
         const priceFormatted = formatMoney(linePrice, lineCurrencyCode);
         const variantTitle = line.variantTitle ? `<p>${line.variantTitle}</p>` : '';
+        const removeLabel = line.title ? `Remove ${line.title}` : 'Remove item';
 
         return `
             <div class="checkout-item">
@@ -318,7 +417,14 @@ function buildShopItemsMarkup(summary, lineCurrency) {
                     ${image.url ? `<img src="${image.url}" alt="${image.altText || line.title || 'Product image'}">` : '<span>No image</span>'}
                 </div>
                 <div class="checkout-item-details">
-                    <h3>${line.title || 'Cart item'}</h3>
+                    <div class="checkout-item-header">
+                        <h3>${line.title || 'Cart item'}</h3>
+                        <button type="button" class="checkout-remove-button" data-remove-line="${line.id || ''}" data-line-index="${index}" aria-label="${removeLabel}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
+                            </svg>
+                        </button>
+                    </div>
                     ${variantTitle}
                     <p>Qty: ${line.quantity} · ${priceFormatted}</p>
                 </div>
@@ -383,7 +489,14 @@ function buildEventRegistrationMarkup(registration) {
                 <span class="event-icon" aria-hidden="true">🏁</span>
             </div>
             <div class="checkout-item-details">
-                <h3>Event Registration</h3>
+                <div class="checkout-item-header">
+                    <h3>Event Registration</h3>
+                    <button type="button" class="checkout-remove-button" data-remove-event="true" aria-label="Remove event registration">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
+                        </svg>
+                    </button>
+                </div>
                 <p>${riderCount} ${riderLabel} · ${perRider} each</p>
                 <div class="event-summary">
                     ${formatEventList(registration.events)}
@@ -401,6 +514,11 @@ function renderSummary(summary) {
         return;
     }
 
+    if (!summary) {
+        renderEmptyState();
+        return;
+    }
+
     const eventRegistration = getEventRegistration(summary);
     const hasShopItems = hasShopLineItems(summary);
     const requireShipping = hasShopItems || !eventRegistration;
@@ -411,6 +529,9 @@ function renderSummary(summary) {
         renderEmptyState();
         return;
     }
+
+    setCheckoutLayoutEmpty(false);
+    toggleCheckoutPanelVisibility(true);
 
     const shopTotals = hasShopItems ? calculateOrderTotal(summary) : { subtotal: 0, total: 0, currency: 'AUD' };
     const eventTotal = eventRegistration ? toNumber(eventRegistration.totalAmount) : 0;
@@ -473,7 +594,11 @@ function renderSummary(summary) {
 async function initialiseStripe() {
     const submitButton = document.getElementById('checkout-submit');
     if (!checkoutData || orderTotal <= 0) {
-        renderEmptyState();
+        teardownPaymentElement();
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = 'No items to pay for';
+        }
         return;
     }
 
@@ -483,18 +608,26 @@ async function initialiseStripe() {
             submitButton.textContent = 'Setting up payment…';
         }
 
-        const response = await fetch('/api/stripe-config');
-        if (!response.ok) {
-            throw new Error('Failed to load Stripe configuration');
+        if (!stripePublishableKey) {
+            const response = await fetch('/api/stripe-config');
+            if (!response.ok) {
+                throw new Error('Failed to load Stripe configuration');
+            }
+
+            const config = await response.json();
+            if (!config?.publishableKey) {
+                throw new Error('Stripe publishable key is not configured');
+            }
+
+            stripePublishableKey = config.publishableKey;
         }
 
-        const config = await response.json();
-        const publishableKey = config.publishableKey;
-        if (!publishableKey) {
-            throw new Error('Stripe publishable key is not configured');
+        if (!stripe) {
+            stripe = Stripe(stripePublishableKey);
         }
 
-        stripe = Stripe(publishableKey);
+        teardownPaymentElement();
+
         elements = stripe.elements({
             mode: 'payment',
             currency: currencyCode.toLowerCase(),
@@ -825,6 +958,97 @@ async function submitEventRegistration(paymentIntentId) {
     return data;
 }
 
+function removeShopLine(lineId, lineIndex) {
+    if (!checkoutData || !Array.isArray(checkoutData.lines)) {
+        return;
+    }
+
+    const lines = checkoutData.lines.slice();
+    let targetIndex = -1;
+
+    if (lineId) {
+        targetIndex = lines.findIndex(line => line.id === lineId);
+    }
+
+    if (targetIndex === -1 && lineIndex != null) {
+        const parsedIndex = Number(lineIndex);
+        if (Number.isInteger(parsedIndex) && parsedIndex >= 0 && parsedIndex < lines.length) {
+            targetIndex = parsedIndex;
+        }
+    }
+
+    if (targetIndex === -1) {
+        return;
+    }
+
+    lines.splice(targetIndex, 1);
+
+    const updated = {
+        ...checkoutData,
+        lines,
+        totalQuantity: lines.reduce((acc, line) => acc + (Number(line.quantity) || 0), 0)
+    };
+
+    if (lines.length === 0) {
+        updated.cost = null;
+    } else {
+        const totals = computeLineTotals(lines);
+        const amountString = totals.total.toFixed(2);
+        updated.cost = {
+            subtotalAmount: {
+                amount: amountString,
+                currencyCode: totals.currency || currencyCode
+            },
+            totalAmount: {
+                amount: amountString,
+                currencyCode: totals.currency || currencyCode
+            }
+        };
+    }
+
+    saveCheckoutData(updated);
+    renderSummary(checkoutData);
+    initialiseStripe();
+}
+
+function removeEventRegistration() {
+    if (!checkoutData || !getEventRegistration(checkoutData)) {
+        return;
+    }
+
+    const updated = { ...checkoutData };
+    delete updated.eventRegistration;
+
+    clearStoredEventRegistrationDetails();
+
+    if (isCheckoutEmpty(updated)) {
+        saveCheckoutData(null);
+    } else {
+        saveCheckoutData(updated);
+    }
+
+    renderSummary(checkoutData);
+    initialiseStripe();
+}
+
+function handleSummaryInteraction(event) {
+    const button = event.target.closest('.checkout-remove-button');
+    if (!button) {
+        return;
+    }
+
+    event.preventDefault();
+
+    if (button.dataset.removeEvent) {
+        removeEventRegistration();
+        return;
+    }
+
+    const lineId = button.dataset.removeLine || '';
+    const lineIndex = button.dataset.lineIndex;
+    removeShopLine(lineId, lineIndex);
+}
+
 async function handleFormSubmit(event) {
     event.preventDefault();
 
@@ -919,6 +1143,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderSummary(checkoutData);
     initialiseStripe();
     setupRegionField();
+
+    const summaryEl = document.getElementById('checkout-summary');
+    if (summaryEl) {
+        summaryEl.addEventListener('click', handleSummaryInteraction);
+    }
 
     const form = document.getElementById('checkout-form');
     if (form) {
