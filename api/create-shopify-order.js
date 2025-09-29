@@ -2,6 +2,22 @@ import { applyCors } from './_utils/cors';
 
 const SHOPIFY_STORE_URL = process.env.SHOPIFY_STORE_URL;
 const SHOPIFY_ADMIN_ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN || process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN;
+const SHOPIFY_ADMIN_API_VERSION = '2025-07';
+
+function normaliseStoreBaseUrl(storeUrl) {
+    if (!storeUrl) {
+        return null;
+    }
+
+    try {
+        const urlString = storeUrl.startsWith('http') ? storeUrl : `https://${storeUrl}`;
+        const url = new URL(urlString);
+        return `https://${url.host}`;
+    } catch (error) {
+        console.error('Checkout: Invalid Shopify store URL configured', error);
+        return null;
+    }
+}
 
 function sanitiseCurrencyAmount(amount) {
     const value = typeof amount === 'number' ? amount : parseFloat(amount ?? '0');
@@ -21,7 +37,19 @@ function extractVariantId(merchandiseId) {
     return Number.isFinite(numericId) ? numericId : null;
 }
 
-function buildOrderPayload(body) {
+function safeJsonParse(text) {
+    if (!text) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(text);
+    } catch (error) {
+        return text;
+    }
+}
+
+function buildShopifyPayload(body) {
     const {
         cartId,
         paymentIntentId,
@@ -70,44 +98,59 @@ function buildOrderPayload(body) {
     }
 
     const shippingPayload = {
-        first_name: shippingAddress.firstName || customer.firstName || '',
-        last_name: shippingAddress.lastName || customer.lastName || '',
-        address1: shippingAddress.address1 || '',
-        address2: shippingAddress.address2 || '',
-        city: shippingAddress.city || '',
-        province: shippingAddress.state || '',
-        zip: shippingAddress.postalCode || '',
+        first_name: shippingAddress.firstName || customer.firstName || undefined,
+        last_name: shippingAddress.lastName || customer.lastName || undefined,
+        address1: shippingAddress.address1 || undefined,
+        address2: shippingAddress.address2 || undefined,
+        city: shippingAddress.city || undefined,
+        province: shippingAddress.state || undefined,
+        zip: shippingAddress.postalCode || undefined,
         country: shippingAddress.country || 'Australia',
+        country_code: shippingAddress.countryCode || undefined,
         phone: shippingAddress.phone || customer.phone || undefined
     };
 
     const billingPayload = {
-        first_name: customer.firstName || shippingAddress.firstName || '',
-        last_name: customer.lastName || shippingAddress.lastName || '',
-        address1: shippingAddress.address1 || '',
-        address2: shippingAddress.address2 || '',
-        city: shippingAddress.city || '',
-        province: shippingAddress.state || '',
-        zip: shippingAddress.postalCode || '',
+        first_name: customer.firstName || shippingAddress.firstName || undefined,
+        last_name: customer.lastName || shippingAddress.lastName || undefined,
+        address1: shippingAddress.address1 || undefined,
+        address2: shippingAddress.address2 || undefined,
+        city: shippingAddress.city || undefined,
+        province: shippingAddress.state || undefined,
+        zip: shippingAddress.postalCode || undefined,
         country: shippingAddress.country || 'Australia',
+        country_code: shippingAddress.countryCode || undefined,
         phone: customer.phone || shippingAddress.phone || undefined
     };
 
+    const orderNote = `Stripe ${paymentIntentId}${cartId ? ` · cart ${cartId}` : ''}`;
+
     return {
-        order: {
-            email: customer.email,
-            phone: customer.phone || undefined,
-            send_receipt: false,
-            send_fulfillment_receipt: false,
-            financial_status: 'paid',
-            currency,
-            total_price: orderAmount.toFixed(2),
-            tags: ['Moto Coach', 'Stripe Payment'],
-            source_name: 'moto-coach-stripe',
-            note: `Stripe payment ${paymentIntentId}${cartId ? ` · cart ${cartId}` : ''}`,
-            shipping_address: shippingPayload,
-            billing_address: billingPayload,
-            line_items: processedLineItems
+        orderPayload: {
+            order: {
+                email: customer.email,
+                phone: customer.phone || undefined,
+                send_receipt: false,
+                send_fulfillment_receipt: false,
+                financial_status: 'paid',
+                currency,
+                tags: ['Moto Coach', 'Stripe Payment'],
+                source_name: 'moto-coach-stripe',
+                note: orderNote,
+                shipping_address: shippingPayload,
+                billing_address: billingPayload,
+                line_items: processedLineItems
+            }
+        },
+        transactionPayload: {
+            transaction: {
+                kind: 'sale',
+                status: 'success',
+                gateway: 'external',
+                amount: orderAmount.toFixed(2),
+                currency,
+                authorization: paymentIntentId
+            }
         }
     };
 }
@@ -132,32 +175,68 @@ export default async function handler(req, res) {
     }
 
     try {
-        const payload = buildOrderPayload(req.body);
+        const adminBase = normaliseStoreBaseUrl(SHOPIFY_STORE_URL);
+        if (!adminBase) {
+            return res.status(500).json({ error: 'Server misconfiguration' });
+        }
+
+        const payload = buildShopifyPayload(req.body);
         if (payload.error) {
             return res.status(400).json({ error: payload.error });
         }
 
-        const adminEndpoint = `${SHOPIFY_STORE_URL.replace(/\/$/, '')}/admin/api/2024-10/orders.json`;
-        const response = await fetch(adminEndpoint, {
+        const ordersEndpoint = `${adminBase}/admin/api/${SHOPIFY_ADMIN_API_VERSION}/orders.json`;
+        const createResponse = await fetch(ordersEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Shopify-Access-Token': SHOPIFY_ADMIN_ACCESS_TOKEN
             },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload.orderPayload)
         });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Checkout: Shopify order creation failed', response.status, errorText);
-            return res.status(response.status).json({
-                error: 'Failed to create order with Shopify',
-                details: errorText
+        if (!createResponse.ok) {
+            const errorDetails = safeJsonParse(await createResponse.text());
+            console.error('Checkout: Shopify order creation failed', createResponse.status, errorDetails);
+            return res.status(createResponse.status).json({
+                error: 'Failed to create Shopify order',
+                details: errorDetails
             });
         }
 
-        const data = await response.json();
-        const order = data?.order;
+        const orderData = await createResponse.json();
+        const order = orderData?.order;
+
+        if (!order?.id) {
+            console.error('Checkout: Shopify order response missing id', orderData);
+            return res.status(502).json({ error: 'Shopify order response was incomplete', details: orderData });
+        }
+
+        const transactionsEndpoint = `${adminBase}/admin/api/${SHOPIFY_ADMIN_API_VERSION}/orders/${order.id}/transactions.json`;
+        const transactionResponse = await fetch(transactionsEndpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Shopify-Access-Token': SHOPIFY_ADMIN_ACCESS_TOKEN
+            },
+            body: JSON.stringify(payload.transactionPayload)
+        });
+
+        if (!transactionResponse.ok) {
+            const errorDetails = safeJsonParse(await transactionResponse.text());
+            console.error('Checkout: Shopify transaction recording failed', transactionResponse.status, errorDetails);
+            return res.status(transactionResponse.status).json({
+                error: 'Failed to record Shopify transaction',
+                details: errorDetails
+            });
+        }
+
+        // Consume the response to surface potential Shopify validation warnings in logs.
+        const transactionData = await transactionResponse.json().catch(() => null);
+        if (transactionData) {
+            console.info('Checkout: Recorded Shopify transaction', transactionData?.transaction?.id || 'unknown');
+        }
+
         return res.status(200).json({
             success: true,
             orderId: order?.id,
