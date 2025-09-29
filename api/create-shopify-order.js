@@ -170,14 +170,21 @@ export default async function handler(req, res) {
     }
 
     if (!SHOPIFY_STORE_URL || !SHOPIFY_ADMIN_ACCESS_TOKEN) {
-        console.error('Checkout: Missing Shopify admin credentials');
-        return res.status(500).json({ error: 'Server misconfiguration' });
+        console.warn('Checkout: Missing Shopify admin credentials – returning manual fulfilment fallback');
+        return res.status(200).json({
+            success: false,
+            message: 'Payment received! Our team will finalise your order in Shopify as soon as admin access is configured.'
+        });
     }
 
     try {
         const adminBase = normaliseStoreBaseUrl(SHOPIFY_STORE_URL);
         if (!adminBase) {
-            return res.status(500).json({ error: 'Server misconfiguration' });
+            console.error('Checkout: Shopify store URL could not be normalised – returning manual fulfilment fallback');
+            return res.status(200).json({
+                success: false,
+                message: 'Payment received! Our team will finalise your order in Shopify as soon as the store URL is configured.'
+            });
         }
 
         const payload = buildShopifyPayload(req.body);
