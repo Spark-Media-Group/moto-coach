@@ -6,6 +6,19 @@ let checkoutData = null;
 let orderTotal = 0;
 let currencyCode = 'AUD';
 
+function hasShopLineItems(summary) {
+    return Boolean(summary?.lines && Array.isArray(summary.lines) && summary.lines.length > 0);
+}
+
+function getEventRegistration(summary) {
+    return summary?.eventRegistration || null;
+}
+
+function toNumber(value) {
+    const parsed = typeof value === 'string' ? parseFloat(value) : Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
 const REGION_CONFIG = {
     Australia: {
         label: 'State / Territory',
@@ -232,11 +245,13 @@ function renderEmptyState() {
     const form = document.getElementById('checkout-form');
     const submitButton = document.getElementById('checkout-submit');
 
+    orderTotal = 0;
+
     if (summaryEl) {
         summaryEl.classList.add('empty');
         summaryEl.innerHTML = `
             <h2>Your cart is empty</h2>
-            <p>Add items in the shop to continue to checkout.</p>
+            <p>Add items in the shop or register for events to continue to checkout.</p>
             <a href="/shop" class="btn-primary">Back to shop</a>
         `;
     }
@@ -251,26 +266,16 @@ function renderEmptyState() {
     }
 }
 
-function renderSummary(summary) {
-    const summaryEl = document.getElementById('checkout-summary');
-    if (!summaryEl) {
-        return;
+function buildShopItemsMarkup(summary, lineCurrency) {
+    if (!hasShopLineItems(summary)) {
+        return '';
     }
 
-    if (!summary || !summary.lines || summary.lines.length === 0) {
-        renderEmptyState();
-        return;
-    }
-
-    const totals = calculateOrderTotal(summary);
-    orderTotal = totals.total;
-    currencyCode = totals.currency || 'AUD';
-
-    const itemsMarkup = summary.lines.map(line => {
+    return summary.lines.map(line => {
         const image = line.image || {};
         const linePrice = parseFloat(line.price?.amount ?? '0');
-        const lineCurrency = line.price?.currencyCode || currencyCode;
-        const priceFormatted = formatMoney(linePrice, lineCurrency);
+        const lineCurrencyCode = line.price?.currencyCode || lineCurrency || currencyCode;
+        const priceFormatted = formatMoney(linePrice, lineCurrencyCode);
         const variantTitle = line.variantTitle ? `<p>${line.variantTitle}</p>` : '';
 
         return `
@@ -286,24 +291,138 @@ function renderSummary(summary) {
             </div>
         `;
     }).join('');
+}
 
-    summaryEl.classList.remove('empty');
-    summaryEl.innerHTML = `
-        <h2>Order Summary</h2>
-        <div class="checkout-items">${itemsMarkup}</div>
-        <div class="checkout-totals">
-            <div class="checkout-total-row">
-                <span>Subtotal</span>
-                <span>${formatMoney(totals.subtotal, currencyCode)}</span>
+function formatEventList(events) {
+    if (!Array.isArray(events) || events.length === 0) {
+        return '';
+    }
+
+    return `
+        <h4>Events</h4>
+        <ul class="event-list">
+            ${events.map(event => {
+                const date = event.date || event.dateString || '';
+                const time = event.time ? ` · ${event.time}` : '';
+                const location = event.location ? ` · ${event.location}` : '';
+                return `<li><span class="event-title">${event.title || 'Moto Coach Event'}</span><span class="event-meta">${date}${time}${location}</span></li>`;
+            }).join('')}
+        </ul>
+    `;
+}
+
+function formatRiderList(riders) {
+    if (!Array.isArray(riders) || riders.length === 0) {
+        return '';
+    }
+
+    return `
+        <h4>Riders</h4>
+        <ul class="event-rider-list">
+            ${riders.map(rider => {
+                const name = `${rider.firstName || ''} ${rider.lastName || ''}`.trim() || 'Rider';
+                const bikeDetails = rider.bikeSize || rider.bikeNumber
+                    ? ` (${[rider.bikeSize, rider.bikeNumber ? `#${rider.bikeNumber}` : ''].filter(Boolean).join(', ')})`
+                    : '';
+                return `<li>${name}${bikeDetails}</li>`;
+            }).join('')}
+        </ul>
+    `;
+}
+
+function buildEventRegistrationMarkup(registration) {
+    if (!registration) {
+        return '';
+    }
+
+    const currency = registration.currency || currencyCode;
+    const riderCount = registration.riderCount || 0;
+    const riderLabel = riderCount === 1 ? 'rider' : 'riders';
+    const perRider = registration.perRiderAmount
+        ? formatMoney(registration.perRiderAmount, currency)
+        : formatMoney(riderCount > 0 ? registration.totalAmount / riderCount : registration.totalAmount, currency);
+    const total = formatMoney(registration.totalAmount, currency);
+
+    return `
+        <div class="checkout-item event-registration">
+            <div class="checkout-item-thumb">
+                <span class="event-icon" aria-hidden="true">🏁</span>
             </div>
+            <div class="checkout-item-details">
+                <h3>Track Registration</h3>
+                <p>${riderCount} ${riderLabel} · ${perRider} each</p>
+                <div class="event-summary">
+                    ${formatEventList(registration.events)}
+                    ${formatRiderList(registration.riders)}
+                </div>
+                <p class="event-total">Subtotal: ${total}</p>
+            </div>
+        </div>
+    `;
+}
+
+function renderSummary(summary) {
+    const summaryEl = document.getElementById('checkout-summary');
+    if (!summaryEl) {
+        return;
+    }
+
+    const eventRegistration = getEventRegistration(summary);
+    const hasShopItems = hasShopLineItems(summary);
+
+    if (!eventRegistration && !hasShopItems) {
+        renderEmptyState();
+        return;
+    }
+
+    const shopTotals = hasShopItems ? calculateOrderTotal(summary) : { subtotal: 0, total: 0, currency: 'AUD' };
+    const eventTotal = eventRegistration ? toNumber(eventRegistration.totalAmount) : 0;
+
+    const combinedTotal = toNumber(shopTotals.total) + eventTotal;
+    orderTotal = combinedTotal;
+    currencyCode = hasShopItems ? (shopTotals.currency || 'AUD') : (eventRegistration?.currency || 'AUD');
+
+    const eventMarkup = buildEventRegistrationMarkup(eventRegistration);
+    const shopMarkup = buildShopItemsMarkup(summary, shopTotals.currency);
+
+    const totalsRows = [];
+    if (eventRegistration) {
+        totalsRows.push(`
+            <div class="checkout-total-row">
+                <span>Track registration</span>
+                <span>${formatMoney(eventTotal, currencyCode)}</span>
+            </div>
+        `);
+    }
+
+    if (hasShopItems) {
+        totalsRows.push(`
+            <div class="checkout-total-row">
+                <span>Shop items</span>
+                <span>${formatMoney(shopTotals.total, currencyCode)}</span>
+            </div>
+        `);
+        totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Shipping</span>
                 <span>Calculated separately</span>
             </div>
-            <div class="checkout-total-row grand-total">
-                <span>Total</span>
-                <span>${formatMoney(totals.total, currencyCode)}</span>
-            </div>
+        `);
+    }
+
+    totalsRows.push(`
+        <div class="checkout-total-row grand-total">
+            <span>Total</span>
+            <span>${formatMoney(combinedTotal, currencyCode)}</span>
+        </div>
+    `);
+
+    summaryEl.classList.remove('empty');
+    summaryEl.innerHTML = `
+        <h2>Order Summary</h2>
+        <div class="checkout-items">${eventMarkup}${shopMarkup}</div>
+        <div class="checkout-totals">
+            ${totalsRows.join('')}
         </div>
     `;
 
@@ -423,6 +542,15 @@ function collectFormData(form) {
 }
 
 async function createPaymentIntent(metadata = {}) {
+    const eventRegistration = getEventRegistration(checkoutData);
+    const hasShopItems = hasShopLineItems(checkoutData);
+    const baseMetadata = {
+        cartId: hasShopItems ? (checkoutData?.cartId || 'unknown_cart') : 'event_registration',
+        has_event_registration: eventRegistration ? 'true' : 'false',
+        event_count: eventRegistration?.events ? String(eventRegistration.events.length) : '0',
+        rider_count: eventRegistration?.riderCount ? String(eventRegistration.riderCount) : '0'
+    };
+
     const response = await fetch('/api/create-payment-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -430,7 +558,7 @@ async function createPaymentIntent(metadata = {}) {
             amount: orderTotal,
             currency: currencyCode,
             metadata: {
-                cartId: checkoutData?.cartId || 'unknown_cart',
+                ...baseMetadata,
                 ...metadata
             }
         })
@@ -450,7 +578,14 @@ async function createPaymentIntent(metadata = {}) {
 }
 
 async function recordShopifyOrder(paymentIntentId, customerDetails) {
+    if (!hasShopLineItems(checkoutData)) {
+        return null;
+    }
+
     let response;
+    const shopTotals = calculateOrderTotal(checkoutData);
+    const shopAmount = toNumber(shopTotals.total);
+    const shopCurrency = shopTotals.currency || currencyCode;
 
     try {
         response = await fetch('/api/create-shopify-order', {
@@ -459,8 +594,8 @@ async function recordShopifyOrder(paymentIntentId, customerDetails) {
             body: JSON.stringify({
                 cartId: checkoutData?.cartId || null,
                 paymentIntentId,
-                amount: orderTotal,
-                currency: currencyCode,
+                amount: shopAmount,
+                currency: shopCurrency,
                 customer: {
                     email: customerDetails.email,
                     phone: customerDetails.phone,
@@ -482,7 +617,7 @@ async function recordShopifyOrder(paymentIntentId, customerDetails) {
                     merchandiseId: line.merchandiseId,
                     quantity: line.quantity,
                     price: parseFloat(line.price?.amount ?? '0'),
-                    currency: line.price?.currencyCode || currencyCode,
+                    currency: line.price?.currencyCode || shopCurrency,
                     title: line.title,
                     variantTitle: line.variantTitle
                 }))
@@ -563,7 +698,7 @@ function showStatusMessage(message, isError = false) {
     statusEl.classList.toggle('error', Boolean(isError));
 }
 
-function showSuccess(orderData) {
+function showSuccess({ orderData = null, registrationResult = null } = {}) {
     const form = document.getElementById('checkout-form');
     const successEl = document.getElementById('checkout-success');
     const successMessage = document.getElementById('success-message');
@@ -576,24 +711,77 @@ function showSuccess(orderData) {
         successEl.hidden = false;
     }
 
-    if (successMessage && orderData) {
-        const { orderName, orderId, message, success, transactionRecorded } = orderData;
-        if (success === false) {
-            successMessage.textContent = message || 'Thank you! We received your payment and will confirm your booking shortly.';
-        } else if (transactionRecorded === false) {
-            successMessage.textContent = 'Thank you! We created your Shopify order and will finish recording the payment shortly.';
-        } else if (orderName) {
-            successMessage.textContent = `Thank you! We received your payment and created Shopify order ${orderName}.`;
-        } else if (orderId) {
-            successMessage.textContent = `Thank you! We received your payment and created Shopify order ${orderId}.`;
-        } else {
-            successMessage.textContent = 'Thank you! We received your payment.';
+    if (successMessage) {
+        const parts = [];
+
+        const hasRegistration = Boolean(registrationResult);
+        if (hasRegistration) {
+            parts.push('Your rider registration has been saved.');
         }
-    } else if (successMessage) {
-        successMessage.textContent = 'Thank you! We received your payment.';
+
+        if (orderData) {
+            const { orderName, orderId, message, success, transactionRecorded } = orderData;
+            if (success === false) {
+                parts.push(message || 'We received your payment and will confirm your booking shortly.');
+            } else if (transactionRecorded === false) {
+                parts.push('We created your Shopify order and will finish recording the payment shortly.');
+            } else if (orderName) {
+                parts.push(`We received your payment and created Shopify order ${orderName}.`);
+            } else if (orderId) {
+                parts.push(`We received your payment and created Shopify order ${orderId}.`);
+            } else {
+                parts.push('We received your payment.');
+            }
+        } else if (hasRegistration) {
+            parts.push('Thank you! We received your payment.');
+        }
+
+        if (!parts.length) {
+            parts.push('Thank you! We received your payment.');
+        }
+
+        successMessage.textContent = parts.join(' ');
     }
 
     sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
+}
+
+async function submitEventRegistration(paymentIntentId) {
+    const registration = getEventRegistration(checkoutData);
+    if (!registration) {
+        return null;
+    }
+
+    const payload = {
+        ...(registration.formPayload || {}),
+        paymentIntentId,
+        totalAmount: registration.totalAmount,
+        riderCount: registration.riderCount,
+        currency: registration.currency || 'AUD',
+        multiEventRegistration: registration.multiEvent,
+        events: registration.events,
+        pricingInfo: registration.pricingInfo
+    };
+
+    const response = await fetch('/api/track_reserve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    let data = null;
+    try {
+        data = await response.json();
+    } catch (error) {
+        // Ignore JSON parse errors for non-JSON responses
+    }
+
+    if (!response.ok || (data && data.success === false)) {
+        const message = data?.error || data?.details || data?.message || 'We received your payment, but registering your riders failed. Please contact support with your payment receipt.';
+        throw new Error(message);
+    }
+
+    return data;
 }
 
 async function handleFormSubmit(event) {
@@ -649,18 +837,33 @@ async function handleFormSubmit(event) {
             throw new Error(`Payment not completed. Status: ${intent?.status || 'unknown'}`);
         }
 
-        showStatusMessage('Recording your order in Shopify…');
-        const orderData = await recordShopifyOrder(intent.id || paymentIntentId, customerDetails);
+        const finalPaymentIntentId = intent.id || paymentIntentId;
 
-        if (orderData?.success === false) {
-            showStatusMessage(orderData.message || 'Payment received! We will finish your order manually.');
-        } else if (orderData?.transactionRecorded === false) {
-            showStatusMessage('Order created! We will finish recording the payment in Shopify shortly.');
-        } else {
-            showStatusMessage('Order complete!');
+        let registrationResult = null;
+        if (getEventRegistration(checkoutData)) {
+            showStatusMessage('Recording your track registration…');
+            registrationResult = await submitEventRegistration(finalPaymentIntentId);
         }
 
-        showSuccess(orderData);
+        let orderData = null;
+        if (hasShopLineItems(checkoutData)) {
+            showStatusMessage('Recording your order in Shopify…');
+            orderData = await recordShopifyOrder(finalPaymentIntentId, customerDetails);
+
+            if (orderData?.success === false) {
+                showStatusMessage(orderData.message || 'Payment received! We will finish your order manually.');
+            } else if (orderData?.transactionRecorded === false) {
+                showStatusMessage('Order created! We will finish recording the payment in Shopify shortly.');
+            } else {
+                showStatusMessage('Order complete!');
+            }
+        } else if (registrationResult) {
+            showStatusMessage('Registration complete!');
+        } else {
+            showStatusMessage('Payment received!');
+        }
+
+        showSuccess({ orderData, registrationResult });
     } catch (error) {
         console.error('Checkout submission failed', error);
         showStatusMessage(error.message || 'Payment failed. Please try again.', true);
