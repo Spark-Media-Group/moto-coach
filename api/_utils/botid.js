@@ -1,46 +1,140 @@
 import { isLiveEnvironment } from './environment';
 
-let botIdModulePromise = null;
+const SCORE_HEADERS = [
+  'x-vercel-bot-score',
+  'x-vercel-botid-score',
+  'x-botd-score',
+  'x-bot-score'
+];
 
-function createRequestFromNode(req) {
-  try {
-    const protocol = req.headers['x-forwarded-proto'] || 'https';
-    const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
-    const url = new URL(req.url || '/', `${protocol}://${host}`);
-    const headers = new Headers();
+const ACTION_HEADERS = [
+  'x-vercel-bot-action',
+  'x-vercel-botid-action',
+  'x-botd-action',
+  'x-bot-action'
+];
 
-    for (const [key, value] of Object.entries(req.headers || {})) {
-      if (Array.isArray(value)) {
-        for (const entry of value) {
-          if (typeof entry === 'string') {
-            headers.append(key, entry);
-          }
-        }
-      } else if (typeof value === 'string') {
-        headers.append(key, value);
-      }
-    }
+const VERDICT_HEADERS = [
+  'x-vercel-bot-result',
+  'x-vercel-botid-result',
+  'x-botd-result'
+];
 
-    return new Request(url.toString(), {
-      method: req.method || 'GET',
-      headers
-    });
-  } catch (error) {
-    console.warn('Failed to create Request for BotID verification:', error);
+const REQUEST_ID_HEADERS = [
+  'x-vercel-bot-request-id',
+  'x-vercel-botid-request-id',
+  'x-botd-request-id'
+];
+
+const DETECTION_ID_HEADERS = [
+  'x-vercel-bot-detection-id',
+  'x-vercel-botid-detection-id',
+  'x-botd-detection-id'
+];
+
+function normaliseHeader(value) {
+  if (value === undefined || value === null) {
     return null;
   }
-}
 
-function loadBotIdModule() {
-  if (!botIdModulePromise) {
-    botIdModulePromise = import('botid/server').catch(error => {
-      console.warn('Failed to load BotID server module:', error);
-      botIdModulePromise = null;
-      throw error;
-    });
+  if (Array.isArray(value)) {
+    return value.find((entry) => typeof entry === 'string' && entry.trim().length > 0) || null;
   }
 
-  return botIdModulePromise;
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value;
+  }
+
+  return null;
+}
+
+function getHeaderValue(req, headerNames) {
+  if (!req?.headers) {
+    return null;
+  }
+
+  for (const name of headerNames) {
+    const headerValue = normaliseHeader(req.headers[name]);
+    if (headerValue !== null) {
+      return headerValue;
+    }
+  }
+
+  return null;
+}
+
+function parseScore(value) {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const numeric = Number.parseFloat(value);
+  if (Number.isNaN(numeric)) {
+    return null;
+  }
+
+  if (numeric < 0) {
+    return 0;
+  }
+
+  if (numeric > 1) {
+    return 1;
+  }
+
+  return numeric;
+}
+
+function determineVerdict({ score, action, verdict }) {
+  if (typeof action === 'string') {
+    const lowered = action.toLowerCase();
+    if (lowered === 'deny' || lowered === 'block' || lowered === 'challenge') {
+      return true;
+    }
+
+    if (lowered === 'allow' || lowered === 'pass') {
+      return false;
+    }
+  }
+
+  if (typeof verdict === 'string') {
+    const lowered = verdict.toLowerCase();
+    if (lowered === 'bot' || lowered === 'bad') {
+      return true;
+    }
+
+    if (lowered === 'human' || lowered === 'good') {
+      return false;
+    }
+  }
+
+  if (typeof score === 'number') {
+    return score >= 0.5;
+  }
+
+  return false;
+}
+
+function extractBotSignal(req) {
+  const scoreValue = getHeaderValue(req, SCORE_HEADERS);
+  const actionValue = getHeaderValue(req, ACTION_HEADERS);
+  const verdictValue = getHeaderValue(req, VERDICT_HEADERS);
+  const requestIdValue = getHeaderValue(req, REQUEST_ID_HEADERS);
+  const detectionIdValue = getHeaderValue(req, DETECTION_ID_HEADERS);
+
+  if (!scoreValue && !actionValue && !verdictValue && !requestIdValue && !detectionIdValue) {
+    return null;
+  }
+
+  const score = parseScore(scoreValue);
+
+  return {
+    score,
+    action: actionValue || null,
+    verdict: verdictValue || null,
+    requestId: requestIdValue || null,
+    detectionId: detectionIdValue || null,
+    scoreRaw: scoreValue || null
+  };
 }
 
 export async function checkBotProtection(req, context = {}) {
@@ -54,46 +148,26 @@ export async function checkBotProtection(req, context = {}) {
     };
   }
 
-  const request = createRequestFromNode(req);
-  if (!request) {
+  const signal = extractBotSignal(req);
+  if (!signal) {
     return {
       isBot: false,
       skipped: true,
-      reason: 'Request conversion failed'
+      reason: 'BotID headers unavailable'
     };
   }
 
-  try {
-    const module = await loadBotIdModule();
-    const checker = module?.checkBotId;
-    if (typeof checker !== 'function') {
-      console.warn('BotID server module did not expose checkBotId.');
-      return {
-        isBot: false,
-        skipped: true,
-        reason: 'Module missing checkBotId'
-      };
-    }
+  const isBot = determineVerdict(signal);
 
-    const result = await checker(request, context);
-    if (!result || typeof result.isBot !== 'boolean') {
-      return {
-        isBot: false,
-        skipped: true,
-        reason: 'Unexpected response'
-      };
-    }
-
-    return {
-      ...result,
-      skipped: false
-    };
-  } catch (error) {
-    console.warn('BotID verification failed:', error);
-    return {
-      isBot: false,
-      skipped: true,
-      error
-    };
-  }
+  return {
+    isBot,
+    skipped: false,
+    score: signal.score ?? null,
+    scoreRaw: signal.scoreRaw,
+    action: signal.action,
+    verdict: signal.verdict,
+    requestId: signal.requestId,
+    detectionId: signal.detectionId,
+    context
+  };
 }
