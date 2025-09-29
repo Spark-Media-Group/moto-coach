@@ -132,7 +132,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
                         <div style="background: #ff6600; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 30px 0;">
                             <h3 style="margin: 0 0 10px 0;">Ready for the Adventure?</h3>
                             <p style="margin: 0; font-size: 16px;">
-                                Get ready for an unforgettable motorcycle training experience at ClubMX in the USA!
+                                Get ready for an unforgettable motocross training experience at ClubMX in the USA!
                             </p>
                         </div>
                         
