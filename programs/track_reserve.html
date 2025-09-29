@@ -12,12 +12,12 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' cdn.jsdelivr.net js.stripe.com https://www.google.com https://www.gstatic.com;
+                   script-src 'self' 'unsafe-inline' https://esm.sh cdn.jsdelivr.net js.stripe.com;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
                    img-src 'self' data:;
-                   connect-src 'self' api.stripe.com https://www.google.com;
+                   connect-src 'self' api.stripe.com;
                    font-src 'self' fonts.gstatic.com;
-                   frame-src js.stripe.com https://www.google.com;
+                   frame-src js.stripe.com;
                    object-src 'none';
                    base-uri 'self';">
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
@@ -341,8 +341,8 @@
     <script src="../scripts/calendar.js"></script>
     <!-- Stripe.js -->
     <script src="https://js.stripe.com/v3/"></script>
-    <!-- reCAPTCHA v3 will be loaded dynamically with site key from API -->
-    <script src="../scripts/track_reserve.js"></script>
+    <!-- Vercel BotID client initialises inside track_reserve.js -->
+    <script type="module" src="../scripts/track_reserve.js"></script>
     <script src="../scripts/analytics.js"></script>
 </body>
 </html>

@@ -1,3 +1,5 @@
+import { ensureBotIdClient } from './botid-client.js';
+
 const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
 let riderCount = 1;
 let ratePerRider = 190; // Default rate in AUD
@@ -179,7 +181,15 @@ function getEventsForSubmission() {
 }
 
 // Add rider functionality
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        await ensureBotIdClient([
+            { path: '/api/track_reserve', method: 'POST' }
+        ]);
+    } catch (error) {
+        console.warn('Bot protection initialisation failed for track reserve form:', error);
+    }
+
     restoreStoredEventDetails();
     initializePricing();
 
@@ -1378,5 +1388,20 @@ function downloadICSFile(filename, content) {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+}
+
+function hideErrorModal() {
+    const modal = document.getElementById('errorModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+if (typeof window !== 'undefined') {
+    window.removeRider = removeRider;
+    window.toggleAgeBasedFields = toggleAgeBasedFields;
+    window.validateAustralianDate = validateAustralianDate;
+    window.formatDateInput = formatDateInput;
+    window.hideErrorModal = hideErrorModal;
 }
 
