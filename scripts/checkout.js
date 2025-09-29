@@ -5,6 +5,8 @@ let paymentElement = null;
 let checkoutData = null;
 let orderTotal = 0;
 let currencyCode = 'AUD';
+let shippingRequired = true;
+let shippingFieldsInitialised = false;
 
 function hasShopLineItems(summary) {
     return Boolean(summary?.lines && Array.isArray(summary.lines) && summary.lines.length > 0);
@@ -240,6 +242,38 @@ function setupRegionField() {
     updateStateOptions(countrySelect.value, true);
 }
 
+function setShippingSectionVisibility(requireShipping) {
+    shippingRequired = requireShipping;
+
+    const shippingSection = document.getElementById('shipping-section');
+    if (!shippingSection) {
+        return;
+    }
+
+    const fields = shippingSection.querySelectorAll('input, select');
+
+    if (!shippingFieldsInitialised) {
+        fields.forEach(field => {
+            if (field.hasAttribute('required')) {
+                field.dataset.wasRequired = 'true';
+            }
+        });
+        shippingFieldsInitialised = true;
+    }
+
+    fields.forEach(field => {
+        if (field.dataset.wasRequired === 'true') {
+            if (requireShipping) {
+                field.setAttribute('required', '');
+            } else {
+                field.removeAttribute('required');
+            }
+        }
+    });
+
+    shippingSection.hidden = !requireShipping;
+}
+
 function renderEmptyState() {
     const summaryEl = document.getElementById('checkout-summary');
     const form = document.getElementById('checkout-form');
@@ -349,7 +383,7 @@ function buildEventRegistrationMarkup(registration) {
                 <span class="event-icon" aria-hidden="true">🏁</span>
             </div>
             <div class="checkout-item-details">
-                <h3>Track Registration</h3>
+                <h3>Event Registration</h3>
                 <p>${riderCount} ${riderLabel} · ${perRider} each</p>
                 <div class="event-summary">
                     ${formatEventList(registration.events)}
@@ -369,6 +403,9 @@ function renderSummary(summary) {
 
     const eventRegistration = getEventRegistration(summary);
     const hasShopItems = hasShopLineItems(summary);
+    const requireShipping = hasShopItems || !eventRegistration;
+
+    setShippingSectionVisibility(requireShipping);
 
     if (!eventRegistration && !hasShopItems) {
         renderEmptyState();
@@ -389,7 +426,7 @@ function renderSummary(summary) {
     if (eventRegistration) {
         totalsRows.push(`
             <div class="checkout-total-row">
-                <span>Track registration</span>
+                <span>Event registration</span>
                 <span>${formatMoney(eventTotal, currencyCode)}</span>
             </div>
         `);
@@ -514,7 +551,11 @@ function collectFormData(form) {
     }
 
     const formData = new FormData(form);
-    const requiredFields = ['email', 'firstName', 'lastName', 'address1', 'city', 'country', 'state', 'postalCode'];
+    const requiredFields = ['email', 'firstName', 'lastName'];
+
+    if (shippingRequired) {
+        requiredFields.push('address1', 'city', 'country', 'state', 'postalCode');
+    }
     for (const field of requiredFields) {
         const value = formData.get(field);
         if (!value || !String(value).trim()) {
@@ -716,7 +757,7 @@ function showSuccess({ orderData = null, registrationResult = null } = {}) {
 
         const hasRegistration = Boolean(registrationResult);
         if (hasRegistration) {
-            parts.push('Your rider registration has been saved.');
+            parts.push('Your event registration has been saved.');
         }
 
         if (orderData) {
@@ -841,7 +882,7 @@ async function handleFormSubmit(event) {
 
         let registrationResult = null;
         if (getEventRegistration(checkoutData)) {
-            showStatusMessage('Recording your track registration…');
+            showStatusMessage('Recording your event registration…');
             registrationResult = await submitEventRegistration(finalPaymentIntentId);
         }
 
