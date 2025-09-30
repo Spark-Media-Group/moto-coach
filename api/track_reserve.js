@@ -47,8 +47,8 @@ function formatAustralianDate(value) {
 
     return parsed.toLocaleDateString('en-AU', {
         timeZone: 'Australia/Sydney',
-        day: '2-digit',
-        month: '2-digit',
+        day: 'numeric',
+        month: 'numeric',
         year: 'numeric'
     });
 }
