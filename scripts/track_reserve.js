@@ -1148,7 +1148,7 @@ function buildRegistrationPayload(form, totalAmount) {
             dateString: eventDetails.dateString || data.eventDate,
             time: eventDetails.time || data.eventTime,
             location: eventDetails.location || data.eventLocation,
-            maxSpots: eventDetails.maxSpots ?? maxSpots || null,
+            maxSpots: eventDetails.maxSpots ?? (typeof maxSpots !== 'undefined' && maxSpots !== null ? maxSpots : null),
             remainingSpots: eventDetails.remainingSpots ?? remainingSpots
         }];
     }
