@@ -7,6 +7,68 @@ import { checkBotProtection } from './_utils/botid';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+function parseDateInput(value) {
+    if (!value) {
+        return null;
+    }
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if (slashMatch) {
+            const [, day, month, year] = slashMatch;
+            const dayNum = parseInt(day, 10);
+            const monthNum = parseInt(month, 10);
+            const yearNum = year.length === 2 ? 2000 + parseInt(year, 10) : parseInt(year, 10);
+            const parsed = new Date(yearNum, monthNum - 1, dayNum);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const parsed = new Date(trimmed);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+}
+
+function formatAustralianDate(value) {
+    const parsed = parseDateInput(value);
+    if (!parsed) {
+        return typeof value === 'string' ? value : '';
+    }
+
+    return parsed.toLocaleDateString('en-AU', {
+        timeZone: 'Australia/Sydney',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
+function formatAustralianTimestamp(date = new Date()) {
+    const formatter = new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+
+    const formatted = formatter.format(date);
+    return formatted.replace(', ', ' ');
+}
+
 // Function to validate event details against Google Calendar
 async function validateEventDetails(eventData) {
     try {
@@ -464,20 +526,12 @@ export default async function handler(req, res) {
             // Multi-event registration: create one row for each event-rider combination
             for (const event of formData.events) {
                 for (const rider of riders) {
-                    const timestamp = new Date().toLocaleDateString('en-AU', {
-                        day: '2-digit',
-                        month: '2-digit', 
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: false
-                    });
-                    
+                    const timestamp = formatAustralianTimestamp();
+                    const formattedEventDate = formatAustralianDate(event.date || event.dateString);
                     const rowData = [
                         timestamp, // Column A: Timestamp (Australian format)
                         event.title || '', // Column B: Event Name (individual event)
-                        event.date || '', // Column C: Event Date (from event data)
+                        formattedEventDate, // Column C: Event Date (from event data)
                         rider.firstName, // Column D: Rider First Name
                         rider.lastName, // Column E: Rider Last Name
                         rider.bikeNumber, // Column F: Bike Number (optional - empty if not provided)
@@ -498,36 +552,10 @@ export default async function handler(req, res) {
             // Single event registration: one row per rider
             for (const rider of riders) {
                 // Format dates in Australian format (DD/MM/YYYY)
-                const timestamp = new Date().toLocaleDateString('en-AU', {
-                    day: '2-digit',
-                    month: '2-digit', 
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                });
-                
+                const timestamp = formatAustralianTimestamp();
+
                 // Format event date - handle both Australian format (DD/MM/YYYY) and ISO format
-                let formattedEventDate = '';
-                if (formData.eventDate) {
-                    // Check if it's already in DD/MM/YYYY format (from calendar)
-                    if (formData.eventDate.includes('/') && formData.eventDate.split('/').length === 3) {
-                        formattedEventDate = formData.eventDate; // Already in DD/MM/YYYY format
-                    } else {
-                        // Convert from ISO or other format to DD/MM/YYYY
-                        const eventDate = new Date(formData.eventDate);
-                        if (!isNaN(eventDate.getTime())) {
-                            formattedEventDate = eventDate.toLocaleDateString('en-AU', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                            });
-                        } else {
-                            formattedEventDate = formData.eventDate; // Use as-is if parsing fails
-                        }
-                    }
-                }
+                const formattedEventDate = formatAustralianDate(formData.eventDate);
 
                 const rowData = [
                     timestamp, // Column A: Timestamp (Australian format)
@@ -553,9 +581,9 @@ export default async function handler(req, res) {
         // If no riders, create one empty row with just contact info
         if (riders.length === 0) {
             const rowData = [
-                new Date().toISOString(), // Column A: Timestamp
+                formatAustralianTimestamp(), // Column A: Timestamp
                 formData.eventName || '', // Column B: Event Name
-                formData.eventDate || '', // Column C: Event Date
+                formatAustralianDate(formData.eventDate), // Column C: Event Date
                 '', '', '', '', '', // Empty rider info (columns D-H)
                 formData.riderEmail || '', // Column I: Rider Email
                 formData.riderPhone || '', // Column J: Rider Phone

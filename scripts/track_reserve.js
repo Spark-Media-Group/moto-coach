@@ -12,11 +12,58 @@ let cachedEventDetails = null;
 let registrationContext = null;
 let isMultiEventRegistration = false;
 
+function parseDateInput(value) {
+    if (!value) {
+        return null;
+    }
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if (slashMatch) {
+            const [, day, month, year] = slashMatch;
+            const yearNum = year.length === 2 ? 2000 + parseInt(year, 10) : parseInt(year, 10);
+            const monthNum = parseInt(month, 10);
+            const dayNum = parseInt(day, 10);
+            const parsed = new Date(yearNum, monthNum - 1, dayNum);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const parsed = new Date(trimmed);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+}
+
+function formatAustralianDateString(value) {
+    const parsed = parseDateInput(value);
+    if (!parsed) {
+        return typeof value === 'string' ? value : '';
+    }
+
+    return parsed.toLocaleDateString('en-AU', {
+        timeZone: 'Australia/Sydney',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+    });
+}
+
 function sanitizeStoredEvent(event) {
+    const formattedDate = formatAustralianDateString(event?.date || event?.dateString || '');
     return {
         title: event?.title || '',
-        date: event?.date || event?.dateString || '',
-        dateString: event?.dateString || event?.date || '',
+        date: formattedDate || event?.date || event?.dateString || '',
+        dateString: formattedDate || event?.dateString || event?.date || '',
         time: event?.time || '',
         location: event?.location || '',
         description: event?.description || '',
@@ -714,15 +761,16 @@ function normalizeEventForDisplay(event) {
         };
     }
 
-    const dateValue = event.date || event.dateString || '';
+    const rawDate = event.date || event.dateString || '';
+    const dateValue = formatAustralianDateString(rawDate);
     const effectiveRate = typeof event.effectiveRate === 'number'
         ? event.effectiveRate
         : (typeof event.rate === 'number' ? event.rate : null);
 
     return {
         title: event.title || '',
-        date: dateValue,
-        dateString: dateValue,
+        date: dateValue || rawDate,
+        dateString: dateValue || rawDate,
         time: event.time || '',
         location: event.location || '',
         description: event.description || '',
@@ -796,7 +844,8 @@ function populateSingleEventDetails(preloadedEvent) {
     isMultiEventRegistration = false;
 
     const fallbackName = getUrlParameter('event');
-    const fallbackDate = getUrlParameter('date');
+    const fallbackDateRaw = getUrlParameter('date');
+    const fallbackDate = formatAustralianDateString(fallbackDateRaw) || fallbackDateRaw;
     const fallbackTime = getUrlParameter('time');
     const fallbackLocation = getUrlParameter('location');
     const fallbackDescription = getUrlParameter('description');
