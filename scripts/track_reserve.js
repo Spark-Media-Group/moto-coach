@@ -7,6 +7,7 @@ let maxSpots = null; // Maximum spots available for the event
 let remainingSpots = null; // Remaining spots available
 
 const EVENT_STORAGE_KEY = 'trackReserveEventDetails';
+const WINDOW_NAME_TRANSFER_PREFIX = 'TRACK_RESERVE::';
 let cachedEventDetails = null;
 let registrationContext = null;
 let isMultiEventRegistration = false;
@@ -78,7 +79,46 @@ function restoreStoredEventDetails() {
         console.warn('Unable to restore calendar event details:', error);
     }
 
+    const windowNamePayload = readWindowNameTransfer();
+    if (windowNamePayload && Array.isArray(windowNamePayload.events) && windowNamePayload.events.length > 0) {
+        persistEventDetails(windowNamePayload);
+        return cachedEventDetails;
+    }
+
     return null;
+}
+
+function readWindowNameTransfer() {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+
+    const currentName = window.name || '';
+    if (typeof currentName !== 'string' || !currentName.startsWith(WINDOW_NAME_TRANSFER_PREFIX)) {
+        return null;
+    }
+
+    const payload = currentName.slice(WINDOW_NAME_TRANSFER_PREFIX.length);
+    let parsed = null;
+
+    if (!payload) {
+        window.name = '';
+        return null;
+    }
+
+    try {
+        parsed = JSON.parse(payload);
+    } catch (error) {
+        console.warn('Unable to parse event transfer payload from window.name', error);
+    }
+
+    try {
+        window.name = '';
+    } catch (error) {
+        console.warn('Unable to clear window.name transfer payload', error);
+    }
+
+    return parsed;
 }
 
 function getStoredEventDetails() {

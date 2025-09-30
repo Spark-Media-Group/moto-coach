@@ -1,3 +1,5 @@
+const TRACK_RESERVE_TRANSFER_PREFIX = 'TRACK_RESERVE::';
+
 class MotoCoachCalendar {
     constructor() {
         this.currentDate = new Date();
@@ -1160,6 +1162,10 @@ class MotoCoachCalendar {
         this.selectedEvents.clear();
         this.updateSelectionUI();
         this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
+
+        if (typeof window !== 'undefined' && typeof window.name === 'string' && window.name.startsWith(TRACK_RESERVE_TRANSFER_PREFIX)) {
+            window.name = '';
+        }
     }
 
     proceedToRegistration() {
@@ -1219,13 +1225,23 @@ class MotoCoachCalendar {
             pricingInfo
         };
 
+        const transferEnvelope = {
+            ...transferPayload,
+            timestamp: Date.now()
+        };
+
         try {
-            sessionStorage.setItem('trackReserveEventDetails', JSON.stringify({
-                ...transferPayload,
-                timestamp: Date.now()
-            }));
+            sessionStorage.setItem('trackReserveEventDetails', JSON.stringify(transferEnvelope));
         } catch (error) {
             console.warn('Unable to persist selected events for track reservation transfer', error);
+        }
+
+        if (typeof window !== 'undefined') {
+            try {
+                window.name = `${TRACK_RESERVE_TRANSFER_PREFIX}${JSON.stringify(transferEnvelope)}`;
+            } catch (error) {
+                console.warn('Unable to persist selected events using window.name fallback', error);
+            }
         }
 
         window.location.href = 'programs/track_reserve.html';
