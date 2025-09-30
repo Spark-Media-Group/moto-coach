@@ -12,10 +12,10 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' https://esm.sh cdn.jsdelivr.net js.stripe.com;
+                   script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.jsdelivr.net https://cdn.vercel-insights.com https://va.vercel-scripts.com https://vercel.live js.stripe.com;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-                   img-src 'self' data:;
-                   connect-src 'self' api.stripe.com;
+                   img-src 'self' data: https://cdn.vercel-insights.com;
+                   connect-src 'self' https://va.vercel-scripts.com https://cdn.vercel-insights.com api.stripe.com;
                    font-src 'self' fonts.gstatic.com;
                    frame-src js.stripe.com;
                    object-src 'none';
@@ -261,19 +261,6 @@
                             <strong>Note:</strong> Rider limit is based on the event with the fewest available spots.
                         </div>
                     </div>
-
-                    <!-- Payment Information -->
-                    <div class="form-section-header">
-                        <h3>Payment Information</h3>
-                        <p style="color: #ccc; margin: 0; font-size: 0.9em;">Choose your preferred payment method</p>
-                    </div>
-                    
-                    <!-- Single Payment Element Container (Stripe handles method switching) -->
-                    <div class="payment-element-container">
-                        <div id="payment-element"></div>
-                    </div>
-                    
-                    <div id="payment-errors" style="color: #dc3545; margin: 10px 0; display: none;"></div>
 
                     <div class="form-submit">
                         <button type="submit" class="btn-register btn-large">Continue to checkout</button>

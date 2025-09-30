@@ -1,6 +1,33 @@
 const { google } = require('googleapis');
 import { ALLOWED_ORIGINS, applyCors } from './_utils/cors';
 
+function normalizeAustralianDate(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return '';
+    }
+
+    const parts = trimmed.split('/');
+    if (parts.length !== 3) {
+        return trimmed;
+    }
+
+    const [dayPart, monthPart, yearPart] = parts;
+    const day = parseInt(dayPart, 10);
+    const month = parseInt(monthPart, 10);
+    const year = parseInt(yearPart, 10);
+
+    if ([day, month, year].some(number => Number.isNaN(number))) {
+        return trimmed;
+    }
+
+    return `${day}/${month}/${year}`;
+}
+
 const ALLOWED_DOMAIN_SET = new Set(ALLOWED_ORIGINS);
 
 export default async function handler(req, res) {
@@ -176,7 +203,15 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
         }
 
         // Parse eventDate (d/m/yyyy) to build exact day range
-        const [day, month, year] = eventDate.split('/').map(Number);
+        const normalizedEventDate = normalizeAustralianDate(eventDate);
+        const [day, month, year] = normalizedEventDate.split('/').map(Number);
+
+        if ([day, month, year].some(number => Number.isNaN(number))) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid event date'
+            });
+        }
         const startOfDay = new Date(year, month - 1, day, 0, 0, 0);
         const endOfDay = new Date(year, month - 1, day + 1, 0, 0, 0);
 
@@ -245,7 +280,7 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
         // Calculate remaining spots using registration data
         const eventStartDate = new Date(foundEvent.start.dateTime);
         // Use calendar date exactly as it appears, no timezone conversion
-        const eventDateString = `${eventStartDate.getDate()}/${eventStartDate.getMonth() + 1}/${eventStartDate.getFullYear()}`;
+        const eventDateString = normalizeAustralianDate(`${eventStartDate.getDate()}/${eventStartDate.getMonth() + 1}/${eventStartDate.getFullYear()}`);
 
         let remainingSpots = maxSpots;
 
@@ -282,7 +317,7 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
                 const registeredEventName = row[1] || '';
                 const registeredEventDate = row[2] || '';
                 return registeredEventName.trim().toLowerCase() === eventName.trim().toLowerCase() &&
-                       registeredEventDate === eventDateString;
+                       normalizeAustralianDate(registeredEventDate) === eventDateString;
             }).length;
 
             remainingSpots = Math.max(0, maxSpots - registrationCount);
@@ -325,7 +360,7 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 async function handleBatchRegistrationCounts(req, res) {
     try {
         const { items } = req.body; // [{name, date}] with date "d/m/yyyy"
-        
+
         if (!Array.isArray(items) || !items.length) {
             return res.status(400).json({ error: 'items array required' });
         }
@@ -377,11 +412,16 @@ async function handleBatchRegistrationCounts(req, res) {
         const rows = response.data.values || [];
 
         // Create key function for consistent matching
-        const createKey = (name, date) => `${name.trim().toLowerCase()}__${date.trim()}`;
+        const createKey = (name, date) => `${name.trim().toLowerCase()}__${normalizeAustralianDate(date)}`;
 
         // Initialize counts map for all requested items
         const counts = {};
-        for (const { name, date } of items) {
+        const normalizedItems = items.map(({ name, date }) => ({
+            name,
+            date: normalizeAustralianDate(date)
+        }));
+
+        for (const { name, date } of normalizedItems) {
             counts[createKey(name, date)] = 0;
         }
 
@@ -389,9 +429,9 @@ async function handleBatchRegistrationCounts(req, res) {
         for (const row of rows) {
             if (row.length >= 3) {
                 const sheetEventName = (row[1] || '').trim().toLowerCase();
-                const sheetEventDate = (row[2] || '').trim();
+                const sheetEventDate = normalizeAustralianDate(row[2] || '');
                 const key = `${sheetEventName}__${sheetEventDate}`;
-                
+
                 if (key in counts) {
                     counts[key] += 1;
                 }
@@ -421,9 +461,14 @@ async function handleGetRegistrationCount(req, res) {
         const { eventName, eventDate } = req.body;
 
         if (!eventName || !eventDate) {
-            return res.status(400).json({ 
-                error: 'eventName and eventDate are required' 
+            return res.status(400).json({
+                error: 'eventName and eventDate are required'
             });
+        }
+
+        const normalizedEventDate = normalizeAustralianDate(eventDate);
+        if (!normalizedEventDate) {
+            return res.status(400).json({ error: 'Invalid event date' });
         }
 
         // Validate required environment variables for Google Sheets
@@ -491,9 +536,9 @@ async function handleGetRegistrationCount(req, res) {
         const registrationCount = rows.filter(row => {
             const sheetEventName = row[1] || ''; // Column B
             const sheetEventDate = row[2] || '';  // Column C
-            
+
             const nameMatch = sheetEventName.trim() === eventName.trim();
-            const dateMatch = sheetEventDate.trim() === eventDate.trim();
+            const dateMatch = normalizeAustralianDate(sheetEventDate) === normalizedEventDate;
             
             if (process.env.NODE_ENV !== 'production') {
                 console.log('Comparing sheet row to user request (details redacted)', {

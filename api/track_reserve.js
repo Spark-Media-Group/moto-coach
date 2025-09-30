@@ -7,6 +7,68 @@ import { checkBotProtection } from './_utils/botid';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+function parseDateInput(value) {
+    if (!value) {
+        return null;
+    }
+
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        const slashMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+        if (slashMatch) {
+            const [, day, month, year] = slashMatch;
+            const dayNum = parseInt(day, 10);
+            const monthNum = parseInt(month, 10);
+            const yearNum = year.length === 2 ? 2000 + parseInt(year, 10) : parseInt(year, 10);
+            const parsed = new Date(yearNum, monthNum - 1, dayNum);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        const parsed = new Date(trimmed);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+
+    return null;
+}
+
+function formatAustralianDate(value) {
+    const parsed = parseDateInput(value);
+    if (!parsed) {
+        return typeof value === 'string' ? value : '';
+    }
+
+    return parsed.toLocaleDateString('en-AU', {
+        timeZone: 'Australia/Sydney',
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function formatAustralianTimestamp(date = new Date()) {
+    const formatter = new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Sydney',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
+
+    const formatted = formatter.format(date);
+    return formatted.replace(', ', ' ');
+}
+
 // Function to validate event details against Google Calendar
 async function validateEventDetails(eventData) {
     try {
@@ -57,34 +119,38 @@ async function validateEventDetails(eventData) {
         for (const submittedEvent of eventsToValidate) {
             // Find matching event in Google Calendar
             const foundEvent = calendarEvents.find(calEvent => {
-                if (!calEvent.summary || !calEvent.start?.dateTime) return false;
+                const calendarTitle = calEvent.summary?.trim();
+                const calendarDateValue = calEvent.start?.dateTime || calEvent.start?.date;
 
-                const calEventTitle = calEvent.summary.trim();
-                const calEventStartDate = new Date(calEvent.start.dateTime);
-                // Use same non-padded format as calendar.js
-                const calEventDateString = `${calEventStartDate.getDate()}/${calEventStartDate.getMonth() + 1}/${calEventStartDate.getFullYear()}`;
+                if (!calendarTitle || !calendarDateValue) {
+                    return false;
+                }
 
                 const submittedTitle = submittedEvent.title?.trim();
-                const submittedDate = submittedEvent.dateString?.trim();
-                const titleMatch = calEventTitle === submittedTitle;
-                const dateMatch = calEventDateString === submittedDate;
+                const submittedDateRaw = submittedEvent.dateString || submittedEvent.date;
+                const calendarDate = formatAustralianDate(calendarDateValue);
+                const submittedDate = formatAustralianDate(submittedDateRaw);
+
+                const titleMatch = calendarTitle.toLowerCase() === (submittedTitle ? submittedTitle.toLowerCase() : '');
+                const dateMatch = calendarDate === submittedDate;
 
                 console.log('Track reserve validation: comparing calendar event to submitted values (details redacted)', {
                     titleMatch,
                     dateMatch,
                     submittedTitleLength: submittedTitle ? submittedTitle.length : 0,
-                    submittedDateLength: submittedDate ? submittedDate.length : 0
+                    submittedDateLength: submittedDate ? submittedDate.length : 0,
+                    calendarDateLength: calendarDate.length
                 });
 
                 if (!titleMatch) {
                     console.warn('⚠️  SECURITY: Event title mismatch detected (values redacted)', {
-                        calendarTitleLength: calEventTitle.length,
+                        calendarTitleLength: calendarTitle.length,
                         submittedTitleLength: submittedTitle ? submittedTitle.length : 0
                     });
                 }
                 if (!dateMatch) {
                     console.warn('⚠️  SECURITY: Event date mismatch detected (values redacted)', {
-                        calendarDateLength: calEventDateString.length,
+                        calendarDateLength: calendarDate.length,
                         submittedDateLength: submittedDate ? submittedDate.length : 0
                     });
                 }
@@ -95,7 +161,7 @@ async function validateEventDetails(eventData) {
             if (!foundEvent) {
                 invalidEvents.push({
                     eventName: submittedEvent.title,
-                    date: submittedEvent.dateString,
+                    date: formatAustralianDate(submittedEvent.dateString || submittedEvent.date),
                     reason: 'Event not found in calendar'
                 });
                 continue;
@@ -195,11 +261,11 @@ async function checkEventAvailability(formData, riderCount) {
             const currentRegistrations = registrations.filter(row => {
                 const registeredEventName = row[1] || ''; // Column B: Event Name
                 const registeredEventDate = row[2] || ''; // Column C: Event Date
-                
+
                 // Match by both event name and date for accuracy
                 const eventNameMatch = registeredEventName.trim().toLowerCase() === event.title.trim().toLowerCase();
-                const eventDateMatch = registeredEventDate === event.date;
-                
+                const eventDateMatch = formatAustralianDate(registeredEventDate) === formatAustralianDate(event.date);
+
                 return eventNameMatch && eventDateMatch;
             }).length;
 
@@ -464,20 +530,12 @@ export default async function handler(req, res) {
             // Multi-event registration: create one row for each event-rider combination
             for (const event of formData.events) {
                 for (const rider of riders) {
-                    const timestamp = new Date().toLocaleDateString('en-AU', {
-                        day: '2-digit',
-                        month: '2-digit', 
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        hour12: false
-                    });
-                    
+                    const timestamp = formatAustralianTimestamp();
+                    const formattedEventDate = formatAustralianDate(event.date || event.dateString);
                     const rowData = [
                         timestamp, // Column A: Timestamp (Australian format)
                         event.title || '', // Column B: Event Name (individual event)
-                        event.date || '', // Column C: Event Date (from event data)
+                        formattedEventDate, // Column C: Event Date (from event data)
                         rider.firstName, // Column D: Rider First Name
                         rider.lastName, // Column E: Rider Last Name
                         rider.bikeNumber, // Column F: Bike Number (optional - empty if not provided)
@@ -498,36 +556,10 @@ export default async function handler(req, res) {
             // Single event registration: one row per rider
             for (const rider of riders) {
                 // Format dates in Australian format (DD/MM/YYYY)
-                const timestamp = new Date().toLocaleDateString('en-AU', {
-                    day: '2-digit',
-                    month: '2-digit', 
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: false
-                });
-                
+                const timestamp = formatAustralianTimestamp();
+
                 // Format event date - handle both Australian format (DD/MM/YYYY) and ISO format
-                let formattedEventDate = '';
-                if (formData.eventDate) {
-                    // Check if it's already in DD/MM/YYYY format (from calendar)
-                    if (formData.eventDate.includes('/') && formData.eventDate.split('/').length === 3) {
-                        formattedEventDate = formData.eventDate; // Already in DD/MM/YYYY format
-                    } else {
-                        // Convert from ISO or other format to DD/MM/YYYY
-                        const eventDate = new Date(formData.eventDate);
-                        if (!isNaN(eventDate.getTime())) {
-                            formattedEventDate = eventDate.toLocaleDateString('en-AU', {
-                                day: '2-digit',
-                                month: '2-digit',
-                                year: 'numeric'
-                            });
-                        } else {
-                            formattedEventDate = formData.eventDate; // Use as-is if parsing fails
-                        }
-                    }
-                }
+                const formattedEventDate = formatAustralianDate(formData.eventDate);
 
                 const rowData = [
                     timestamp, // Column A: Timestamp (Australian format)
@@ -553,9 +585,9 @@ export default async function handler(req, res) {
         // If no riders, create one empty row with just contact info
         if (riders.length === 0) {
             const rowData = [
-                new Date().toISOString(), // Column A: Timestamp
+                formatAustralianTimestamp(), // Column A: Timestamp
                 formData.eventName || '', // Column B: Event Name
-                formData.eventDate || '', // Column C: Event Date
+                formatAustralianDate(formData.eventDate), // Column C: Event Date
                 '', '', '', '', '', // Empty rider info (columns D-H)
                 formData.riderEmail || '', // Column I: Rider Email
                 formData.riderPhone || '', // Column J: Rider Phone

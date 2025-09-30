@@ -31,10 +31,10 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline';
+                   script-src 'self' 'unsafe-inline' https://cdn.vercel-insights.com https://va.vercel-scripts.com https://vercel.live;
                    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-                   img-src 'self' data: https://motocoach.com.au https://img.redbull.com;
-                   connect-src 'self' https://*.vercel-insights.com https://*.vercel-analytics.com;
+                   img-src 'self' data: https://motocoach.com.au https://img.redbull.com https://cdn.vercel-insights.com;
+                   connect-src 'self' https://*.vercel-insights.com https://*.vercel-analytics.com https://va.vercel-scripts.com https://cdn.vercel-insights.com;
                    font-src 'self' https://fonts.gstatic.com;
                    frame-src 'none';
                    object-src 'none';

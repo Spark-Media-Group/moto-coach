@@ -12,10 +12,10 @@
     <!-- Security Headers -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
-                   script-src 'self' 'unsafe-inline' https://esm.sh cdn.jsdelivr.net;
+                   script-src 'self' 'unsafe-inline' https://esm.sh https://cdn.jsdelivr.net https://cdn.vercel-insights.com https://va.vercel-scripts.com https://vercel.live;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-                   img-src 'self' data:;
-                   connect-src 'self';
+                   img-src 'self' data: https://cdn.vercel-insights.com;
+                   connect-src 'self' https://va.vercel-scripts.com https://cdn.vercel-insights.com;
                    font-src 'self' fonts.gstatic.com;
                    frame-src 'none';
                    object-src 'none';
