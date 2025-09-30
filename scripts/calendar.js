@@ -1,3 +1,44 @@
+const TRACK_RESERVE_TRANSFER_PREFIX = 'TRACK_RESERVE::';
+
+function formatAustralianDate(date) {
+    if (!(date instanceof Date) || Number.isNaN(date?.valueOf?.())) {
+        return '';
+    }
+
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+}
+
+function normalizeAustralianDateString(value) {
+    if (typeof value !== 'string') {
+        return '';
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return '';
+    }
+
+    const parts = trimmed.split('/');
+    if (parts.length !== 3) {
+        return trimmed;
+    }
+
+    const [dayPart, monthPart, yearPart] = parts;
+    const day = parseInt(dayPart, 10);
+    const month = parseInt(monthPart, 10);
+    const year = parseInt(yearPart, 10);
+
+    if ([day, month, year].some(number => Number.isNaN(number))) {
+        return trimmed;
+    }
+
+    return `${day}/${month}/${year}`;
+}
+
 class MotoCoachCalendar {
     constructor() {
         this.currentDate = new Date();
@@ -198,10 +239,10 @@ class MotoCoachCalendar {
         
         // Collect all unique events that need registration checks
         const eventsToCheck = new Map();
-        
+
         for (const event of this.events) {
             if (event.maxSpots && event.maxSpots > 0) {
-                const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                const eventDateStr = formatAustralianDate(event.date);
                 const eventKey = `${event.title}_${eventDateStr}`;
                 if (!eventsToCheck.has(eventKey)) {
                     eventsToCheck.set(eventKey, {
@@ -224,7 +265,7 @@ class MotoCoachCalendar {
             // Prepare batch request data
             const items = Array.from(eventsToCheck.values()).map(eventInfo => ({
                 name: eventInfo.title,
-                date: eventInfo.dateStr
+                date: normalizeAustralianDateString(eventInfo.dateStr)
             }));
 
             // Make single batch request
@@ -528,7 +569,7 @@ class MotoCoachCalendar {
                         // Check if event is full using cached data
                         let isEventFull = false;
                         if (event.maxSpots && event.maxSpots > 0) {
-                            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                            const eventDateStr = formatAustralianDate(event.date);
                             const eventKey = `${event.title}_${eventDateStr}`;
                             const cachedResult = registrationCountMap.get(eventKey);
                             
@@ -869,7 +910,7 @@ class MotoCoachCalendar {
                         // Check if event is full
                         let isEventFull = false;
                         if (event.maxSpots && event.maxSpots > 0) {
-                            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                            const eventDateStr = formatAustralianDate(event.date);
                             const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
                             const remainingSpots = event.maxSpots - registrationCount;
                             isEventFull = remainingSpots <= 0;
@@ -1028,10 +1069,13 @@ class MotoCoachCalendar {
                 selectionPanel = document.createElement('div');
                 selectionPanel.id = 'selectionPanel';
                 selectionPanel.className = 'selection-panel fixed-selection-panel';
-                
+
                 // Append to body for fixed positioning
                 document.body.appendChild(selectionPanel);
             }
+
+            // Reset previous content before rendering updated selection summary
+            selectionPanel.innerHTML = '';
 
             // Calculate pricing with bundle discounts
             const events = Array.from(this.selectedEvents.values());
@@ -1157,6 +1201,10 @@ class MotoCoachCalendar {
         this.selectedEvents.clear();
         this.updateSelectionUI();
         this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
+
+        if (typeof window !== 'undefined' && typeof window.name === 'string' && window.name.startsWith(TRACK_RESERVE_TRANSFER_PREFIX)) {
+            window.name = '';
+        }
     }
 
     proceedToRegistration() {
@@ -1198,8 +1246,8 @@ class MotoCoachCalendar {
             description: event.description || '',
             rate: event.ratePerRider,
             effectiveRate: event.ratePerRider === 190 ? bundlePrice : event.ratePerRider, // Rate after bundle discount
-            maxSpots: event.maxSpots || '',
-            remainingSpots: 'TBD' // Will be calculated on form page
+            maxSpots: typeof event.maxSpots === 'number' ? event.maxSpots : null,
+            remainingSpots: typeof event.remainingSpots === 'number' ? event.remainingSpots : null
         }));
 
         const pricingInfo = {
@@ -1210,10 +1258,32 @@ class MotoCoachCalendar {
             hasBundleDiscount: defaultRateEvents.length > 1
         };
 
-        // Encode the event data and pricing info as JSON in URL
-        const encodedEvents = encodeURIComponent(JSON.stringify(eventData));
-        const encodedPricing = encodeURIComponent(JSON.stringify(pricingInfo));
-        window.location.href = `programs/track_reserve.html?multiEvents=${encodedEvents}&pricing=${encodedPricing}`;
+        const transferPayload = {
+            type: events.length > 1 ? 'multi' : 'single',
+            events: eventData,
+            pricingInfo
+        };
+
+        const transferEnvelope = {
+            ...transferPayload,
+            timestamp: Date.now()
+        };
+
+        try {
+            sessionStorage.setItem('trackReserveEventDetails', JSON.stringify(transferEnvelope));
+        } catch (error) {
+            console.warn('Unable to persist selected events for track reservation transfer', error);
+        }
+
+        if (typeof window !== 'undefined') {
+            try {
+                window.name = `${TRACK_RESERVE_TRANSFER_PREFIX}${JSON.stringify(transferEnvelope)}`;
+            } catch (error) {
+                console.warn('Unable to persist selected events using window.name fallback', error);
+            }
+        }
+
+        window.location.href = 'programs/track_reserve.html';
     }
 
     async updateEventPanel() {
@@ -1337,7 +1407,7 @@ class MotoCoachCalendar {
             // Filter out full events using global registration cache
             const availableEvents = allUpcomingEvents.filter(event => {
                 if (event.hasRegistration && event.maxSpots !== null) {
-                    const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+                    const eventDateStr = formatAustralianDate(event.date);
                     const eventKey = `${event.title}_${eventDateStr}`;
                     const cachedResult = this.globalRegistrationCache.get(eventKey);
                     
@@ -1414,7 +1484,7 @@ class MotoCoachCalendar {
         const isEventPast = this.isEventPast(event);
         
         if (event.hasRegistration && !isEventPast) {
-            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const eventDateStr = formatAustralianDate(event.date);
             const eventKey = `${event.title}_${eventDateStr}`;
             
             // Get registration count from cache
@@ -1500,7 +1570,7 @@ class MotoCoachCalendar {
         const isEventPast = this.isEventPast(event);
         
         if (event.hasRegistration && !isEventPast) {
-            const eventDateStr = `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const eventDateStr = formatAustralianDate(event.date);
             
             // Get registration count for this event
             let showRegisterButton = true;
@@ -1542,7 +1612,7 @@ class MotoCoachCalendar {
             
             // Check if this event is already selected
             const isSelected = this.isEventSelected(event);
-            const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const eventKey = `${event.title}_${formatAustralianDate(event.date)}`;
             
             if (showRegisterButton) {
                 if (isSelected) {
@@ -1580,7 +1650,7 @@ class MotoCoachCalendar {
                 },
                 body: JSON.stringify({
                     eventName: eventName,
-                    eventDate: eventDate
+                    eventDate: normalizeAustralianDateString(eventDate)
                 })
             });
 
