@@ -1028,10 +1028,13 @@ class MotoCoachCalendar {
                 selectionPanel = document.createElement('div');
                 selectionPanel.id = 'selectionPanel';
                 selectionPanel.className = 'selection-panel fixed-selection-panel';
-                
+
                 // Append to body for fixed positioning
                 document.body.appendChild(selectionPanel);
             }
+
+            // Reset previous content before rendering updated selection summary
+            selectionPanel.innerHTML = '';
 
             // Calculate pricing with bundle discounts
             const events = Array.from(this.selectedEvents.values());
@@ -1198,8 +1201,8 @@ class MotoCoachCalendar {
             description: event.description || '',
             rate: event.ratePerRider,
             effectiveRate: event.ratePerRider === 190 ? bundlePrice : event.ratePerRider, // Rate after bundle discount
-            maxSpots: event.maxSpots || '',
-            remainingSpots: 'TBD' // Will be calculated on form page
+            maxSpots: typeof event.maxSpots === 'number' ? event.maxSpots : null,
+            remainingSpots: typeof event.remainingSpots === 'number' ? event.remainingSpots : null
         }));
 
         const pricingInfo = {
@@ -1210,10 +1213,22 @@ class MotoCoachCalendar {
             hasBundleDiscount: defaultRateEvents.length > 1
         };
 
-        // Encode the event data and pricing info as JSON in URL
-        const encodedEvents = encodeURIComponent(JSON.stringify(eventData));
-        const encodedPricing = encodeURIComponent(JSON.stringify(pricingInfo));
-        window.location.href = `programs/track_reserve.html?multiEvents=${encodedEvents}&pricing=${encodedPricing}`;
+        const transferPayload = {
+            type: events.length > 1 ? 'multi' : 'single',
+            events: eventData,
+            pricingInfo
+        };
+
+        try {
+            sessionStorage.setItem('trackReserveEventDetails', JSON.stringify({
+                ...transferPayload,
+                timestamp: Date.now()
+            }));
+        } catch (error) {
+            console.warn('Unable to persist selected events for track reservation transfer', error);
+        }
+
+        window.location.href = 'programs/track_reserve.html';
     }
 
     async updateEventPanel() {

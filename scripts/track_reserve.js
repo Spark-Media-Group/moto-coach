@@ -8,14 +8,22 @@ let remainingSpots = null; // Remaining spots available
 
 const EVENT_STORAGE_KEY = 'trackReserveEventDetails';
 let cachedEventDetails = null;
+let registrationContext = null;
+let isMultiEventRegistration = false;
 
 function sanitizeStoredEvent(event) {
     return {
         title: event?.title || '',
-        date: event?.date || '',
+        date: event?.date || event?.dateString || '',
+        dateString: event?.dateString || event?.date || '',
         time: event?.time || '',
         location: event?.location || '',
-        description: event?.description || ''
+        description: event?.description || '',
+        rate: typeof event?.rate === 'number' ? event.rate : (typeof event?.ratePerRider === 'number' ? event.ratePerRider : null),
+        effectiveRate: typeof event?.effectiveRate === 'number' ? event.effectiveRate : (typeof event?.ratePerRider === 'number' ? event.ratePerRider : null),
+        maxSpots: Number.isFinite(event?.maxSpots) ? event.maxSpots : null,
+        remainingSpots: Number.isFinite(event?.remainingSpots) ? event.remainingSpots : null,
+        eventKey: event?.eventKey || null
     };
 }
 
@@ -41,6 +49,7 @@ function persistEventDetails(details) {
     };
 
     cachedEventDetails = sanitized;
+    registrationContext = sanitized;
 
     try {
         window.sessionStorage.setItem(EVENT_STORAGE_KEY, JSON.stringify(sanitized));
@@ -62,6 +71,7 @@ function restoreStoredEventDetails() {
         const stored = window.sessionStorage.getItem(EVENT_STORAGE_KEY);
         if (stored) {
             cachedEventDetails = JSON.parse(stored);
+            registrationContext = cachedEventDetails;
             return cachedEventDetails;
         }
     } catch (error) {
@@ -72,7 +82,54 @@ function restoreStoredEventDetails() {
 }
 
 function getStoredEventDetails() {
-    return cachedEventDetails || restoreStoredEventDetails();
+    return registrationContext || cachedEventDetails || restoreStoredEventDetails();
+}
+
+function ensureRegistrationContext() {
+    const existing = getStoredEventDetails();
+    if (existing && Array.isArray(existing.events) && existing.events.length > 0) {
+        isMultiEventRegistration = existing.type === 'multi' && existing.events.length > 1;
+        return existing;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const multiEventsParam = urlParams.get('multiEvents');
+    const pricingParam = urlParams.get('pricing');
+
+    if (multiEventsParam && pricingParam) {
+        try {
+            const events = JSON.parse(decodeURIComponent(multiEventsParam));
+            const pricingInfo = JSON.parse(decodeURIComponent(pricingParam));
+            persistEventDetails({ type: 'multi', events, pricingInfo });
+            isMultiEventRegistration = events.length > 1;
+            return getStoredEventDetails();
+        } catch (error) {
+            console.error('Error parsing multi-event URL payload:', error);
+        }
+    }
+
+    const hasSingleParams = ['event', 'date', 'time', 'location', 'description', 'rate', 'remainingSpots', 'maxSpots'].some(param => urlParams.get(param));
+
+    if (hasSingleParams) {
+        const singleEvent = {
+            title: urlParams.get('event') || '',
+            date: urlParams.get('date') || '',
+            dateString: urlParams.get('date') || '',
+            time: urlParams.get('time') || '',
+            location: urlParams.get('location') || '',
+            description: urlParams.get('description') || '',
+            rate: urlParams.get('rate') ? parseFloat(urlParams.get('rate')) : null,
+            effectiveRate: urlParams.get('rate') ? parseFloat(urlParams.get('rate')) : null,
+            maxSpots: urlParams.get('maxSpots') ? parseInt(urlParams.get('maxSpots'), 10) : null,
+            remainingSpots: urlParams.get('remainingSpots') ? parseInt(urlParams.get('remainingSpots'), 10) : null
+        };
+
+        persistEventDetails({ type: 'single', events: [singleEvent] });
+        isMultiEventRegistration = false;
+        return getStoredEventDetails();
+    }
+
+    return null;
 }
 
 function updateStoredEventDetails(updater) {
@@ -142,41 +199,29 @@ function getSelectedEvents() {
 
 // Function to get events from URL parameters or calendar
 function getEventsForSubmission() {
-    // First try to get events from URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const multiEventsParam = urlParams.get('multiEvents');
-    
-    if (multiEventsParam) {
-        try {
-            const events = JSON.parse(decodeURIComponent(multiEventsParam));
-            return events;
-        } catch (error) {
-            console.error('Error parsing URL events:', error);
-        }
+    const context = ensureRegistrationContext();
+    if (context && Array.isArray(context.events) && context.events.length > 0) {
+        return context.events.map(event => ({
+            title: event.title,
+            dateString: event.dateString || event.date || '',
+            date: event.date || event.dateString || '',
+            time: event.time || '',
+            location: event.location || '',
+            description: event.description || '',
+            rate: typeof event.rate === 'number' ? event.rate : null,
+            effectiveRate: typeof event.effectiveRate === 'number' ? event.effectiveRate : null,
+            maxSpots: Number.isFinite(event.maxSpots) ? event.maxSpots : null,
+            remainingSpots: Number.isFinite(event.remainingSpots) ? event.remainingSpots : null,
+            eventKey: event.eventKey || `${event.title}_${event.date || event.dateString || ''}`
+        }));
     }
-    
-    // Check for single event from URL parameters
-    const eventName = urlParams.get('event');
-    const eventDate = urlParams.get('date');
-    const eventTime = urlParams.get('time');
-    const eventLocation = urlParams.get('location');
-    
-    if (eventName && eventDate) {
-        return [{
-            title: eventName,
-            dateString: eventDate,
-            time: eventTime || '',
-            location: eventLocation || '',
-            eventKey: `${eventName}_${eventDate}`
-        }];
-    }
-    
+
     // Finally try to get from calendar (for calendar-based selection)
     const calendarEvents = getSelectedEvents();
     if (calendarEvents.length > 0) {
         return calendarEvents;
     }
-    
+
     return [];
 }
 
@@ -190,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         console.warn('Bot protection initialisation failed for track reserve form:', error);
     }
 
-    restoreStoredEventDetails();
+    ensureRegistrationContext();
     initializePricing();
 
     const addRiderBtn = document.getElementById('addRiderBtn');
@@ -338,238 +383,164 @@ function renumberRiders() {
 
 // Initialize pricing and validate against server data
 async function initializePricing() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const eventName = urlParams.get('event');
-    const eventDate = urlParams.get('date');
-    
-    // Get URL parameters for fallback
-    const urlRate = urlParams.get('rate');
-    const urlMaxSpots = urlParams.get('maxSpots');
-    const urlRemainingSpots = urlParams.get('remainingSpots');
-    
-    // Handle multi-event registration with real-time validation
-    const multiEventsParam = urlParams.get('multiEvents');
-    if (multiEventsParam) {
+    const context = ensureRegistrationContext();
+    const validationText = document.getElementById('pricingValidationText');
+
+    const setValidationMessage = (message, color) => {
+        if (validationText) {
+            validationText.textContent = message;
+            validationText.style.color = color;
+        }
+    };
+
+    const updateDefaults = () => {
+        ratePerRider = 190;
+        remainingSpots = null;
+        maxSpots = null;
+        updatePricing();
+        updateAddRiderButton();
+    };
+
+    if (context && context.type === 'multi' && Array.isArray(context.events) && context.events.length > 0) {
+        const normalizedEvents = context.events.map(normalizeEventForDisplay);
+        const basePricingInfo = context.pricingInfo || {
+            totalCost: normalizedEvents.reduce((sum, event) => sum + (event.effectiveRate || event.rate || 0), 0),
+            defaultEventsCount: normalizedEvents.length,
+            customEventsCount: 0,
+            bundlePrice: 0,
+            hasBundleDiscount: normalizedEvents.length > 1
+        };
+
         try {
-            const events = JSON.parse(decodeURIComponent(multiEventsParam));
-
-            // Validate each event against server data and find minimum availability
             let minRemainingSpots = Infinity;
-            let validatedEvents = [];
-            let totalRate = 0;
+            let maxAvailableSpots = 0;
+            const validatedEvents = [];
 
-            console.log(`Validating multi-event registration for ${events.length} event(s)`);
-            
-            for (const event of events) {
+            for (const event of normalizedEvents) {
+                let validatedEvent = event;
+
                 try {
-                    // Fetch real-time data for each event
-                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
-                    
+                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.dateString)}`);
                     if (response.ok) {
                         const serverData = await response.json();
-                        
                         if (serverData.success && serverData.event) {
-                            const validatedEvent = {
-                                ...event,
-                                // SECURITY: Use server data to override URL manipulation
-                                title: serverData.event.name,  // Override with server name
-                                serverRate: serverData.event.rate,
-                                serverMaxSpots: serverData.event.maxSpots,
-                                serverRemainingSpots: serverData.event.remainingSpots,
-                                validated: true
-                            };
-                            
-                            validatedEvents.push(validatedEvent);
-                            totalRate += serverData.event.rate;
-
-                            // Track the minimum remaining spots across all events
-                            minRemainingSpots = Math.min(minRemainingSpots, serverData.event.remainingSpots);
-                            
-                            console.log('Event validated against server data. Spots remaining:', serverData.event.remainingSpots);
-                            console.log(`🔍 MIN SPOTS TRACKING: minRemainingSpots = ${minRemainingSpots}`);
-                        } else {
-                            console.warn('Could not validate user-selected event (details redacted)');
-                            // Fallback to URL data for this event
-                            validatedEvents.push(event);
-                            totalRate += event.effectiveRate || 190;
-                            minRemainingSpots = Math.min(minRemainingSpots, event.remainingSpots || 0);
+                            const serverEvent = serverData.event;
+                            validatedEvent = normalizeEventForDisplay({
+                                title: serverEvent.name || event.title,
+                                date: serverEvent.date || event.date,
+                                dateString: serverEvent.date || event.dateString,
+                                time: serverEvent.time || event.time,
+                                location: serverEvent.location || event.location,
+                                description: serverEvent.description || event.description,
+                                rate: serverEvent.rate ?? event.rate,
+                                effectiveRate: event.effectiveRate ?? serverEvent.rate ?? event.rate,
+                                maxSpots: serverEvent.maxSpots ?? event.maxSpots,
+                                remainingSpots: serverEvent.remainingSpots ?? event.remainingSpots
+                            });
                         }
-                    } else {
-                        console.warn('Server validation failed for user-selected event (details redacted)');
-                        // Fallback to URL data
-                        validatedEvents.push(event);
-                        totalRate += event.effectiveRate || 190;
-                        minRemainingSpots = Math.min(minRemainingSpots, event.remainingSpots || 0);
                     }
                 } catch (error) {
-                    console.error(`Error validating event ${event.title}:`, error);
-                    // Fallback to URL data
-                    validatedEvents.push(event);
-                    totalRate += event.effectiveRate || 190;
-                    minRemainingSpots = Math.min(minRemainingSpots, event.remainingSpots || 0);
+                    console.warn(`Multi-event validation failed for ${event.title}`, error);
                 }
-            }
-            
-            // Use server-validated data
-            ratePerRider = totalRate;
-            remainingSpots = minRemainingSpots === Infinity ? 0 : minRemainingSpots;
-            maxSpots = Math.max(...validatedEvents.map(e => e.serverMaxSpots || e.maxSpots || 10));
 
-            if (validatedEvents.length > 0) {
-                persistEventDetails({
-                    type: 'multi',
-                    events: validatedEvents,
-                    pricingInfo: window.multiEventData?.pricingInfo || pricingInfo
-                });
-            }
-            
-            // Update validation text
-            const validationText = document.getElementById('pricingValidationText');
-            if (validationText) {
-                if (validatedEvents.some(e => e.serverRate !== undefined)) {
-                    validationText.textContent = `✓ Multi-event pricing validated (min ${remainingSpots} spots available)`;
-                    validationText.style.color = '#28a745';
-                } else {
-                    validationText.textContent = '⚠️ Using cached multi-event pricing (server validation failed)';
-                    validationText.style.color = '#ffc107';
+                validatedEvents.push(validatedEvent);
+
+                if (Number.isFinite(validatedEvent.remainingSpots)) {
+                    minRemainingSpots = Math.min(minRemainingSpots, validatedEvent.remainingSpots);
+                }
+                if (Number.isFinite(validatedEvent.maxSpots)) {
+                    maxAvailableSpots = Math.max(maxAvailableSpots, validatedEvent.maxSpots);
                 }
             }
-            
-            console.log('Multi-event validation complete:', {
-                totalRate: ratePerRider,
-                minRemainingSpots: remainingSpots,
-                validatedEvents: validatedEvents.length
-            });
-            
-            // DEBUG: Log remaining spots calculation
-            console.log(`🔍 RIDER LIMIT DEBUG: remainingSpots = ${remainingSpots}, riderCount = ${riderCount}`);
-            console.log(`🔍 Current rider limit: ${remainingSpots} total riders allowed`);
-            console.log(`🔍 Can add ${Math.max(0, remainingSpots - riderCount)} more riders`);
-            
+
+            remainingSpots = minRemainingSpots === Infinity ? null : minRemainingSpots;
+            maxSpots = maxAvailableSpots || null;
+
+            const normalizedPricing = {
+                ...basePricingInfo,
+                totalCost: typeof basePricingInfo.totalCost === 'number'
+                    ? basePricingInfo.totalCost
+                    : validatedEvents.reduce((sum, event) => sum + (event.effectiveRate || event.rate || 0), 0)
+            };
+
+            ratePerRider = normalizedPricing.totalCost;
+            window.multiEventData = { events: validatedEvents, pricingInfo: normalizedPricing };
+            persistEventDetails({ type: 'multi', events: validatedEvents, pricingInfo: normalizedPricing });
+
+            const availabilityNote = remainingSpots !== null ? ` (min ${remainingSpots} spot${remainingSpots === 1 ? '' : 's'} available)` : '';
+            setValidationMessage(`✓ Multi-event pricing validated${availabilityNote}`, '#28a745');
+
+            updateMultiEventPricing(normalizedPricing);
             updatePricing();
             updateAddRiderButton();
             return;
-            
         } catch (error) {
             console.error('Error validating multi-event data:', error);
-            
-            // Fallback to URL parameters
-            const validationText = document.getElementById('pricingValidationText');
-            if (validationText) {
-                validationText.textContent = '⚠️ Using cached multi-event pricing (validation error)';
-                validationText.style.color = '#ffc107';
-            }
-            
-            // Use URL parameters as fallback
-            if (urlRate && !isNaN(urlRate)) {
-                ratePerRider = parseInt(urlRate);
-            }
-            
-            if (urlRemainingSpots && urlRemainingSpots !== '' && !isNaN(urlRemainingSpots)) {
-                remainingSpots = parseInt(urlRemainingSpots);
-            }
-            
+            setValidationMessage('⚠️ Using cached multi-event pricing (validation error)', '#ffc107');
+
+            ratePerRider = basePricingInfo.totalCost;
+            remainingSpots = normalizedEvents.reduce((min, event) => Number.isFinite(event.remainingSpots) ? Math.min(min, event.remainingSpots) : min, Infinity);
+            remainingSpots = remainingSpots === Infinity ? null : remainingSpots;
+            maxSpots = normalizedEvents.reduce((max, event) => Number.isFinite(event.maxSpots) ? Math.max(max, event.maxSpots) : max, 0) || null;
+
+            window.multiEventData = { events: normalizedEvents, pricingInfo: basePricingInfo };
+            updateMultiEventPricing(basePricingInfo);
             updatePricing();
             updateAddRiderButton();
             return;
         }
     }
-    
-    // For single events, validate against server data
-    if (eventName && eventDate) {
+
+    if (context && Array.isArray(context.events) && context.events.length > 0) {
+        const event = normalizeEventForDisplay(context.events[0]);
+        window.multiEventData = null;
+
         try {
-            // Fetch real-time event data from server
-            const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(eventName)}&eventDate=${encodeURIComponent(eventDate)}`);
-            
+            const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.dateString)}`);
             if (response.ok) {
                 const serverData = await response.json();
-                
                 if (serverData.success && serverData.event) {
-                    // Use server-validated data instead of URL parameters
-                    ratePerRider = serverData.event.rate || 190; // Default rate
-                    maxSpots = serverData.event.maxSpots || 10;
-                    remainingSpots = serverData.event.remainingSpots || 0;
-                    
-                    // SECURITY: Update display with server-validated event name
-                    const eventDisplayElement = document.getElementById('eventDisplay');
-                    if (eventDisplayElement) {
-                        eventDisplayElement.textContent = serverData.event.name;
-                    }
+                    const serverEvent = serverData.event;
+                    ratePerRider = serverEvent.rate || event.rate || 190;
+                    maxSpots = serverEvent.maxSpots ?? event.maxSpots ?? null;
+                    remainingSpots = serverEvent.remainingSpots ?? event.remainingSpots ?? null;
 
-                    console.log('Event security validation succeeded (URL parameters overridden with server data)');
-
-                    updateStoredEventDetails(details => {
-                        if (!details || !Array.isArray(details.events) || details.events.length === 0) {
-                            return details;
-                        }
-
-                        details.events[0].title = serverData.event.name || details.events[0].title;
-                        details.events[0].date = serverData.event.date || details.events[0].date;
-                        if (serverData.event.description) {
-                            details.events[0].description = serverData.event.description;
-                        }
-
-                        return details;
+                    persistEventDetails({
+                        type: 'single',
+                        events: [normalizeEventForDisplay({
+                            ...event,
+                            title: serverEvent.name || event.title,
+                            date: serverEvent.date || event.date,
+                            dateString: serverEvent.date || event.dateString,
+                            description: serverEvent.description || event.description,
+                            rate: ratePerRider,
+                            effectiveRate: event.effectiveRate ?? ratePerRider,
+                            maxSpots,
+                            remainingSpots
+                        })]
                     });
 
-                    console.log('Event data validated from server:', {
-                        rate: ratePerRider,
-                        maxSpots: maxSpots,
-                        remainingSpots: remainingSpots
-                    });
-                    
-                    // Update validation text
-                    const validationText = document.getElementById('pricingValidationText');
-                    if (validationText) {
-                        validationText.textContent = '✓ Pricing and availability validated from server';
-                        validationText.style.color = '#28a745';
-                    }
-                    
-                    // Update display with validated data
+                    setValidationMessage('✓ Pricing and availability validated from server', '#28a745');
                     updatePricing();
                     updateAddRiderButton();
-                    
-                    // Show warning if URL data doesn't match server data
-                    if (urlRate && parseInt(urlRate) !== ratePerRider) {
-                        console.warn('URL rate parameter doesn\'t match server data. Using server rate:', ratePerRider);
-                    }
-                    
-                    if (urlRemainingSpots && parseInt(urlRemainingSpots) !== remainingSpots) {
-                        console.warn('URL remaining spots doesn\'t match server data. Using server data:', remainingSpots);
-                    }
-                    
                     return;
                 }
             }
         } catch (error) {
             console.error('Failed to validate event data from server:', error);
         }
+
+        ratePerRider = event.effectiveRate || event.rate || 190;
+        maxSpots = event.maxSpots;
+        remainingSpots = event.remainingSpots;
+        setValidationMessage('⚠️ Using stored event details (validation unavailable)', '#ffc107');
+        updatePricing();
+        updateAddRiderButton();
+        return;
     }
-    
-    // Fallback to URL parameters if server validation fails
-    console.warn('Using URL parameters as fallback (server validation failed)');
-    
-    // Update validation text to show fallback mode
-    const validationText = document.getElementById('pricingValidationText');
-    if (validationText) {
-        validationText.textContent = '⚠️ Using cached pricing (server validation unavailable)';
-        validationText.style.color = '#ffc107';
-    }
-    
-    if (urlRate && !isNaN(urlRate)) {
-        ratePerRider = parseInt(urlRate);
-    }
-    
-    if (urlMaxSpots && urlMaxSpots !== '' && !isNaN(urlMaxSpots)) {
-        maxSpots = parseInt(urlMaxSpots);
-    }
-    
-    if (urlRemainingSpots && urlRemainingSpots !== '' && !isNaN(urlRemainingSpots)) {
-        remainingSpots = parseInt(urlRemainingSpots);
-    }
-    
-    updatePricing();
-    updateAddRiderButton();
+
+    setValidationMessage('⚠️ No event data available. Please return to the calendar.', '#ffc107');
+    updateDefaults();
 }
 
 // Update pricing display
@@ -600,24 +571,18 @@ function updatePricing() {
         
         // Show availability note for multi-events
         if (availabilityNote) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const multiEventsParam = urlParams.get('multiEvents');
-            
-            if (multiEventsParam && remainingSpots !== null) {
-                try {
-                    const events = JSON.parse(decodeURIComponent(multiEventsParam));
-                    if (events.length > 1) {
-                        availabilityNote.style.display = 'block';
-                    }
-                } catch (error) {
-                    // Hide note if can't parse events
-                    availabilityNote.style.display = 'none';
-                }
+            const context = getStoredEventDetails();
+            const eventCount = context && context.type === 'multi' && Array.isArray(context.events)
+                ? context.events.length
+                : 0;
+
+            if (isMultiEventRegistration && remainingSpots !== null && eventCount > 1) {
+                availabilityNote.style.display = 'block';
             } else {
                 availabilityNote.style.display = 'none';
             }
         }
-        
+
     }
 }
 
@@ -631,20 +596,14 @@ function updateAddRiderButton() {
     if (addRiderBtn && remainingSpots !== null) {
         if (riderCount >= remainingSpots) {
             addRiderBtn.disabled = true;
-            
-            // Check if this is multi-event to show helpful message
-            const urlParams = new URLSearchParams(window.location.search);
-            const multiEventsParam = urlParams.get('multiEvents');
-            
-            if (multiEventsParam) {
-                addRiderBtn.textContent = `Limited by event with ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''}`;
-            } else {
-                addRiderBtn.textContent = `Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed`;
-            }
-            
+
+            addRiderBtn.textContent = isMultiEventRegistration
+                ? `Limited by event with ${remainingSpots} spot${remainingSpots !== 1 ? 's' : ''}`
+                : `Maximum ${remainingSpots} rider${remainingSpots !== 1 ? 's' : ''} allowed`;
+
             addRiderBtn.style.opacity = '0.5';
             addRiderBtn.style.cursor = 'not-allowed';
-            
+
             console.log(`🔍 Button DISABLED: ${riderCount} >= ${remainingSpots}`);
         } else {
             addRiderBtn.disabled = false;
@@ -665,120 +624,161 @@ function getUrlParameter(name) {
     return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
-// Populate event details from URL parameters
+// Populate event details from stored context or legacy URL parameters
 function populateEventDetails() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const multiEventsParam = urlParams.get('multiEvents');
-    const pricingParam = urlParams.get('pricing');
+    const context = ensureRegistrationContext();
 
-    if (multiEventsParam && pricingParam) {
-        // Handle multi-event registration
-        try {
-            const events = JSON.parse(decodeURIComponent(multiEventsParam));
-            const pricingInfo = JSON.parse(decodeURIComponent(pricingParam));
-
-            populateMultiEventDetails(events, pricingInfo);
-            return;
-        } catch (error) {
-            console.error('Error parsing multi-event data:', error);
-            // Fallback to single event
-            populateSingleEventDetails();
-            return;
+    if (context && Array.isArray(context.events) && context.events.length > 0) {
+        if (context.type === 'multi' && context.pricingInfo) {
+            populateMultiEventDetails(context.events, context.pricingInfo);
+        } else {
+            populateSingleEventDetails(context.events[0]);
         }
-    }
-
-    const hasSingleParams = ['event', 'date', 'time', 'location', 'description'].some(param => urlParams.get(param));
-
-    if (hasSingleParams) {
-        // Handle single event registration
-        populateSingleEventDetails();
         return;
     }
 
-    // Fallback to stored event details (e.g., returning from payment redirect)
-    const storedDetails = getStoredEventDetails();
-    if (storedDetails && Array.isArray(storedDetails.events) && storedDetails.events.length > 0) {
-        if (storedDetails.type === 'multi' && storedDetails.pricingInfo) {
-            populateMultiEventDetails(storedDetails.events, storedDetails.pricingInfo);
-        } else {
-            populateSingleEventDetails(storedDetails.events[0]);
-        }
+    // Compatibility fallback: attempt to read minimal URL data
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasSingleParams = ['event', 'date', 'time', 'location', 'description'].some(param => urlParams.get(param));
+
+    if (hasSingleParams) {
+        populateSingleEventDetails({
+            title: urlParams.get('event') || '',
+            date: urlParams.get('date') || '',
+            dateString: urlParams.get('date') || '',
+            time: urlParams.get('time') || '',
+            location: urlParams.get('location') || '',
+            description: urlParams.get('description') || '',
+            rate: urlParams.get('rate') ? parseFloat(urlParams.get('rate')) : null,
+            effectiveRate: urlParams.get('rate') ? parseFloat(urlParams.get('rate')) : null,
+            maxSpots: urlParams.get('maxSpots') ? parseInt(urlParams.get('maxSpots'), 10) : null,
+            remainingSpots: urlParams.get('remainingSpots') ? parseInt(urlParams.get('remainingSpots'), 10) : null
+        });
     }
 }
 
+function normalizeEventForDisplay(event) {
+    if (!event) {
+        return {
+            title: '',
+            date: '',
+            dateString: '',
+            time: '',
+            location: '',
+            description: '',
+            rate: null,
+            effectiveRate: null,
+            maxSpots: null,
+            remainingSpots: null,
+            eventKey: null
+        };
+    }
+
+    const dateValue = event.date || event.dateString || '';
+    const effectiveRate = typeof event.effectiveRate === 'number'
+        ? event.effectiveRate
+        : (typeof event.rate === 'number' ? event.rate : null);
+
+    return {
+        title: event.title || '',
+        date: dateValue,
+        dateString: dateValue,
+        time: event.time || '',
+        location: event.location || '',
+        description: event.description || '',
+        rate: typeof event.rate === 'number' ? event.rate : (typeof event.ratePerRider === 'number' ? event.ratePerRider : effectiveRate),
+        effectiveRate,
+        maxSpots: Number.isFinite(event.maxSpots) ? event.maxSpots : null,
+        remainingSpots: Number.isFinite(event.remainingSpots) ? event.remainingSpots : null,
+        eventKey: event.eventKey || `${event.title || 'event'}_${dateValue}`
+    };
+}
+
 function populateMultiEventDetails(events, pricingInfo) {
+    const normalizedEvents = events.map(normalizeEventForDisplay);
+    isMultiEventRegistration = normalizedEvents.length > 1;
+
     // Display multiple events
     const eventDisplay = document.getElementById('eventDisplay');
     const timeDisplay = document.getElementById('timeDisplay');
     const locationDisplay = document.getElementById('locationDisplay');
     const descriptionDisplay = document.getElementById('descriptionDisplay');
-    
+
     if (eventDisplay) {
-        const eventText = events.length === 1 ? 'event' : 'events';
-        eventDisplay.innerHTML = `Registration info for ${events.length} ${eventText}`;
+        const eventText = normalizedEvents.length === 1 ? 'event' : 'events';
+        eventDisplay.innerHTML = `Registration info for ${normalizedEvents.length} ${eventText}`;
     }
-    
+
     // Create detailed event list
-    let eventDetailsHTML = '';
-    events.forEach((event, index) => {
-        eventDetailsHTML += `
-            <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; margin: 0.5rem 0; border-radius: 6px;">
-                <div style="font-weight: 600; color: #ff6b35; margin-bottom: 0.5rem;">${event.title}</div>
-                <div style="margin-bottom: 0.25rem;">📅 ${event.date}</div>
-                <div style="margin-bottom: 0.25rem;">🕒 ${event.time}</div>
-                ${event.location ? `<div style="margin-bottom: 0.25rem;">📍 ${event.location}</div>` : ''}
-                ${event.description ? `<div style="margin-bottom: 0.25rem; font-size: 0.9rem; opacity: 0.8;">${event.description.toLowerCase()}</div>` : ''}
-                <div style="color: #ff6b35; font-weight: 600;">Rate: $${event.effectiveRate} AUD per rider</div>
-            </div>
-        `;
-    });
-    
+    const eventDetailsHTML = normalizedEvents.map(event => `
+        <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; margin: 0.5rem 0; border-radius: 6px;">
+            <div style="font-weight: 600; color: #ff6b35; margin-bottom: 0.5rem;">${event.title}</div>
+            <div style="margin-bottom: 0.25rem;">📅 ${event.date}</div>
+            <div style="margin-bottom: 0.25rem;">🕒 ${event.time}</div>
+            ${event.location ? `<div style="margin-bottom: 0.25rem;">📍 ${event.location}</div>` : ''}
+            ${event.description ? `<div style=\"margin-bottom: 0.25rem; font-size: 0.9rem; opacity: 0.8;\">${event.description.toLowerCase()}</div>` : ''}
+            <div style="color: #ff6b35; font-weight: 600;">Rate: $${(event.effectiveRate || event.rate || 0).toFixed(2)} AUD per rider</div>
+        </div>
+    `).join('');
+
     if (timeDisplay) {
         timeDisplay.innerHTML = eventDetailsHTML;
     }
-    
+
     if (locationDisplay) {
-        locationDisplay.style.display = 'none'; // Hide since we're showing location per event
+        locationDisplay.style.display = 'none';
     }
-    
+
     if (descriptionDisplay) {
-        descriptionDisplay.style.display = 'none'; // Hide since we're showing description per event
+        descriptionDisplay.style.display = 'none';
     }
-    
+
     // Update pricing section for multi-events
-    updateMultiEventPricing(pricingInfo);
-    
+    updateMultiEventPricing(pricingInfo || { totalCost: normalizedEvents.reduce((sum, event) => sum + (event.effectiveRate || event.rate || 0), 0), hasBundleDiscount: false, defaultEventsCount: normalizedEvents.length, customEventsCount: 0, bundlePrice: 0 });
+
     // Set hidden field for form submission
     const hiddenEventName = document.getElementById('eventName');
     if (hiddenEventName) {
-        hiddenEventName.value = `Multi-Event Registration: ${events.map(e => e.title).join(', ')}`;
+        hiddenEventName.value = `Multi-Event Registration: ${normalizedEvents.map(e => e.title).join(', ')}`;
     }
-    
+
     // Store multi-event data for form submission and calendar tools
-    window.multiEventData = { events, pricingInfo };
+    window.multiEventData = { events: normalizedEvents, pricingInfo };
     persistEventDetails({
         type: 'multi',
-        events,
+        events: normalizedEvents,
         pricingInfo
     });
 }
 
 function populateSingleEventDetails(preloadedEvent) {
-    const eventName = preloadedEvent ? preloadedEvent.title : getUrlParameter('event');
-    const eventDate = preloadedEvent ? preloadedEvent.date : getUrlParameter('date');
-    const eventTime = preloadedEvent ? preloadedEvent.time : getUrlParameter('time');
-    const eventLocation = preloadedEvent ? preloadedEvent.location : getUrlParameter('location');
-    const eventDescriptionRaw = preloadedEvent ? preloadedEvent.description : getUrlParameter('description');
+    const normalizedEvent = normalizeEventForDisplay(preloadedEvent || (getStoredEventDetails()?.events?.[0] ?? null));
+    isMultiEventRegistration = false;
+
+    const fallbackName = getUrlParameter('event');
+    const fallbackDate = getUrlParameter('date');
+    const fallbackTime = getUrlParameter('time');
+    const fallbackLocation = getUrlParameter('location');
+    const fallbackDescription = getUrlParameter('description');
+
+    const eventName = normalizedEvent.title || fallbackName;
+    const eventDate = normalizedEvent.date || fallbackDate;
+    const eventTime = normalizedEvent.time || fallbackTime;
+    const eventLocation = normalizedEvent.location || fallbackLocation;
+    const eventDescriptionRaw = normalizedEvent.description || fallbackDescription;
 
     if (eventName) {
-        document.getElementById('eventDisplay').textContent = eventName;
-        // Make sure to populate the hidden field for form validation
+        const eventDisplay = document.getElementById('eventDisplay');
+        if (eventDisplay) {
+            eventDisplay.textContent = eventName;
+        }
+
         const hiddenEventName = document.getElementById('eventName');
         if (hiddenEventName) {
             hiddenEventName.value = eventName;
         }
     }
-    
+
     const timeDisplay = document.getElementById('timeDisplay');
     if (timeDisplay) {
         const timeParts = [];
@@ -791,27 +791,17 @@ function populateSingleEventDetails(preloadedEvent) {
         timeDisplay.textContent = timeParts.join('   ');
     }
 
-    if (eventLocation) {
-        document.getElementById('locationDisplay').textContent = `📍 ${eventLocation}`;
+    const locationDisplay = document.getElementById('locationDisplay');
+    if (locationDisplay) {
+        locationDisplay.textContent = eventLocation ? `📍 ${eventLocation}` : '';
     }
 
-    if (eventDescriptionRaw) {
-        document.getElementById('descriptionDisplay').textContent = eventDescriptionRaw.toLowerCase();
+    const descriptionDisplay = document.getElementById('descriptionDisplay');
+    if (descriptionDisplay) {
+        descriptionDisplay.textContent = eventDescriptionRaw ? eventDescriptionRaw.toLowerCase() : '';
     }
 
-    const eventDetailsForStorage = {
-        title: eventName || '',
-        date: eventDate || '',
-        time: eventTime || '',
-        location: eventLocation || '',
-        description: eventDescriptionRaw || ''
-    };
-
-    if (preloadedEvent) {
-        persistEventDetails({ type: 'single', events: [eventDetailsForStorage] });
-    } else if (eventName || eventDate || eventTime || eventLocation || eventDescriptionRaw) {
-        persistEventDetails({ type: 'single', events: [eventDetailsForStorage] });
-    }
+    persistEventDetails({ type: 'single', events: [normalizedEvent] });
 
     // Clear any multi-event data
     window.multiEventData = null;
@@ -974,21 +964,22 @@ async function handleFormSubmission(event) {
         submitButton.textContent = 'Validating selection…';
     }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const multiEventsParam = urlParams.get('multiEvents');
+    const context = ensureRegistrationContext();
+    const isMultiContext = context && context.type === 'multi' && Array.isArray(context.events) && context.events.length > 0;
+    const eventsForVerification = isMultiContext
+        ? (window.multiEventData?.events || context.events.map(normalizeEventForDisplay))
+        : selectedEvents;
 
-    if (multiEventsParam) {
+    if (isMultiContext) {
         try {
-            const urlEvents = JSON.parse(decodeURIComponent(multiEventsParam));
-
-            for (const urlEvent of urlEvents) {
-                const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(urlEvent.title)}&eventDate=${encodeURIComponent(urlEvent.dateString)}`);
+            for (const eventData of eventsForVerification) {
+                const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(eventData.title)}&eventDate=${encodeURIComponent(eventData.dateString || eventData.date || '')}`);
                 if (!response.ok) {
                     throw new Error('Unable to verify event details.');
                 }
 
                 const serverData = await response.json();
-                if (!serverData.success || !serverData.event || serverData.event.name !== urlEvent.title) {
+                if (!serverData.success || !serverData.event || serverData.event.name !== eventData.title) {
                     throw new Error('Selected events could not be verified. Please return to the calendar and try again.');
                 }
             }
@@ -1004,13 +995,12 @@ async function handleFormSubmission(event) {
     }
 
     try {
-        if (multiEventsParam) {
+        if (isMultiContext) {
             try {
-                const events = JSON.parse(decodeURIComponent(multiEventsParam));
                 let minAvailableSpots = Infinity;
 
-                for (const event of events) {
-                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(event.title)}&eventDate=${encodeURIComponent(event.date)}`);
+                for (const eventData of eventsForVerification) {
+                    const response = await fetch(`/api/calendar?mode=single&eventName=${encodeURIComponent(eventData.title)}&eventDate=${encodeURIComponent(eventData.dateString || eventData.date || '')}`);
                     if (response.ok) {
                         const serverData = await response.json();
                         if (serverData.success && serverData.event) {
@@ -1106,19 +1096,20 @@ function buildRegistrationPayload(form, totalAmount) {
         data.events = window.multiEventData.events || [];
         data.pricingInfo = window.multiEventData.pricingInfo || null;
     } else {
-        const urlParams = new URLSearchParams(window.location.search);
-        data.eventName = urlParams.get('event') || data.eventName || '';
-        data.eventDate = urlParams.get('date') || '';
-        data.eventLocation = urlParams.get('location') || '';
-        data.eventTime = urlParams.get('time') || '';
+        const context = ensureRegistrationContext();
+        const eventDetails = normalizeEventForDisplay(context?.events?.[0] || null);
+        data.eventName = eventDetails.title || data.eventName || '';
+        data.eventDate = eventDetails.dateString || '';
+        data.eventLocation = eventDetails.location || '';
+        data.eventTime = eventDetails.time || '';
         data.ratePerRider = ratePerRider;
         data.events = [{
-            title: data.eventName,
-            dateString: data.eventDate,
-            time: data.eventTime,
-            location: data.eventLocation,
-            maxSpots: maxSpots || 10,
-            remainingSpots: remainingSpots
+            title: eventDetails.title || data.eventName,
+            dateString: eventDetails.dateString || data.eventDate,
+            time: eventDetails.time || data.eventTime,
+            location: eventDetails.location || data.eventLocation,
+            maxSpots: eventDetails.maxSpots ?? maxSpots || null,
+            remainingSpots: eventDetails.remainingSpots ?? remainingSpots
         }];
     }
 
