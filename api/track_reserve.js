@@ -119,34 +119,38 @@ async function validateEventDetails(eventData) {
         for (const submittedEvent of eventsToValidate) {
             // Find matching event in Google Calendar
             const foundEvent = calendarEvents.find(calEvent => {
-                if (!calEvent.summary || !calEvent.start?.dateTime) return false;
+                const calendarTitle = calEvent.summary?.trim();
+                const calendarDateValue = calEvent.start?.dateTime || calEvent.start?.date;
 
-                const calEventTitle = calEvent.summary.trim();
-                const calEventStartDate = new Date(calEvent.start.dateTime);
-                // Use same non-padded format as calendar.js
-                const calEventDateString = `${calEventStartDate.getDate()}/${calEventStartDate.getMonth() + 1}/${calEventStartDate.getFullYear()}`;
+                if (!calendarTitle || !calendarDateValue) {
+                    return false;
+                }
 
                 const submittedTitle = submittedEvent.title?.trim();
-                const submittedDate = submittedEvent.dateString?.trim();
-                const titleMatch = calEventTitle === submittedTitle;
-                const dateMatch = calEventDateString === submittedDate;
+                const submittedDateRaw = submittedEvent.dateString || submittedEvent.date;
+                const calendarDate = formatAustralianDate(calendarDateValue);
+                const submittedDate = formatAustralianDate(submittedDateRaw);
+
+                const titleMatch = calendarTitle.toLowerCase() === (submittedTitle ? submittedTitle.toLowerCase() : '');
+                const dateMatch = calendarDate === submittedDate;
 
                 console.log('Track reserve validation: comparing calendar event to submitted values (details redacted)', {
                     titleMatch,
                     dateMatch,
                     submittedTitleLength: submittedTitle ? submittedTitle.length : 0,
-                    submittedDateLength: submittedDate ? submittedDate.length : 0
+                    submittedDateLength: submittedDate ? submittedDate.length : 0,
+                    calendarDateLength: calendarDate.length
                 });
 
                 if (!titleMatch) {
                     console.warn('⚠️  SECURITY: Event title mismatch detected (values redacted)', {
-                        calendarTitleLength: calEventTitle.length,
+                        calendarTitleLength: calendarTitle.length,
                         submittedTitleLength: submittedTitle ? submittedTitle.length : 0
                     });
                 }
                 if (!dateMatch) {
                     console.warn('⚠️  SECURITY: Event date mismatch detected (values redacted)', {
-                        calendarDateLength: calEventDateString.length,
+                        calendarDateLength: calendarDate.length,
                         submittedDateLength: submittedDate ? submittedDate.length : 0
                     });
                 }
@@ -157,7 +161,7 @@ async function validateEventDetails(eventData) {
             if (!foundEvent) {
                 invalidEvents.push({
                     eventName: submittedEvent.title,
-                    date: submittedEvent.dateString,
+                    date: formatAustralianDate(submittedEvent.dateString || submittedEvent.date),
                     reason: 'Event not found in calendar'
                 });
                 continue;
