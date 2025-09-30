@@ -261,11 +261,11 @@ async function checkEventAvailability(formData, riderCount) {
             const currentRegistrations = registrations.filter(row => {
                 const registeredEventName = row[1] || ''; // Column B: Event Name
                 const registeredEventDate = row[2] || ''; // Column C: Event Date
-                
+
                 // Match by both event name and date for accuracy
                 const eventNameMatch = registeredEventName.trim().toLowerCase() === event.title.trim().toLowerCase();
-                const eventDateMatch = registeredEventDate === event.date;
-                
+                const eventDateMatch = formatAustralianDate(registeredEventDate) === formatAustralianDate(event.date);
+
                 return eventNameMatch && eventDateMatch;
             }).length;
 
