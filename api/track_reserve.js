@@ -1,9 +1,12 @@
-const { google } = require('googleapis');
+import { google } from 'googleapis';
+import Stripe from 'stripe';
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 import { isLiveEnvironment } from './_utils/environment';
 import { checkBotProtection } from './_utils/botid';
+
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -465,16 +468,24 @@ export default async function handler(req, res) {
 
         // Verify payment before processing registration
         if (!formData.paymentIntentId) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Payment required',
                 details: 'Payment must be completed before registration can be processed.'
+            });
+        }
+
+        if (!stripe) {
+            console.error('Stripe secret key is not configured for track reservation processing');
+            return res.status(500).json({
+                error: 'Payment verification unavailable',
+                details: 'Payment processor is not configured'
             });
         }
 
         // Verify payment with Stripe
         try {
             const paymentIntent = await stripe.paymentIntents.retrieve(formData.paymentIntentId);
-            
+
             if (paymentIntent.status !== 'succeeded') {
                 return res.status(400).json({ 
                     error: 'Payment not completed',
@@ -484,9 +495,17 @@ export default async function handler(req, res) {
             }
 
             // Verify payment amount matches expected amount
-            const expectedAmount = Math.round(parseFloat(formData.totalAmount) * 100); // Convert to cents
+            const totalAmount = Number(formData.totalAmount);
+            if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+                return res.status(400).json({
+                    error: 'Invalid total amount',
+                    details: 'Registration total is missing or invalid.'
+                });
+            }
+
+            const expectedAmount = Math.round(totalAmount * 100); // Convert to cents
             if (paymentIntent.amount !== expectedAmount) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     error: 'Payment amount mismatch',
                     details: 'Payment amount does not match registration total.'
                 });

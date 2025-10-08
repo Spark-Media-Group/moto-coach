@@ -1,5 +1,5 @@
 // Dedicated API endpoint for validating single events
-const { google } = require('googleapis');
+import { google } from 'googleapis';
 import { applyCors } from './_utils/cors';
 
 export default async function handler(req, res) {

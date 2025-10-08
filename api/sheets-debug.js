@@ -1,5 +1,5 @@
 // Debug endpoint to see Google Sheets data
-const { google } = require('googleapis');
+import { google } from 'googleapis';
 import { applyCors } from './_utils/cors';
 
 const isSheetsDebugEnabled = () => process.env.SHEETS_DEBUG_ENABLED === 'true';
@@ -48,19 +48,20 @@ export default async function handler(req, res) {
         return;
     }
 
-    const requiredApiKey = getRequiredApiKey();
-    if (!requiredApiKey) {
-        res.status(500).json({ error: 'Debug endpoint is not configured' });
+    const cors = applyCors(req, res, {
+        methods: ['GET', 'OPTIONS'],
+        headers: ['Content-Type', 'X-API-Key'],
+        extraOrigins: allowedOrigins,
+        allowPreview: false
+    });
+
+    if (cors.handled) {
         return;
     }
 
-    // Set CORS headers for allowed origins
-    res.setHeader('Access-Control-Allow-Origin', requestOrigin);
-    res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
-
-    if (cors.handled) {
+    const requiredApiKey = getRequiredApiKey();
+    if (!requiredApiKey) {
+        res.status(500).json({ error: 'Debug endpoint is not configured' });
         return;
     }
 
@@ -78,7 +79,21 @@ export default async function handler(req, res) {
 
     try {
         // Get Google Sheets credentials
-        const credentials = JSON.parse(process.env.GOOGLE_SHEETS_CREDENTIALS);
+        const credentialsJson = process.env.GOOGLE_SHEETS_CREDENTIALS;
+        if (!credentialsJson) {
+            res.status(500).json({ error: 'Google Sheets credentials not configured' });
+            return;
+        }
+
+        let credentials;
+        try {
+            credentials = JSON.parse(credentialsJson);
+        } catch (parseError) {
+            console.error('Invalid Google Sheets credentials JSON:', parseError);
+            res.status(500).json({ error: 'Google Sheets credentials are invalid' });
+            return;
+        }
+
         const auth = new google.auth.GoogleAuth({
             credentials,
             scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
@@ -86,6 +101,11 @@ export default async function handler(req, res) {
 
         const sheets = google.sheets({ version: 'v4', auth });
         const spreadsheetId = process.env.GOOGLE_SHEETS_ID;
+
+        if (!spreadsheetId) {
+            res.status(500).json({ error: 'Google Sheets ID not configured' });
+            return;
+        }
 
         // Get all data from the sheet
         const response = await sheets.spreadsheets.values.get({

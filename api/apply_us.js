@@ -1,4 +1,4 @@
-const { google } = require('googleapis');
+import { google } from 'googleapis';
 import { Resend } from 'resend';
 import { applyCors } from './_utils/cors';
 import { isLiveEnvironment } from './_utils/environment';

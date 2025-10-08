@@ -1,5 +1,8 @@
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+import Stripe from 'stripe';
 import { applyCors } from './_utils/cors';
+
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey) : null;
 
 export default async function handler(req, res) {
     const cors = applyCors(req, res, {
@@ -16,12 +19,25 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method not allowed' });
     }
 
+    if (!stripe) {
+        console.error('Stripe secret key is not configured');
+        return res.status(500).json({
+            error: 'Payment setup failed',
+            details: 'Payment processor is not configured'
+        });
+    }
+
     try {
-        const { amount, currency = 'aud', metadata = {} } = req.body;
+        const { amount, currency = 'aud', metadata = {} } = req.body || {};
+
+        const normalizedAmount = Number(amount);
+        const sanitizedMetadata = metadata && typeof metadata === 'object' && !Array.isArray(metadata)
+            ? metadata
+            : {};
 
         // Validate required fields
-        if (!amount || amount <= 0) {
-            return res.status(400).json({ 
+        if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+            return res.status(400).json({
                 error: 'Invalid amount',
                 details: 'Amount must be a positive number'
             });
@@ -29,11 +45,11 @@ export default async function handler(req, res) {
 
         // Create payment intent
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(amount * 100), // Convert to cents
-            currency: currency.toLowerCase(),
+            amount: Math.round(normalizedAmount * 100), // Convert to cents
+            currency: String(currency || 'aud').toLowerCase(),
             metadata: {
                 source: 'moto_coach_track_reservation',
-                ...metadata
+                ...sanitizedMetadata
             },
             // Option A: Let Stripe surface methods dynamically, including Afterpay
             automatic_payment_methods: {

@@ -1,4 +1,4 @@
-const { google } = require('googleapis');
+import { google } from 'googleapis';
 import { ALLOWED_ORIGINS, applyCors } from './_utils/cors';
 
 function normalizeAustralianDate(value) {
