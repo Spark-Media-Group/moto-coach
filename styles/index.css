@@ -446,7 +446,7 @@ main {
 
 .program-card__link {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
     text-decoration: none;
     color: inherit;
