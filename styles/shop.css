@@ -1900,8 +1900,23 @@
         font-size: 1.05rem;
     }
 
+    .product-price {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
     .price-current {
         font-size: 1.25rem;
+    }
+
+    .price-original {
+        font-size: 0.85rem;
+        line-height: 1.15;
+    }
+
+    .product-type {
+        display: none;
     }
 }
 
