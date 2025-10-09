@@ -1103,6 +1103,264 @@ div:focus {
     margin-bottom: 0.5rem;
 }
 
+body.modal-open {
+    overflow: hidden;
+}
+
+.mobile-day-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 3000;
+}
+
+.mobile-day-modal.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.mobile-day-modal__backdrop {
+    position: absolute;
+    inset: 0;
+}
+
+.mobile-day-modal__dialog {
+    position: relative;
+    width: min(500px, 100%);
+    max-height: 80vh;
+    background: #111;
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-day-modal__close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 1.8rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.mobile-day-modal__close:hover {
+    background: rgba(255, 107, 53, 0.25);
+    transform: rotate(90deg);
+}
+
+.mobile-day-modal__header {
+    padding: 1.5rem 1.5rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.12), rgba(17, 17, 17, 0.9));
+}
+
+.mobile-day-modal__date {
+    margin: 0;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.mobile-day-modal__title {
+    margin: 0.35rem 0 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.mobile-day-modal__content {
+    padding: 1.25rem 1.5rem 1.75rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.mobile-event-card {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 1rem 1.1rem 1.2rem;
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.mobile-event-card.past-event {
+    opacity: 0.65;
+}
+
+.mobile-event-card__title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+}
+
+.mobile-event-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.75);
+}
+
+.mobile-event-card__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.mobile-event-card__description {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.8);
+    margin: 0;
+}
+
+.mobile-event-card__status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.mobile-event-card__status-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.mobile-event-card__status-text.available {
+    background: rgba(46, 204, 113, 0.16);
+    color: #7ef2b1;
+}
+
+.mobile-event-card__status-text.limited {
+    background: rgba(255, 193, 7, 0.16);
+    color: #ffdf8a;
+}
+
+.mobile-event-card__status-text.full {
+    background: rgba(255, 107, 53, 0.16);
+    color: #ff9f7a;
+}
+
+.mobile-event-card__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 0.25rem;
+}
+
+.mobile-event-card__actions .btn-add-selection,
+.mobile-event-card__actions .btn-remove-selection {
+    width: 100%;
+    justify-content: center;
+}
+
+.mobile-event-card__actions .btn-add-selection,
+.mobile-event-card__actions .btn-remove-selection,
+.mobile-event-card__actions .btn-register-single {
+    padding: 0.65rem 1rem;
+}
+
+.mobile-event-card__note {
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.72);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 0.6rem 0.75rem;
+}
+
+.mobile-event-card__empty {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    padding: 1.5rem 0;
+}
+
+@media (min-width: 769px) {
+    .mobile-day-modal {
+        display: none;
+    }
+}
+
+@media (max-width: 600px) {
+    .mobile-day-modal {
+        padding: 1.5rem 1rem;
+    }
+
+    .mobile-day-modal__dialog {
+        width: 100%;
+        border-radius: 18px;
+    }
+
+    .mobile-day-modal__header {
+        padding: 1.25rem 1.25rem 0.85rem;
+    }
+
+    .mobile-day-modal__content {
+        padding: 1rem 1.25rem 1.5rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .mobile-day-modal__close {
+        width: 34px;
+        height: 34px;
+        font-size: 1.5rem;
+    }
+
+    .mobile-event-card__title {
+        font-size: 1rem;
+    }
+
+    .mobile-event-card__meta {
+        font-size: 0.85rem;
+    }
+
+    .mobile-event-card__status {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .mobile-event-card__actions {
+        gap: 0.5rem;
+    }
+}
+
 /* Mobile responsive for selection panel */
 @media (max-width: 768px) {
     .selection-header {
@@ -1110,12 +1368,12 @@ div:focus {
         gap: 0.5rem;
         text-align: center;
     }
-    
+
     .selection-actions {
         flex-direction: column;
         gap: 0.5rem;
     }
-    
+
     .register-options {
         align-items: center;
     }
@@ -1126,305 +1384,153 @@ div:focus {
     .calendar-hero h1 {
         font-size: 2rem;
     }
-    
+
     .calendar-hero p {
         font-size: 1rem;
         padding: 0 1rem;
     }
-    
-    .calendar-header {
-        padding: 1rem 0.5rem;
-        border-radius: 8px 8px 0 0;
-    }
-    
-    .month-year h2 {
-        font-size: 1.4rem;
-        letter-spacing: 1px;
-    }
-    
-    .nav-btn {
-        width: 38px;
-        height: 38px;
-        font-size: 1rem;
-        border-radius: 6px;
-    }
-    
-    .day-header {
-        padding: 0.5rem 0.2rem;
-        font-size: 0.7rem;
-        text-align: center;
-    }
-    
-    .calendar-day {
-        min-height: 70px;
-        padding: 0.25rem;
-        font-size: 0.85rem;
-    }
-    
-    .day-number {
-        font-size: 0.75rem;
-        margin-bottom: 0.1rem;
-    }
-    
-    .event-preview {
-        font-size: 0.55rem;
-        padding: 1px 2px;
-        margin-bottom: 1px;
-    }
-    
-    .event-time-small {
-        font-size: 0.5rem;
-    }
-    
-    .event-location-small {
-        font-size: 0.5rem;
-    }
-    
-    .more-events {
-        font-size: 0.55rem;
-    }
-    
-    .event-panel {
-        padding: 1rem 0.5rem;
-    }
-    
-    .event-panel h3 {
-        font-size: 1.2rem;
-        text-align: center;
-    }
-    
+
     .calendar-wrapper {
-        margin: 0; /* Full width on mobile */
-        border-radius: 0; /* Remove border radius for full-width */
-        overflow: hidden;
+        padding: 0 1rem 2rem;
+        box-sizing: border-box;
     }
 
-    /* Mobile: Stack event panel on top, calendar below */
     .calendar-main-container {
         flex-direction: column;
+        gap: 1.25rem;
     }
-    
+
     .calendar-main-container .event-panel {
-        flex: 0 0 auto;
-        max-height: 300px;
-        border-right: none;
-        border-bottom: 1px solid #333;
-        padding: 2rem;
+        display: none;
     }
-    
+
     .calendar-main-container .calendar-section {
-        flex: 1;
-        padding: 0;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
     }
 
-    /* Ensure calendar grid fits properly on mobile */
-    .calendar-grid {
-        display: grid !important;
-        grid-template-columns: repeat(7, 1fr) !important;
-        gap: 1px !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow: hidden !important;
-        padding: 1rem !important;
-    }
-    
-    .mobile-week-view .calendar-day {
-        min-height: 120px !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: flex-start !important;
-        padding: 8px !important;
-        border-radius: 8px !important;
-        background: rgba(255, 255, 255, 0.05) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-    
-    .mobile-week-view .calendar-day.today {
-        background: rgba(255, 107, 53, 0.2) !important;
-        border-color: #ff6b35 !important;
-    }
-    
-    .mobile-week-view .calendar-day.other-month {
-        opacity: 0.3 !important;
-    }
-    
-    .mobile-week-view .day-number {
-        font-size: 1rem !important;
-        font-weight: bold !important;
-        color: #ff6b35 !important;
-        margin-bottom: 4px !important;
-    }
-    
-    .mobile-week-view .day-events {
-        width: 100% !important;
-        flex: 1 !important;
-    }
-    
-    .mobile-week-view .event-preview {
-        font-size: 0.65rem !important;
-        padding: 2px 4px !important;
-        margin-bottom: 2px !important;
-        border-radius: 3px !important;
-        background: rgba(255, 107, 53, 0.3) !important;
-        border: 1px solid rgba(255, 107, 53, 0.5) !important;
-        line-height: 1.2 !important;
-    }
-    
-    .mobile-week-view .event-title-small {
-        font-weight: 600 !important;
-        display: block !important;
-    }
-    
-    .mobile-week-view .event-time-small {
-        font-size: 0.55rem !important;
-        opacity: 0.8 !important;
-        display: block !important;
-    }
-    
-    .mobile-week-view .more-events {
-        font-size: 0.6rem !important;
-        color: #ff6b35 !important;
-        font-weight: 500 !important;
-    }
-
-    /* Mobile responsive styling for events */
-    .event-item {
-        flex-direction: column !important;
-        gap: 0.5rem !important;
-        text-align: center !important;
-        align-items: center !important;
-    }
-    
-    .event-details {
-        text-align: center !important;
-        width: 100% !important;
-    }
-    
-    .event-time,
-    .event-title,
-    .event-location,
-    .event-description,
-    .event-rate {
-        text-align: center !important;
-        margin-left: auto !important;
-        margin-right: auto !important;
-    }
-    
-    .event-register {
-        align-self: center !important;
-        margin-top: 0.5rem !important;
-        text-align: center !important;
-        width: 100% !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-    }
-    
-    .btn-register {
-        margin: 0 auto !important;
-    }
-}
-
-/* Extra Small Mobile Styles */
-@media (max-width: 480px) {
-    .calendar-wrapper {
-        margin: 0; /* Full width on extra small mobile */
-    }
-    
     .calendar-header {
-        padding: 0.75rem 1rem;
-        border-radius: 0;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
-    
+
     .month-year h2 {
-        font-size: 1.2rem;
-        letter-spacing: 0.5px;
+        font-size: 1.35rem;
+        letter-spacing: 1px;
     }
-    
+
     .nav-btn {
-        width: 34px;
-        height: 34px;
-        font-size: 0.9rem;
-        border-radius: 5px;
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+        border-radius: 8px;
     }
-    
+
+    .calendar-grid {
+        padding: 1rem;
+        gap: 0.75rem;
+        background: #111;
+    }
+
     .day-header {
-        padding: 0.4rem 0.1rem;
-        font-size: 0.65rem;
-    }
-    
-    .calendar-day {
-        min-height: 60px;
-        padding: 0.2rem;
-        font-size: 0.8rem;
-    }
-    
-    .day-number {
+        padding: 0.25rem 0;
         font-size: 0.7rem;
+        color: rgba(255, 255, 255, 0.65);
+        letter-spacing: 1px;
     }
-    
-    .event-preview {
-        font-size: 0.5rem;
-        padding: 1px;
-    }
-    
-    .event-panel {
-        padding: 0.75rem 0.25rem;
-    }
-    
-    /* Mobile Event Panel Styles */
-    .event-item {
-        flex-direction: column;
-        gap: 0.5rem;
-        text-align: center;
-        align-items: center;
-    }
-    
-    .event-details {
-        text-align: center;
-        width: 100%;
-    }
-    
-    .event-time,
-    .event-title,
-    .event-location,
-    .event-description,
-    .event-rate {
-        text-align: center;
-    }
-    
-    .event-register {
-        align-self: center;
-        margin-top: 0.5rem;
-        text-align: center;
-        width: 100%;
+
+    .calendar-day {
+        min-height: 92px;
+        padding: 0.75rem 0.5rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(17, 17, 17, 0.85));
         display: flex;
         flex-direction: column;
         align-items: center;
+        justify-content: flex-start;
+        text-align: center;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
     }
-    
-    /* Mobile pagination styles */
-    .events-pagination {
-        gap: 0.5rem;
-        margin-top: 1rem;
-        padding-top: 0.75rem;
+
+    .calendar-day.other-month {
+        opacity: 0.4;
     }
-    
-    .pagination-btn {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.85rem;
+
+    .calendar-day.past-event:not(.today) {
+        opacity: 0.65;
     }
-    
-    .events-title-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+
+    .calendar-day.has-events {
+        cursor: pointer;
+        border-color: rgba(255, 107, 53, 0.35);
+        box-shadow: 0 8px 24px rgba(255, 107, 53, 0.18);
     }
-    
-    .pagination-info {
-        font-size: 0.8rem;
+
+    .calendar-day.has-events:active {
+        transform: translateY(1px) scale(0.98);
+    }
+
+    .calendar-day.has-events:focus-visible {
+        outline: 2px solid #ff6b35;
+        outline-offset: 3px;
+    }
+
+    .day-number {
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        color: #ffffff;
+        margin-bottom: 0.35rem;
+    }
+
+    .calendar-day.today .day-number {
+        color: #ff6b35;
+    }
+
+    .event-count {
+        margin-top: auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        background: rgba(255, 107, 53, 0.18);
+        color: #ffbea6;
+        font-weight: 600;
+        font-size: 0.75rem;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
     }
 }
+
+@media (max-width: 480px) {
+    .calendar-wrapper {
+        padding: 0 0.75rem 1.5rem;
+    }
+
+    .calendar-grid {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+
+    .calendar-day {
+        min-height: 82px;
+        padding: 0.6rem 0.4rem;
+    }
+
+    .day-header {
+        font-size: 0.65rem;
+    }
+
+    .event-count {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.65rem;
+    }
+}
+
 
 /* Very Small Mobile Styles */
 @media (max-width: 360px) {
