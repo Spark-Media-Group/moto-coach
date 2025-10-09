@@ -461,9 +461,9 @@ main {
 
 .program-card__title {
     font-family: 'Oswald', sans-serif;
-    font-size: clamp(1.15rem, 2.1vw, 1.75rem);
+    font-size: clamp(0.95rem, 1.8vw, 1.4rem);
     text-transform: uppercase;
-    letter-spacing: 0.12rem;
+    letter-spacing: 0.08rem;
     margin: 0;
     color: #ffffff;
 }
