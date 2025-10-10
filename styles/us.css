@@ -1,285 +1,316 @@
 /* US Training Camp Page Styles */
-.us-travel-hero-combined {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    color: white;
+.us-program-lead {
     position: relative;
-    overflow: hidden;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-}
-
-.us-travel-hero-combined::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: none;
-    opacity: 1;
-    z-index: -1;
-}
-
-/* US Travel Hero Slideshow */
-.us-travel-slideshow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1;
+    background: radial-gradient(circle at 10% 15%, rgba(255, 107, 53, 0.18), transparent 55%),
+        radial-gradient(circle at 85% 85%, rgba(255, 255, 255, 0.08), transparent 60%),
+        linear-gradient(135deg, #050505 0%, #0f0f0f 55%, #161616 100%);
+    color: #f5f5f5;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: clamp(4rem, 9vw, 6.25rem) 0 clamp(3.5rem, 8vw, 5rem);
     overflow: hidden;
 }
 
-.us-travel-slide {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    transition: opacity 2s ease-in-out;
-    z-index: 1;
-}
-
-.us-travel-slide.active {
-    opacity: 1;
-    z-index: 2;
-}
-
-.us-travel-slide img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center;
-    filter: brightness(0.6) contrast(1.1);
-}
-
-.us-travel-slide::after {
+.us-program-lead::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-        135deg,
-        rgba(0, 0, 0, 0.3) 0%,
-        rgba(0, 0, 0, 0.15) 50%,
-        rgba(0, 0, 0, 0.25) 100%
-    );
-    z-index: 1;
+    inset: 0;
+    background: linear-gradient(115deg, rgba(255, 255, 255, 0.06) 0%, transparent 45%, rgba(0, 0, 0, 0.35) 100%);
+    mix-blend-mode: soft-light;
+    pointer-events: none;
 }
 
-.us-travel-hero-combined .container {
-    max-width: 1200px;
+.us-program-lead .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1180px;
     margin: 0 auto;
-    position: relative;
-    z-index: 3;
-    width: 100%;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    padding: 0 clamp(1rem, 4vw, 2rem);
+    padding: 0 clamp(1.25rem, 4.5vw, 3rem);
 }
 
-
-.us-travel-hero-combined .hero-content {
-    text-align: center;
-    max-width: 800px;
-    position: relative;
-    z-index: 2;
-    animation: slideInDown 1.2s ease-out;
-    display: flex;
-    flex-direction: column;
+.lead-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: clamp(2rem, 5vw, 3.75rem);
     align-items: center;
-    gap: clamp(1.25rem, 3vw, 2rem);
 }
 
-.us-travel-hero-combined .hero-content h1 {
+.lead-copy {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.25rem, 3vw, 2.25rem);
+}
+
+.lead-eyebrow {
     font-family: 'Oswald', sans-serif;
-    font-size: clamp(3.5rem, 8vw, 6rem);
-    font-weight: 700;
-    margin: 0;
-    line-height: 0.9;
+    font-size: clamp(0.75rem, 1.6vw, 0.95rem);
+    letter-spacing: 0.38em;
     text-transform: uppercase;
-    letter-spacing: 3px;
-    color: white;
-    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.8);
-    text-align: center;
-    position: relative;
+    color: #ff6b35;
+    margin: 0;
 }
 
-.us-travel-hero-combined .hero-content p {
-    font-family: 'Roboto Condensed', sans-serif;
-    font-size: 1.25rem;
-    font-weight: 300;
-    max-width: 600px;
-    margin: 0 auto;
-    opacity: 0.9;
-    color: rgba(255, 255, 255, 0.9);
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
-    line-height: 1.4;
-}
-
-.us-travel-hero-combined .overview-cta {
-    margin-top: 3rem;
-    z-index: 4;
-    position: relative;
-    animation: fadeInScale 1.5s ease-out 0.5s both;
-}
-
-.us-travel-hero-combined .pricing-details-btn {
-    display: inline-block;
-    padding: 18px 40px;
-    background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
-    color: white;
-    text-decoration: none;
+.lead-title {
     font-family: 'Oswald', sans-serif;
-    font-size: 1.2rem;
     font-weight: 600;
+    font-size: clamp(3rem, 6.3vw, 4.75rem);
+    letter-spacing: 0.05em;
     text-transform: uppercase;
-    letter-spacing: 2px;
-    border-radius: 50px;
-    box-shadow: 
-        0 10px 30px rgba(255, 107, 53, 0.4),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
+    line-height: 1.02;
+    margin: 0;
 }
 
-.us-travel-hero-combined .pricing-details-btn::before {
+.lead-description {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: clamp(1.05rem, 2.2vw, 1.28rem);
+    color: rgba(245, 245, 245, 0.78);
+    max-width: 560px;
+    line-height: 1.55;
+    margin: 0;
+}
+
+.lead-points {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.85rem;
+}
+
+.lead-points li {
+    position: relative;
+    padding: 0.9rem 1rem 0.9rem 1.35rem;
+    background: rgba(14, 14, 14, 0.8);
+    border-left: 3px solid #ff6b35;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    line-height: 1.45;
+    letter-spacing: 0.02em;
+    color: rgba(245, 245, 245, 0.78);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.lead-points li::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s ease;
+    top: -6px;
+    left: 18px;
+    width: 38px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    transform: rotate(-2deg);
 }
 
-.us-travel-hero-combined .pricing-details-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 
-        0 15px 40px rgba(255, 107, 53, 0.6),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    border-color: rgba(255, 255, 255, 0.3);
-    color: white;
-    text-decoration: none;
-}
-
-.us-travel-hero-combined .pricing-details-btn:hover::before {
-    left: 100%;
-}
-
-.us-travel-hero-combined .pricing-details-btn:active {
-    transform: translateY(-1px);
-}
-
-/* Partnership Section Styles */
-.partnership-section {
-    margin-top: clamp(1.5rem, 4vw, 3rem);
-    text-align: center;
+.lead-footer {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 1.5rem;
+    gap: clamp(1rem, 2.5vw, 1.75rem);
 }
 
-.partnership-text {
-    font-family: 'Oswald', sans-serif;
-    font-size: clamp(1rem, 2vw, 1.3rem);
-    font-weight: 400;
-    color: rgba(255, 255, 255, 0.8);
+.lead-partner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1.35rem;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(12, 12, 12, 0.75);
     text-transform: uppercase;
-    letter-spacing: 2px;
-    margin: 0;
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.18em;
+    font-size: 0.75rem;
+}
+
+.partner-label {
+    color: rgba(245, 245, 245, 0.7);
 }
 
 .partner-logo {
-    display: flex;
-    justify-content: center;
+    height: clamp(28px, 4vw, 42px);
+    width: auto;
+    filter: brightness(1.05) contrast(1.15);
+}
+
+.lead-cta {
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
+    padding: 1rem 2.85rem;
+    background: linear-gradient(135deg, #ff6b35 0%, #ff8341 100%);
+    color: #080808;
+    font-family: 'Oswald', sans-serif;
+    letter-spacing: 0.32em;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    text-decoration: none;
+    border: 2px solid #ff6b35;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, background 0.3s ease;
+    box-shadow: 0 18px 38px rgba(255, 107, 53, 0.28);
 }
 
-.clubmx-logo {
-    max-height: 180px;
-    max-width: 450px;
-    filter: brightness(1.1) contrast(1.1);
+.lead-cta:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, #ff8743 0%, #ffa255 100%);
+    box-shadow: 0 22px 46px rgba(255, 107, 53, 0.35);
+    color: #050505;
 }
 
-@media (min-width: 1024px) {
-    .us-travel-hero-combined .hero-content {
-        gap: 1.5rem;
+.lead-cta:focus-visible {
+    outline: 2px solid #f5f5f5;
+    outline-offset: 3px;
+}
+
+.lead-media {
+    position: relative;
+}
+
+.media-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.media-frame {
+    position: relative;
+    background: #0c0c0c;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 20px 38px rgba(0, 0, 0, 0.5);
+    clip-path: polygon(2% 0, 100% 0, 98% 100%, 0 100%);
+}
+
+.media-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: saturate(1.08) contrast(1.12);
+    transition: transform 0.6s ease;
+}
+
+.media-frame::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    right: -18px;
+    width: 72px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.12);
+    transform: rotate(6deg);
+    mix-blend-mode: screen;
+}
+
+.media-frame::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.4) 100%);
+    mix-blend-mode: multiply;
+}
+
+.media-frame:hover img {
+    transform: scale(1.05);
+}
+
+.media-frame--xl {
+    grid-column: 1 / span 4;
+    grid-row: 1 / span 5;
+    min-height: 360px;
+}
+
+.media-frame--wide {
+    grid-column: 3 / span 4;
+    grid-row: 3 / span 3;
+    min-height: 220px;
+    transform: translateX(12%) rotate(2deg);
+}
+
+.media-frame--tall {
+    grid-column: 2 / span 3;
+    grid-row: 4 / span 4;
+    min-height: 280px;
+    transform: translate(-10%, 12%) rotate(-3deg);
+    box-shadow: 0 18px 36px rgba(255, 107, 53, 0.22);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .lead-cta,
+    .media-frame img {
+        transition-duration: 0.01ms !important;
     }
 
-    .us-travel-hero-combined .hero-content h1 {
-        white-space: nowrap;
-    }
-
-    .partnership-section {
-        margin-top: 1.75rem;
-    }
-
-    .us-travel-hero-combined .overview-cta {
-        margin-top: 2rem;
+    .media-frame::before {
+        display: none;
     }
 }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
+@media (max-width: 1100px) {
+    .lead-shell {
+        grid-template-columns: minmax(0, 1fr);
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    .lead-media {
+        justify-self: stretch;
+    }
+
+    .media-grid {
+        max-width: 540px;
     }
 }
 
-@keyframes slideInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-30px);
+@media (max-width: 768px) {
+    .us-program-lead {
+        padding: clamp(3.25rem, 12vw, 4.5rem) 0;
     }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+
+    .lead-footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .lead-cta {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .media-frame--wide,
+    .media-frame--tall {
+        transform: none;
     }
 }
 
-@keyframes slideInUp {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(10px);
+@media (max-width: 560px) {
+    .media-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.6rem;
     }
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
+
+    .media-frame--xl {
+        grid-column: 1 / -1;
+        min-height: 280px;
+    }
+
+    .media-frame--wide {
+        grid-column: 1 / span 6;
+        grid-row: auto;
+        min-height: 200px;
+    }
+
+    .media-frame--tall {
+        grid-column: 1 / span 6;
+        grid-row: auto;
+        min-height: 220px;
+    }
+
+    .lead-footer {
+        gap: 1rem;
+    }
+
+    .lead-partner {
+        width: 100%;
+        justify-content: space-between;
     }
 }
-
-@keyframes fadeInScale {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
 /* Training Overview Section Styles */
 .training-overview {
     display: flex;
@@ -387,19 +418,10 @@
     }
 }
 
-/* Responsive adjustments for partnership section */
+/* Responsive adjustments for introduction + overview */
 @media (max-width: 768px) {
-    .partnership-section {
-        margin-top: 2rem;
-    }
-
-    .partnership-text {
-        font-size: 0.9rem;
-    }
-
-    .clubmx-logo {
-        max-height: 120px;
-        max-width: 300px;
+    .partner-logo {
+        height: clamp(26px, 6vw, 36px);
     }
 
     .training-overview {
@@ -961,48 +983,25 @@
         padding: 60px 0;
         min-height: auto;
     }
-    
+
     .detail-grid {
         min-height: auto;
     }
-    
+
     .features-grid {
         grid-template-columns: 1fr;
         gap: 1.5rem;
     }
-    
+
     .detail-intro {
         text-align: left;
         margin-left: 0;
-    }
-
-    .us-travel-hero-combined {
-        padding: 100px 1rem 60px;
-    }
-
-    .us-travel-hero-combined .hero-content {
-        align-items: center;
-        gap: 1.5rem;
-    }
-
-    .us-travel-hero-combined .hero-content h1 {
-        letter-spacing: 2px;
-    }
-
-    .us-travel-hero-combined .hero-content p {
-        margin: 0;
     }
 
     .facility-grid {
         justify-items: stretch;
     }
 
-    .us-travel-hero-combined .pricing-details-btn {
-        padding: 15px 30px;
-        font-size: 1.1rem;
-        letter-spacing: 1px;
-    }
-    
     .program-overview,
     .why-choose-us,
     .cta-section {
@@ -1775,33 +1774,31 @@
 
 /* Accessibility: High contrast mode support */
 @media (prefers-contrast: high) {
-    .us-travel-slide img {
-        filter: brightness(0.8) contrast(1.3);
+    .intro-copy h1 {
+        text-shadow: none;
+        color: #ffffff;
     }
-    
-    .us-travel-hero-combined .hero-content h1 {
-        -webkit-text-fill-color: white;
-        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+
+    .clubmx-collage::before {
+        opacity: 0;
+    }
+
+    .collage-item::after {
+        background: none;
     }
 }
 
 /* Accessibility: Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-    .us-travel-slide {
-        transition: none;
+    .collage-item,
+    .collage-item--primary,
+    .collage-item--secondary,
+    .collage-item--accent {
+        transform: none !important;
     }
-    
-    .us-travel-hero-combined .hero-content h1,
-    .us-travel-hero-combined .hero-content p,
-    .us-travel-hero-combined .overview-cta,
-    .partnership-section,
-    .clubmx-logo,
-    .training-image,
-    .overview-content {
-        animation: none;
-    }
-    
-    .us-travel-hero-combined .pricing-details-btn::before {
+
+    .collage-item img,
+    .btn-intro-primary {
         transition: none;
     }
 }
