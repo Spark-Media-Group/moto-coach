@@ -1,8 +1,8 @@
 // Kazzaz Motor Co. - Enhanced Homepage JavaScript
 
-// Slideshow variables
+// Hero Slideshow variables
 let currentSlideIndex = 0;
-const slides = document.querySelectorAll('.slide');
+const slides = document.querySelectorAll('.hero-slide');
 let slideInterval;
 
 // Coaching slideshow variables

@@ -94,40 +94,35 @@
             </div>
         </nav>
         <div class="hero" id="home">
-            <!-- Desktop slideshow -->
-            <div class="slideshow-container">
-                <div class="slide active">
-                    <img src="images/biker 1.jpg" alt="Moto Coach motocross coaching session at Appin Motocross Complex" loading="eager">
+            <!-- Responsive Hero Slideshow -->
+            <div class="hero-slideshow-container">
+                <div class="hero-slide active">
+                    <picture>
+                        <source media="(min-width: 769px)" srcset="images/hero-desktop/hero1.jpg">
+                        <source media="(max-width: 768px)" srcset="images/hero-mobile/hero1.jpg">
+                        <img src="images/hero-desktop/hero1.jpg" alt="Moto Coach motocross coaching session" loading="eager">
+                    </picture>
                 </div>
-                <div class="slide">
-                    <img src="images/biker 2.jpg" alt="Moto Coach rider refining corner speed during Sydney motocross training" loading="lazy">
+                <div class="hero-slide">
+                    <picture>
+                        <source media="(min-width: 769px)" srcset="images/hero-desktop/hero2.jpg">
+                        <source media="(max-width: 768px)" srcset="images/hero-mobile/hero2.jpeg">
+                        <img src="images/hero-desktop/hero2.jpg" alt="Professional motocross training" loading="lazy">
+                    </picture>
                 </div>
-                <div class="slide">
-                    <img src="images/biker 3.jpg" alt="Motocross athlete tackling jumps with Moto Coach coaching support" loading="lazy">
+                <div class="hero-slide">
+                    <picture>
+                        <source media="(min-width: 769px)" srcset="images/hero-desktop/hero3.jpg">
+                        <source media="(max-width: 768px)" srcset="images/hero-mobile/hero3.jpg">
+                        <img src="images/hero-desktop/hero3.jpg" alt="Sydney motocross coaching" loading="lazy">
+                    </picture>
                 </div>
-                <div class="slide">
-                    <img src="images/biker 4.jpg" alt="Moto Coach dirt bike skills clinic demonstrating body positioning" loading="lazy">
-                </div>
-                <div class="slide">
-                    <img src="images/biker 5.jpg" alt="Sydney motocross student accelerating out of berm with Moto Coach" loading="lazy">
-                </div>
-                <div class="slide">
-                    <img src="images/biker 6.jpg" alt="Moto Coach motocross rider clearing rhythm section during training" loading="lazy">
-                </div>
-            </div>
-            <!-- Mobile-only slideshow -->
-            <div class="mobile-slideshow-container">
-                <div class="mobile-slide active">
-                    <img src="images/biker 6.jpg" alt="Moto Coach motocross rider clearing rhythm section during training" loading="eager">
-                </div>
-                <div class="mobile-slide">
-                    <img src="images/coaching 5.jpg" alt="Moto Coach private motocross coaching session in Sydney" loading="lazy">
-                </div>
-                <div class="mobile-slide">
-                    <img src="images/biker 2.jpg" alt="Moto Coach rider refining corner speed during Sydney motocross training" loading="lazy">
-                </div>
-                <div class="mobile-slide">
-                    <img src="images/biker 3.jpg" alt="Motocross athlete tackling jumps with Moto Coach coaching support" loading="lazy">
+                <div class="hero-slide">
+                    <picture>
+                        <source media="(min-width: 769px)" srcset="images/hero-desktop/hero4.jpg">
+                        <source media="(max-width: 768px)" srcset="images/hero-mobile/hero4.jpg">
+                        <img src="images/hero-desktop/hero4.jpg" alt="Motocross rider training" loading="lazy">
+                    </picture>
                 </div>
             </div>
             <div class="hero-content">
