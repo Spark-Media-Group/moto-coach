@@ -343,14 +343,17 @@ main {
     display: none;
 }
 
+.services-section.section-padding {
+    padding-left: 0;
+    padding-right: 0;
+}
+
 .programs-showcase {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: clamp(0.5rem, 1.5vw, 1rem);
-    margin-inline: calc(50% - 50vw);
-    margin-left: calc(50% - 50vw);
-    margin-right: calc(50% - 50vw);
-    width: 100vw;
+    width: 100%;
+    margin: 0;
 }
 
 .program-card {
