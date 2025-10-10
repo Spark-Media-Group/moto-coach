@@ -141,6 +141,23 @@
         </div>
     </main>
 
+    <!-- Mobile day modal -->
+    <div class="mobile-day-modal" id="mobileDayModal" aria-hidden="true">
+        <div class="mobile-day-modal__backdrop" data-close-modal="true"></div>
+        <div class="mobile-day-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="mobileDayModalTitle">
+            <button class="mobile-day-modal__close" type="button" id="mobileDayModalClose" aria-label="Close event list">
+                &times;
+            </button>
+            <div class="mobile-day-modal__header">
+                <p class="mobile-day-modal__date" id="mobileDayModalDate">Events</p>
+                <h3 class="mobile-day-modal__title" id="mobileDayModalTitle">Upcoming Events</h3>
+            </div>
+            <div class="mobile-day-modal__content" id="mobileDayModalContent" role="document">
+                <!-- Event cards injected via JavaScript -->
+            </div>
+        </div>
+    </div>
+
     <footer>
         <div class="footer-content">
             <p>&copy; 2025 Moto Coach.</p>

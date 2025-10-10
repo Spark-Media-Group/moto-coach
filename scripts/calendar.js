@@ -43,7 +43,6 @@ class MotoCoachCalendar {
     constructor() {
         this.currentDate = new Date();
         this.events = [];
-        this.currentWeekStart = null; // For mobile weekly view
         this.isMobileView = false;
         this.selectedEvents = new Map(); // Store selected events for multi-registration
         this.currentEventPage = 1; // For event panel pagination
@@ -52,6 +51,17 @@ class MotoCoachCalendar {
         this.cacheLastUpdated = null; // Track when cache was last updated
         this.heightSyncRaf = null; // Track pending animation frame for height syncing
         this.apiKey = 'calendar-app-2024'; // Simple API key for request validation
+        this.mobileModalElements = {
+            modal: null,
+            dialog: null,
+            content: null,
+            title: null,
+            date: null,
+            close: null
+        };
+        this.mobileModalActiveDate = null;
+        this.mobileModalLastFocus = null;
+        this.handleDocumentKeyDown = this.handleDocumentKeyDown.bind(this);
         this.monthNames = [
             'January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December'
@@ -90,7 +100,8 @@ class MotoCoachCalendar {
     async init() {
         this.checkViewMode();
         this.bindEvents();
-        
+        this.setupMobileModal();
+
         // Render empty calendar immediately for instant display
         await this.renderEmptyCalendar();
         
@@ -126,29 +137,12 @@ class MotoCoachCalendar {
     checkViewMode() {
         const wasMobile = this.isMobileView;
         this.isMobileView = window.innerWidth <= 768;
-        
-        // If switching from desktop to mobile, set current week
-        if (!wasMobile && this.isMobileView) {
-            this.setCurrentWeek(this.currentDate);
-        }
-        
-        // Update calendar wrapper class
-        const calendarWrapper = document.querySelector('.calendar-wrapper');
-        if (calendarWrapper) {
-            if (this.isMobileView) {
-                calendarWrapper.classList.add('mobile-week-view');
-            } else {
-                calendarWrapper.classList.remove('mobile-week-view');
-            }
+
+        if (wasMobile && !this.isMobileView) {
+            this.closeMobileModal();
         }
 
         this.scheduleEventPanelHeightSync();
-    }
-
-    setCurrentWeek(date) {
-        // Set to the start of the week (Sunday)
-        this.currentWeekStart = new Date(date);
-        this.currentWeekStart.setDate(date.getDate() - date.getDay());
     }
 
     bindEvents() {
@@ -158,44 +152,18 @@ class MotoCoachCalendar {
         if (prevBtn && !prevBtn.hasAttribute('data-bound')) {
             prevBtn.setAttribute('data-bound', 'true');
             prevBtn.addEventListener('click', () => {
-                if (this.isMobileView) {
-                    this.previousWeek();
-                } else {
-                    this.previousMonth();
-                }
+                this.previousMonth();
             });
         }
-        
+
         if (nextBtn && !nextBtn.hasAttribute('data-bound')) {
             nextBtn.setAttribute('data-bound', 'true');
             nextBtn.addEventListener('click', () => {
-                if (this.isMobileView) {
-                    this.nextWeek();
-                } else {
-                    this.nextMonth();
-                }
+                this.nextMonth();
             });
         }
 
         // Note: Date selection removed - calendar is now view-only with hover interactions
-    }
-
-    async previousWeek() {
-        this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
-        // Render empty calendar first for instant visual feedback
-        await this.renderEmptyCalendar();
-        // Populate events (no need to load - all events already cached)
-        await this.populateEventsIntoCalendar();
-        // Note: Don't update event panel - upcoming events don't change when viewing different weeks
-    }
-
-    async nextWeek() {
-        this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
-        // Render empty calendar first for instant visual feedback
-        await this.renderEmptyCalendar();
-        // Populate events (no need to load - all events already cached)
-        await this.populateEventsIntoCalendar();
-        // Note: Don't update event panel - upcoming events don't change when viewing different weeks
     }
 
     async loadEvents() {
@@ -436,6 +404,23 @@ class MotoCoachCalendar {
         });
     }
 
+    formatCurrency(amount) {
+        if (typeof amount !== 'number' || Number.isNaN(amount)) {
+            return '';
+        }
+
+        try {
+            return new Intl.NumberFormat('en-AU', {
+                style: 'currency',
+                currency: 'AUD',
+                maximumFractionDigits: 0
+            }).format(amount);
+        } catch (error) {
+            console.warn('Unable to format currency amount', error);
+            return `$${amount}`;
+        }
+    }
+
     isEventPast(event) {
         const now = new Date();
         // If event has an end time, check if it has ended
@@ -450,10 +435,12 @@ class MotoCoachCalendar {
         // Use a safer method to decrement month
         const currentMonth = this.currentDate.getMonth();
         const currentYear = this.currentDate.getFullYear();
-        
+
         // Create a new date for the first day of the previous month
         this.currentDate = new Date(currentYear, currentMonth - 1, 1);
-        
+
+        this.closeMobileModal();
+
         // Render empty calendar first for instant visual feedback
         await this.renderEmptyCalendar();
         // Populate events (no need to load - all events already cached)
@@ -465,10 +452,12 @@ class MotoCoachCalendar {
         // Use a safer method to increment month
         const currentMonth = this.currentDate.getMonth();
         const currentYear = this.currentDate.getFullYear();
-        
+
         // Create a new date for the next month
         this.currentDate = new Date(currentYear, currentMonth + 1, 1);
-        
+
+        this.closeMobileModal();
+
         // Render empty calendar first for instant visual feedback
         await this.renderEmptyCalendar();
         // Populate events (no need to load - all events already cached)
@@ -493,11 +482,7 @@ class MotoCoachCalendar {
 
         if (!monthElement || !daysContainer) return;
 
-        if (this.isMobileView) {
-            await this.renderEmptyWeeklyView(monthElement, daysContainer);
-        } else {
-            await this.renderEmptyMonthlyView(monthElement, daysContainer);
-        }
+        await this.renderEmptyMonthlyView(monthElement, daysContainer);
     }
 
     async populateEventsIntoCalendar() {
@@ -529,7 +514,12 @@ class MotoCoachCalendar {
         
         // Populate events using global registration cache
         for (const { dayElement, currentDay, dayEvents } of dayElementData) {
+            dayElement.dataset.fullDate = currentDay.toISOString();
             await this.populateEventsForDayWithCache(dayElement, currentDay, dayEvents, this.globalRegistrationCache);
+        }
+
+        if (this.isMobileModalOpen() && this.mobileModalActiveDate) {
+            this.renderMobileModalContent(this.mobileModalActiveDate);
         }
 
         this.scheduleEventPanelHeightSync();
@@ -538,21 +528,37 @@ class MotoCoachCalendar {
     async populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap) {
         if (dayEvents.length > 0) {
             dayElement.classList.add('has-events');
-            
+
             // Check if ALL events on this day are past
             const allEventsPast = dayEvents.every(event => this.isEventPast(event));
             if (allEventsPast) {
                 dayElement.classList.add('past-event');
             }
-            
+
             if (this.isMobileView) {
                 // Mobile: Show just the number of events
                 const existingEventCount = dayElement.querySelector('.event-count');
+                const eventCount = existingEventCount || document.createElement('div');
+                eventCount.className = 'event-count';
+                const countLabel = dayEvents.length === 1 ? '1 Event' : `${dayEvents.length} Events`;
+                eventCount.textContent = countLabel;
                 if (!existingEventCount) {
-                    const eventCount = document.createElement('div');
-                    eventCount.className = 'event-count';
-                    eventCount.textContent = dayEvents.length;
                     dayElement.appendChild(eventCount);
+                }
+
+                dayElement.setAttribute('tabindex', '0');
+                dayElement.setAttribute('role', 'button');
+                dayElement.setAttribute('aria-label', this.buildMobileDayAriaLabel(currentDay, dayEvents));
+                dayElement.dataset.fullDate = currentDay.toISOString();
+                if (!dayElement.dataset.modalBound) {
+                    dayElement.addEventListener('click', () => this.openMobileModal(currentDay));
+                    dayElement.addEventListener('keydown', event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            this.openMobileModal(currentDay);
+                        }
+                    });
+                    dayElement.dataset.modalBound = 'true';
                 }
             } else {
                 // Desktop: Show event previews
@@ -572,9 +578,14 @@ class MotoCoachCalendar {
                             const eventDateStr = formatAustralianDate(event.date);
                             const eventKey = `${event.title}_${eventDateStr}`;
                             const cachedResult = registrationCountMap.get(eventKey);
-                            
+
                             if (cachedResult) {
-                                isEventFull = cachedResult.remainingSpots <= 0;
+                                if (typeof cachedResult.remainingSpots === 'number') {
+                                    event.remainingSpots = cachedResult.remainingSpots;
+                                    isEventFull = cachedResult.remainingSpots <= 0;
+                                } else {
+                                    isEventFull = cachedResult.remainingSpots <= 0;
+                                }
                             }
                         }
                         
@@ -649,43 +660,310 @@ class MotoCoachCalendar {
         }
     }
 
-    async renderEmptyWeeklyView(monthElement, daysContainer) {
-        if (!this.currentWeekStart) {
-            this.setCurrentWeek(this.currentDate);
+    buildMobileDayAriaLabel(date, dayEvents) {
+        const formattedDate = date.toLocaleDateString('en-AU', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long'
+        });
+        const countLabel = dayEvents.length === 1 ? '1 event' : `${dayEvents.length} events`;
+        return `${formattedDate}, ${countLabel}`;
+    }
+
+    setupMobileModal() {
+        if (typeof document === 'undefined') {
+            return;
         }
 
-        // Create week range display
-        const weekEnd = new Date(this.currentWeekStart);
-        weekEnd.setDate(this.currentWeekStart.getDate() + 6);
-        
-        const startDay = this.currentWeekStart.getDate();
-        const endDay = weekEnd.getDate();
-        
-        // Use abbreviated month names for mobile
-        const monthNamesShort = [
-            'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
-        ];
-        
-        const monthName = monthNamesShort[this.currentWeekStart.getMonth()];
-        
-        // Handle cross-month weeks
-        if (this.currentWeekStart.getMonth() !== weekEnd.getMonth()) {
-            const endMonthName = monthNamesShort[weekEnd.getMonth()];
-            monthElement.textContent = `${monthName} ${startDay} - ${endMonthName} ${endDay}`;
-        } else {
-            monthElement.textContent = `${monthName} ${startDay}-${endDay}`;
+        const modal = document.getElementById('mobileDayModal');
+        const content = document.getElementById('mobileDayModalContent');
+        const title = document.getElementById('mobileDayModalTitle');
+        const dateLabel = document.getElementById('mobileDayModalDate');
+        const closeButton = document.getElementById('mobileDayModalClose');
+
+        this.mobileModalElements.modal = modal || null;
+        this.mobileModalElements.dialog = modal ? modal.querySelector('.mobile-day-modal__dialog') : null;
+        this.mobileModalElements.content = content || null;
+        this.mobileModalElements.title = title || null;
+        this.mobileModalElements.date = dateLabel || null;
+        this.mobileModalElements.close = closeButton || null;
+
+        if (this.mobileModalElements.dialog && !this.mobileModalElements.dialog.hasAttribute('tabindex')) {
+            this.mobileModalElements.dialog.setAttribute('tabindex', '-1');
         }
 
-        daysContainer.innerHTML = '';
+        if (!modal) {
+            return;
+        }
 
-        // Render 7 empty days of the week
-        for (let i = 0; i < 7; i++) {
-            const currentDay = new Date(this.currentWeekStart);
-            currentDay.setDate(this.currentWeekStart.getDate() + i);
-            
-            const dayElement = this.createEmptyDayElement(currentDay.getDate(), false, currentDay);
-            daysContainer.appendChild(dayElement);
+        modal.setAttribute('aria-hidden', 'true');
+
+        if (closeButton) {
+            closeButton.addEventListener('click', () => this.closeMobileModal());
+        }
+
+        modal.addEventListener('click', event => {
+            if (event.target === modal || event.target?.dataset?.closeModal === 'true') {
+                this.closeMobileModal();
+            }
+        });
+
+        document.addEventListener('keydown', this.handleDocumentKeyDown);
+    }
+
+    openMobileModal(date) {
+        if (!this.isMobileView || !(date instanceof Date)) {
+            return;
+        }
+
+        const modal = this.mobileModalElements.modal;
+        if (!modal) {
+            return;
+        }
+
+        const events = this.getEventsForDate(date);
+        if (events.length === 0) {
+            return;
+        }
+
+        this.mobileModalActiveDate = new Date(date);
+        this.mobileModalLastFocus = document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+
+        this.renderMobileModalContent(this.mobileModalActiveDate);
+
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('modal-open');
+
+        const closeButton = this.mobileModalElements.close;
+        if (closeButton) {
+            closeButton.focus({ preventScroll: true });
+        } else if (this.mobileModalElements.dialog) {
+            this.mobileModalElements.dialog.focus({ preventScroll: true });
+        }
+    }
+
+    closeMobileModal() {
+        const modal = this.mobileModalElements.modal;
+        if (!modal || !this.isMobileModalOpen()) {
+            return;
+        }
+
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('modal-open');
+        this.mobileModalActiveDate = null;
+
+        if (this.mobileModalLastFocus && typeof this.mobileModalLastFocus.focus === 'function') {
+            this.mobileModalLastFocus.focus({ preventScroll: true });
+        }
+
+        this.mobileModalLastFocus = null;
+    }
+
+    isMobileModalOpen() {
+        return Boolean(this.mobileModalElements.modal && this.mobileModalElements.modal.classList.contains('is-open'));
+    }
+
+    renderMobileModalContent(date) {
+        if (!(date instanceof Date)) {
+            return;
+        }
+
+        const content = this.mobileModalElements.content;
+        if (!content) {
+            return;
+        }
+
+        const events = this.getEventsForDate(date).slice().sort((a, b) => a.date - b.date);
+
+        const dateLabel = date.toLocaleDateString('en-AU', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+        });
+        const eventsCountLabel = events.length === 1 ? '1 Event' : `${events.length} Events`;
+
+        if (this.mobileModalElements.date) {
+            this.mobileModalElements.date.textContent = dateLabel;
+        }
+
+        if (this.mobileModalElements.title) {
+            this.mobileModalElements.title.textContent = eventsCountLabel;
+        }
+
+        content.innerHTML = '';
+        content.scrollTop = 0;
+
+        if (events.length === 0) {
+            const emptyState = this.createElementWithText('p', 'mobile-event-card__empty', 'No events scheduled for this day.');
+            content.appendChild(emptyState);
+            return;
+        }
+
+        for (const event of events) {
+            const card = document.createElement('article');
+            card.className = 'mobile-event-card';
+
+            const isPast = this.isEventPast(event);
+            if (isPast) {
+                card.classList.add('past-event');
+            }
+
+            const titleElement = this.createElementWithText('h4', 'mobile-event-card__title', event.title || 'Moto Coach Event');
+            card.appendChild(titleElement);
+
+            const metaContainer = document.createElement('div');
+            metaContainer.className = 'mobile-event-card__meta';
+
+            const timeLabel = event.time && typeof event.time === 'string' ? event.time : 'Time TBA';
+            metaContainer.appendChild(this.createElementWithText('span', 'mobile-event-card__meta-item', `🕒 ${timeLabel}`));
+
+            if (event.location) {
+                metaContainer.appendChild(this.createElementWithText('span', 'mobile-event-card__meta-item', `📍 ${event.location}`));
+            }
+
+            if (typeof event.ratePerRider === 'number' && event.ratePerRider > 0) {
+                metaContainer.appendChild(this.createElementWithText('span', 'mobile-event-card__meta-item', `💲 ${this.formatCurrency(event.ratePerRider)}`));
+            }
+
+            card.appendChild(metaContainer);
+
+            if (event.description) {
+                const cleanedDescription = event.description.replace(/\s+/g, ' ').trim();
+                if (cleanedDescription) {
+                    const maxLength = 220;
+                    const preview = cleanedDescription.length > maxLength
+                        ? `${cleanedDescription.substring(0, maxLength).trim()}…`
+                        : cleanedDescription;
+                    card.appendChild(this.createElementWithText('p', 'mobile-event-card__description', preview));
+                }
+            }
+
+            const eventDateStr = formatAustralianDate(event.date);
+            const eventKey = `${event.title}_${eventDateStr}`;
+            const cachedResult = this.globalRegistrationCache.get(eventKey);
+            let remainingSpots = null;
+            if (cachedResult && typeof cachedResult.remainingSpots === 'number') {
+                remainingSpots = cachedResult.remainingSpots;
+            } else if (typeof event.remainingSpots === 'number') {
+                remainingSpots = event.remainingSpots;
+            }
+
+            let statusText = 'Spots available';
+            let statusClass = 'available';
+            let isFull = false;
+
+            if (isPast) {
+                statusText = 'Event completed';
+                statusClass = 'full';
+                isFull = true;
+            } else if (event.hasRegistration && typeof remainingSpots === 'number') {
+                if (remainingSpots <= 0) {
+                    statusText = 'Event full';
+                    statusClass = 'full';
+                    isFull = true;
+                } else if (remainingSpots <= 3) {
+                    statusText = `${remainingSpots} spot${remainingSpots === 1 ? '' : 's'} left`;
+                    statusClass = 'limited';
+                } else {
+                    statusText = `${remainingSpots} spots available`;
+                }
+            } else if (!event.hasRegistration) {
+                statusText = 'Contact us to register';
+            }
+
+            const statusWrapper = document.createElement('div');
+            statusWrapper.className = 'mobile-event-card__status';
+            statusWrapper.appendChild(this.createElementWithText('span', `mobile-event-card__status-text ${statusClass}`, statusText));
+            card.appendChild(statusWrapper);
+
+            const actions = document.createElement('div');
+            actions.className = 'mobile-event-card__actions';
+
+            const isSelected = this.selectedEvents.has(eventKey);
+            if (isSelected) {
+                const removeBtn = this.createElementWithText('button', 'btn-remove-selection', 'Remove from Selection');
+                removeBtn.addEventListener('click', () => {
+                    this.removeEventFromSelection(eventKey);
+                    this.renderMobileModalContent(date);
+                });
+                actions.appendChild(removeBtn);
+            } else if (event.hasRegistration && !isPast && !isFull) {
+                const addBtn = this.createElementWithText('button', 'btn-add-selection', 'Add to Selection');
+                addBtn.addEventListener('click', () => {
+                    this.addEventToSelection(event);
+                    this.renderMobileModalContent(date);
+                });
+                actions.appendChild(addBtn);
+            }
+
+            if (!event.hasRegistration) {
+                actions.appendChild(this.createElementWithText('div', 'mobile-event-card__note', 'Online registration not required for this event.'));
+            } else if ((isPast || isFull) && !isSelected) {
+                const message = isPast
+                    ? 'This event has already finished.'
+                    : 'This event is fully booked.';
+                actions.appendChild(this.createElementWithText('div', 'mobile-event-card__note', message));
+            }
+
+            if (actions.children.length > 0) {
+                card.appendChild(actions);
+            }
+
+            content.appendChild(card);
+        }
+    }
+
+    getMobileModalFocusableElements() {
+        const dialog = this.mobileModalElements.dialog;
+        if (!dialog) {
+            return [];
+        }
+
+        const selectors = [
+            'a[href]',
+            'button:not([disabled])',
+            'textarea:not([disabled])',
+            'input:not([type="hidden"]):not([disabled])',
+            'select:not([disabled])',
+            '[tabindex]:not([tabindex="-1"])'
+        ].join(', ');
+
+        return Array.from(dialog.querySelectorAll(selectors));
+    }
+
+    handleDocumentKeyDown(event) {
+        if (!this.isMobileModalOpen()) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            this.closeMobileModal();
+            return;
+        }
+
+        if (event.key === 'Tab') {
+            const focusable = this.getMobileModalFocusableElements();
+            if (focusable.length === 0) {
+                return;
+            }
+
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey) {
+                if (document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                }
+            } else if (document.activeElement === last) {
+                event.preventDefault();
+                first.focus();
+            }
         }
     }
 
@@ -725,7 +1003,7 @@ class MotoCoachCalendar {
     createEmptyDayElement(day, isOtherMonth, fullDate = null) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
-        
+
         // Create day number
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
@@ -736,16 +1014,12 @@ class MotoCoachCalendar {
             dayElement.classList.add('other-month');
         } else {
             const today = new Date();
-            let currentDay;
-            
-            if (this.isMobileView && fullDate) {
-                currentDay = fullDate;
-                // Store the full date for later event population
-                dayElement.dataset.fullDate = fullDate.toISOString();
-            } else {
-                currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
-            }
-            
+            const currentDay = fullDate instanceof Date
+                ? fullDate
+                : new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
+
+            dayElement.dataset.fullDate = currentDay.toISOString();
+
             // Check if this day is in the past (before today)
             const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
             const currentDayMidnight = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
@@ -762,92 +1036,6 @@ class MotoCoachCalendar {
         }
 
         return dayElement;
-    }
-
-    async renderCalendar() {
-        const monthElement = document.getElementById('currentMonth');
-        const daysContainer = document.getElementById('calendarDays');
-
-        if (!monthElement || !daysContainer) return;
-
-        if (this.isMobileView) {
-            await this.renderWeeklyView(monthElement, daysContainer);
-        } else {
-            await this.renderMonthlyView(monthElement, daysContainer);
-        }
-    }
-
-    async renderWeeklyView(monthElement, daysContainer) {
-        if (!this.currentWeekStart) {
-            this.setCurrentWeek(this.currentDate);
-        }
-
-        // Create week range display
-        const weekEnd = new Date(this.currentWeekStart);
-        weekEnd.setDate(this.currentWeekStart.getDate() + 6);
-        
-        const startDay = this.currentWeekStart.getDate();
-        const endDay = weekEnd.getDate();
-        
-        // Use abbreviated month names for mobile
-        const monthNamesShort = [
-            'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-            'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
-        ];
-        
-        const monthName = monthNamesShort[this.currentWeekStart.getMonth()];
-        
-        // Handle cross-month weeks
-        if (this.currentWeekStart.getMonth() !== weekEnd.getMonth()) {
-            const endMonthName = monthNamesShort[weekEnd.getMonth()];
-            monthElement.textContent = `${monthName} ${startDay} - ${endMonthName} ${endDay}`;
-        } else {
-            monthElement.textContent = `${monthName} ${startDay}-${endDay}`;
-        }
-
-        daysContainer.innerHTML = '';
-
-        // Render 7 days of the week
-        for (let i = 0; i < 7; i++) {
-            const currentDay = new Date(this.currentWeekStart);
-            currentDay.setDate(this.currentWeekStart.getDate() + i);
-            
-            const dayElement = await this.createDayElement(currentDay.getDate(), false, currentDay);
-            daysContainer.appendChild(dayElement);
-        }
-    }
-
-    async renderMonthlyView(monthElement, daysContainer) {
-        const monthYear = `${this.monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
-        monthElement.textContent = monthYear;
-
-        daysContainer.innerHTML = '';
-
-        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
-        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
-        const daysInMonth = lastDay.getDate();
-        const startingDayOfWeek = firstDay.getDay();
-
-        // Previous month's trailing days
-        const prevMonth = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() - 1, 0);
-        for (let i = startingDayOfWeek - 1; i >= 0; i--) {
-            const dayElement = await this.createDayElement(prevMonth.getDate() - i, true);
-            daysContainer.appendChild(dayElement);
-        }
-
-        // Current month's days
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dayElement = await this.createDayElement(day, false);
-            daysContainer.appendChild(dayElement);
-        }
-
-        // Next month's leading days
-        const totalCells = daysContainer.children.length;
-        const remainingCells = 42 - totalCells;
-        for (let day = 1; day <= remainingCells; day++) {
-            const dayElement = await this.createDayElement(day, true);
-            daysContainer.appendChild(dayElement);
-        }
     }
 
     async createDayElement(day, isOtherMonth, fullDate = null) {
