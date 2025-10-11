@@ -944,9 +944,22 @@ html {
         margin-right: auto;
     }
 
+    .overview-right {
+        text-align: center;
+    }
+
+    .stat-block {
+        align-items: center;
+        text-align: center;
+    }
+
     .section-intro {
         margin-left: auto;
         margin-right: auto;
+        text-align: center;
+    }
+
+    .facility-item {
         text-align: center;
     }
 
@@ -957,6 +970,14 @@ html {
 
     .cost-value {
         text-align: left;
+    }
+
+    .us-info h3 {
+        text-align: center;
+    }
+
+    .info-block {
+        text-align: center;
     }
 
     .banner-track {
