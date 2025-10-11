@@ -963,6 +963,10 @@ html {
         text-align: center;
     }
 
+    .us-costs h3 {
+        text-align: center;
+    }
+
     .cost-row {
         grid-template-columns: 1fr;
         gap: 0.5rem;
