@@ -25,6 +25,12 @@ let currentMobileSlideIndex = 0;
 const mobileSlides = document.querySelectorAll('.mobile-slide');
 let mobileSlideInterval;
 
+// Testimonial slideshow variables
+let currentTestimonialIndex = 0;
+const testimonialCards = document.querySelectorAll('.testimonial-card');
+const testimonialDots = document.querySelectorAll('.slider-dot');
+let testimonialInterval;
+
 // Slideshow functions
 function showSlide(index) {
     // Hide all slides
@@ -651,5 +657,56 @@ function calculateTotalCost() {
             totalCostDisplay.textContent = 'Select number of riders to calculate';
             totalCostDisplay.classList.remove('calculated');
         }
+    }
+}
+
+// Testimonial Slideshow Functions
+function showTestimonial(index) {
+    testimonialCards.forEach((card, i) => {
+        card.classList.toggle('active', i === index);
+    });
+    
+    testimonialDots.forEach((dot, i) => {
+        dot.classList.toggle('active', i === index);
+    });
+}
+
+function nextTestimonial() {
+    currentTestimonialIndex = (currentTestimonialIndex + 1) % testimonialCards.length;
+    showTestimonial(currentTestimonialIndex);
+}
+
+function goToTestimonial(index) {
+    currentTestimonialIndex = index;
+    showTestimonial(currentTestimonialIndex);
+}
+
+function startTestimonialAutoplay() {
+    testimonialInterval = setInterval(nextTestimonial, 8000); // Change every 8 seconds
+}
+
+function stopTestimonialAutoplay() {
+    clearInterval(testimonialInterval);
+}
+
+// Initialize testimonial slideshow if elements exist
+if (testimonialCards.length > 0) {
+    showTestimonial(0);
+    startTestimonialAutoplay();
+    
+    // Dot navigation
+    testimonialDots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+            stopTestimonialAutoplay();
+            goToTestimonial(index);
+            startTestimonialAutoplay();
+        });
+    });
+    
+    // Pause autoplay on hover
+    const slider = document.querySelector('.testimonials-slider');
+    if (slider) {
+        slider.addEventListener('mouseenter', stopTestimonialAutoplay);
+        slider.addEventListener('mouseleave', startTestimonialAutoplay);
     }
 }
