@@ -417,6 +417,174 @@ main {
     color: #ffffff;
 }
 
+.testimonials-section {
+    position: relative;
+    margin: clamp(4rem, 8vw, 6rem) auto 0;
+    padding: clamp(3rem, 8vw, 5rem) 0;
+    overflow: hidden;
+    background: radial-gradient(circle at top right, rgba(255, 165, 0, 0.08), transparent 55%),
+                linear-gradient(180deg, #101010 0%, #070707 100%);
+    border-radius: clamp(1.5rem, 3vw, 2.5rem);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+.testimonials-section::before,
+.testimonials-section::after {
+    content: '';
+    position: absolute;
+    width: clamp(220px, 30vw, 320px);
+    height: clamp(220px, 30vw, 320px);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 165, 0, 0.18) 0%, rgba(255, 107, 53, 0) 65%);
+    filter: blur(0.5px);
+    z-index: 0;
+}
+
+.testimonials-section::before {
+    top: -15%;
+    left: -8%;
+}
+
+.testimonials-section::after {
+    bottom: -25%;
+    right: -10%;
+}
+
+.testimonials-container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+}
+
+.testimonials-header .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.75rem;
+}
+
+.testimonials-header h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    letter-spacing: 0.1rem;
+    text-transform: uppercase;
+    color: #ffffff;
+    margin-bottom: 1rem;
+}
+
+.testimonials-header .subtitle {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.75);
+    max-width: 360px;
+    margin: 0;
+}
+
+.testimonials-slider {
+    position: relative;
+    overflow: hidden;
+}
+
+.testimonial-slide {
+    opacity: 0;
+    transform: translateY(25px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+    position: absolute;
+    inset: 0;
+}
+
+.testimonial-slide.active {
+    opacity: 1;
+    transform: translateY(0);
+    position: relative;
+}
+
+.testimonial-card {
+    background: rgba(12, 12, 12, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: clamp(1.25rem, 2vw, 1.75rem);
+    padding: clamp(2.5rem, 5vw, 3.5rem);
+    box-shadow:
+        0 25px 60px rgba(0, 0, 0, 0.45),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.testimonial-card::before {
+    content: '“';
+    font-family: 'Oswald', sans-serif;
+    position: absolute;
+    top: clamp(1rem, 2vw, 1.5rem);
+    left: clamp(1.5rem, 3vw, 2rem);
+    font-size: clamp(3.5rem, 7vw, 5rem);
+    color: rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+.testimonial-card .quote {
+    font-size: clamp(1.1rem, 2.3vw, 1.35rem);
+    line-height: 1.8;
+    color: rgba(255, 255, 255, 0.92);
+    margin-bottom: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 300;
+}
+
+.testimonial-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.testimonial-meta .name {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.15rem;
+    text-transform: uppercase;
+    color: rgba(255, 165, 0, 0.9);
+}
+
+.testimonial-meta .role {
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.08rem;
+}
+
+.testimonials-progress {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.75rem;
+}
+
+.testimonials-progress .progress-bar {
+    flex: 1;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.15);
+    overflow: hidden;
+    position: relative;
+}
+
+.testimonials-progress .progress-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(255, 165, 0, 0.3), rgba(255, 107, 53, 0.7));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+}
+
+.testimonials-progress .progress-bar.active::after {
+    transform: scaleX(1);
+}
+
 @media (max-width: 1024px) {
     .programs-showcase {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -516,6 +684,43 @@ main {
     .slide img {
         object-position: center center;
         filter: brightness(0.8) contrast(1.2);
+    }
+
+    .testimonials-section {
+        border-radius: 0;
+        margin: clamp(3rem, 10vw, 4rem) -1.25rem 0;
+        padding: clamp(3rem, 10vw, 4rem) 1.25rem;
+    }
+
+    .testimonials-container {
+        grid-template-columns: 1fr;
+        gap: clamp(2rem, 8vw, 3rem);
+    }
+
+    .testimonials-header {
+        text-align: center;
+    }
+
+    .testimonials-header .subtitle {
+        max-width: none;
+        font-size: 1rem;
+    }
+
+    .testimonials-slider {
+        min-height: 360px;
+    }
+
+    .testimonial-card {
+        padding: clamp(2.25rem, 9vw, 3rem);
+    }
+
+    .testimonial-card .quote {
+        font-size: clamp(1.05rem, 4.5vw, 1.2rem);
+    }
+
+    .testimonial-meta {
+        align-items: center;
+        text-align: center;
     }
     
     /* CTA Button mobile styles */

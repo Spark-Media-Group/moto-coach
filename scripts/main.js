@@ -25,6 +25,12 @@ let currentMobileSlideIndex = 0;
 const mobileSlides = document.querySelectorAll('.mobile-slide');
 let mobileSlideInterval;
 
+// Testimonials slideshow variables
+let currentTestimonialIndex = 0;
+const testimonialSlides = document.querySelectorAll('.testimonial-slide');
+const testimonialProgressBars = document.querySelectorAll('.testimonials-progress .progress-bar');
+let testimonialInterval;
+
 // Slideshow functions
 function showSlide(index) {
     // Hide all slides
@@ -145,6 +151,34 @@ function startMobileSlideshow() {
     }, 4000); // Change mobile homepage slide every 4 seconds
 }
 
+// Testimonials slideshow functions
+function showTestimonialSlide(index) {
+    testimonialSlides.forEach((slide, slideIndex) => {
+        slide.classList.toggle('active', slideIndex === index);
+    });
+
+    if (testimonialProgressBars.length > 0) {
+        testimonialProgressBars.forEach((bar, barIndex) => {
+            bar.classList.toggle('active', barIndex === index);
+        });
+    }
+}
+
+function nextTestimonialSlide() {
+    if (testimonialSlides.length === 0) {
+        return;
+    }
+
+    currentTestimonialIndex = (currentTestimonialIndex + 1) % testimonialSlides.length;
+    showTestimonialSlide(currentTestimonialIndex);
+}
+
+function startTestimonialSlideshow() {
+    testimonialInterval = setInterval(() => {
+        nextTestimonialSlide();
+    }, 8000);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Welcome to Moto Coach.');
     
@@ -214,7 +248,12 @@ document.addEventListener('DOMContentLoaded', function() {
         showMobileSlide(0); // Show first mobile slide
         startMobileSlideshow(); // Start auto-advance
     }
-    
+
+    if (testimonialSlides.length > 0) {
+        showTestimonialSlide(0);
+        startTestimonialSlideshow();
+    }
+
     // Mobile coaching hero scroll down button functionality - dedicated function
     const scrollDownBtn = document.getElementById('scroll-down');
     if (scrollDownBtn) {
