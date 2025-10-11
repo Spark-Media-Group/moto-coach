@@ -641,8 +641,23 @@ h4 {
         gap: 0.75rem;
     }
 
+    .overview-copy {
+        text-align: center;
+    }
+
+    .overview-copy .eyebrow,
+    .overview-copy .display,
+    .overview-copy .lede {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .overview-highlights {
+        justify-items: center;
+    }
+
     .overview-media {
-        order: -1;
+        order: 0;
     }
 
     .image-stack {
@@ -650,6 +665,8 @@ h4 {
         display: flex;
         flex-direction: column;
         gap: 1rem;
+        max-width: 340px;
+        margin: 0 auto;
     }
 
     .image-primary,
@@ -658,23 +675,76 @@ h4 {
     }
 
     .image-secondary {
-        width: 100%;
-        margin: 0;
+        width: 85%;
+        margin: 0 auto;
+    }
+
+    .highlight {
+        align-items: center;
+        text-align: center;
+    }
+
+    .pillar-grid,
+    .structure-grid {
+        justify-items: center;
+    }
+
+    .pillar-item,
+    .structure-card {
+        text-align: center;
+        align-items: center;
     }
 
     .gallery-track {
-        grid-auto-columns: minmax(160px, 1fr);
+        grid-template-columns: 1fr;
+        grid-auto-flow: row;
+        grid-auto-columns: unset;
+        justify-items: center;
+    }
+
+    .gallery-frame {
+        max-width: 320px;
+        width: 100%;
+        margin: 0 auto;
     }
 
     .cta-box {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: center;
+        text-align: center;
     }
 
     .highlight,
     .pillar-item,
     .structure-card {
         min-height: auto;
+    }
+
+    .section-header {
+        text-align: center;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .section-header .lede {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .cert-copy {
+        text-align: center;
+    }
+
+    .cert-list {
+        justify-items: center;
+    }
+
+    .cert-list li {
+        text-align: center;
+    }
+
+    .overview-cta {
+        justify-content: center;
     }
 }
 
@@ -706,7 +776,7 @@ h4 {
     }
 
     .gallery-track {
-        grid-auto-columns: minmax(75vw, 1fr);
+        grid-auto-columns: unset;
         padding: 0 clamp(0.75rem, 4vw, 1.25rem);
     }
 }
