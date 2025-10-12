@@ -7,6 +7,7 @@ import {
     extractOrderId,
     waitForOrderCosts
 } from './_utils/printful';
+import { prepareOrderPayload } from './_utils/printful-order.js';
 
 const PRINTFUL_API_URL = PRINTFUL_ORDERS_ENDPOINT;
 
@@ -83,6 +84,8 @@ export default async function handler(req, res) {
         const storeId = process.env.PRINTFUL_STORE_ID?.trim() || undefined;
         const createUrl = new URL(PRINTFUL_API_URL);
         createUrl.searchParams.set('confirm', 'false');
+
+        await prepareOrderPayload(orderPayload, { apiKey, storeId });
 
         if (!orderPayload.items && Array.isArray(orderPayload.order_items)) {
             orderPayload.items = orderPayload.order_items;

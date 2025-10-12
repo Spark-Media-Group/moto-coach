@@ -5,6 +5,7 @@ import {
     extractEstimationTaskId,
     waitForOrderEstimation
 } from './_utils/printful';
+import { prepareOrderPayload } from './_utils/printful-order.js';
 
 function parseRequestBody(req) {
     if (!req) {
@@ -74,6 +75,8 @@ export default async function handler(req, res) {
     const storeId = process.env.PRINTFUL_STORE_ID?.trim() || undefined;
 
     try {
+        await prepareOrderPayload(orderPayload, { apiKey, storeId });
+
         if (!orderPayload.items && Array.isArray(orderPayload.order_items)) {
             orderPayload.items = orderPayload.order_items;
         }
