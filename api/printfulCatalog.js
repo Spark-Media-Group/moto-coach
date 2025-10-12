@@ -2,6 +2,9 @@ import { applyCors } from './_utils/cors';
 
 const PRINTFUL_API_BASE = 'https://api.printful.com/v2';
 const PRODUCT_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/store/products`;
+const STORE_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/stores`;
+
+const DEFAULT_STORE_NAME = "Troy's Test Store";
 
 function parseNumber(value) {
     const numeric = typeof value === 'number' ? value : parseFloat(value);
@@ -9,12 +12,19 @@ function parseNumber(value) {
 }
 
 async function fetchFromPrintful(apiKey, url, options = {}) {
+    const { headers: extraHeaders, storeId, ...fetchOptions } = options;
+
     const headers = {
         'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...extraHeaders
     };
 
-    const response = await fetch(url, { ...options, headers });
+    if (storeId) {
+        headers['X-PF-Store-Id'] = storeId;
+    }
+
+    const response = await fetch(url, { ...fetchOptions, headers });
     let data = null;
 
     try {
@@ -31,6 +41,121 @@ async function fetchFromPrintful(apiKey, url, options = {}) {
     }
 
     return data;
+}
+
+const STORE_CACHE = {
+    resolved: false,
+    value: null
+};
+
+async function resolveStoreContext(apiKey) {
+    if (STORE_CACHE.resolved) {
+        return STORE_CACHE.value;
+    }
+
+    const explicitId = process.env.PRINTFUL_STORE_ID?.trim();
+    const explicitName = process.env.PRINTFUL_STORE_NAME?.trim();
+
+    if (explicitId) {
+        const context = { id: explicitId, name: explicitName || null, source: 'env-id' };
+        STORE_CACHE.resolved = true;
+        STORE_CACHE.value = context;
+        return context;
+    }
+
+    try {
+        const storesResponse = await fetchFromPrintful(apiKey, STORE_LIST_ENDPOINT);
+        const stores = Array.isArray(storesResponse?.result)
+            ? storesResponse.result
+            : Array.isArray(storesResponse?.result?.items)
+                ? storesResponse.result.items
+                : Array.isArray(storesResponse?.stores)
+                    ? storesResponse.stores
+                    : [];
+
+        const preferredName = explicitName || DEFAULT_STORE_NAME;
+        let matchedStore = null;
+
+        if (preferredName) {
+            matchedStore = stores.find(store => {
+                if (!store?.name) {
+                    return false;
+                }
+                return store.name.toLowerCase() === preferredName.toLowerCase();
+            });
+        }
+
+        if (!matchedStore && stores.length > 0) {
+            matchedStore = stores[0];
+        }
+
+        const context = matchedStore
+            ? { id: matchedStore.id || matchedStore.store_id || null, name: matchedStore.name || null, source: 'api' }
+            : { id: null, name: preferredName || null, source: 'default' };
+
+        STORE_CACHE.resolved = true;
+        STORE_CACHE.value = context;
+        return context;
+    } catch (error) {
+        console.warn('Printful: failed to resolve store context', error);
+        STORE_CACHE.resolved = true;
+        STORE_CACHE.value = { id: null, name: explicitName || DEFAULT_STORE_NAME, source: 'error' };
+        return STORE_CACHE.value;
+    }
+}
+
+function extractProductSummaries(listResponse) {
+    if (!listResponse) {
+        return [];
+    }
+
+    if (Array.isArray(listResponse.result)) {
+        return listResponse.result;
+    }
+
+    if (Array.isArray(listResponse.result?.sync_products)) {
+        return listResponse.result.sync_products;
+    }
+
+    if (Array.isArray(listResponse.sync_products)) {
+        return listResponse.sync_products;
+    }
+
+    if (Array.isArray(listResponse.result?.items)) {
+        return listResponse.result.items;
+    }
+
+    return [];
+}
+
+async function fetchProductList(apiKey, storeContext, limit) {
+    const listUrl = new URL(PRODUCT_LIST_ENDPOINT);
+    listUrl.searchParams.set('limit', String(limit));
+
+    if (storeContext?.id) {
+        listUrl.searchParams.set('store_id', String(storeContext.id));
+    }
+
+    try {
+        const listResponse = await fetchFromPrintful(apiKey, listUrl.toString(), {
+            storeId: storeContext?.id
+        });
+        const summaries = extractProductSummaries(listResponse);
+        return { summaries, usedFallback: false };
+    } catch (error) {
+        if (error.status === 404 && storeContext?.id) {
+            const fallbackUrl = `${PRINTFUL_API_BASE}/stores/${storeContext.id}/products`;
+            const url = new URL(fallbackUrl);
+            url.searchParams.set('limit', String(limit));
+            const listResponse = await fetchFromPrintful(apiKey, url.toString(), {
+                storeId: storeContext.id
+            });
+            const summaries = extractProductSummaries(listResponse);
+            return { summaries, usedFallback: true };
+        }
+
+        throw error;
+    }
 }
 
 function normaliseVariant(variant, productName) {
@@ -163,6 +288,19 @@ function deriveCategory(product) {
     };
 }
 
+function getSummaryId(summary) {
+    if (!summary) {
+        return null;
+    }
+
+    return summary.id
+        ?? summary.product_id
+        ?? summary.sync_product_id
+        ?? summary.product?.id
+        ?? summary.sync_product?.id
+        ?? null;
+}
+
 function normaliseProduct(summary, detail) {
     const product = detail?.result?.sync_product || detail?.sync_product || summary || {};
     const variantsSource = detail?.result?.sync_variants || detail?.sync_variants || [];
@@ -183,8 +321,8 @@ function normaliseProduct(summary, detail) {
     const category = deriveCategory(product) || deriveCategory(summary);
 
     return {
-        id: `printful-product-${product.id ?? summary?.id ?? Math.random().toString(36).slice(2)}`,
-        printfulId: product.id ?? summary?.id ?? null,
+        id: `printful-product-${product.id ?? getSummaryId(summary) ?? Math.random().toString(36).slice(2)}`,
+        printfulId: product.id ?? getSummaryId(summary) ?? null,
         externalId: product.external_id ?? summary?.external_id ?? null,
         name: product.name || summary?.name || 'Untitled product',
         description: product.description || summary?.description || '',
@@ -207,7 +345,7 @@ function summariseProduct(summary) {
     }
 
     return {
-        id: summary.id,
+        id: getSummaryId(summary),
         externalId: summary.external_id || null,
         name: summary.name || 'Untitled product',
         thumbnailUrl: summary.thumbnail_url || null,
@@ -242,28 +380,31 @@ export default async function handler(req, res) {
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 50;
 
     try {
-        const listUrl = new URL(PRODUCT_LIST_ENDPOINT);
-        listUrl.searchParams.set('limit', String(limit));
-
-        const listResponse = await fetchFromPrintful(apiKey, listUrl.toString());
-        const productSummaries = Array.isArray(listResponse?.result)
-            ? listResponse.result
-            : Array.isArray(listResponse?.result?.sync_products)
-                ? listResponse.result.sync_products
-                : [];
+        const storeContext = await resolveStoreContext(apiKey);
+        const { summaries: productSummaries, usedFallback } = await fetchProductList(apiKey, storeContext, limit);
 
         if (!includeDetails) {
             res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
             return res.status(200).json({
                 success: true,
-                products: productSummaries.map(summariseProduct).filter(Boolean)
+                products: productSummaries.map(summariseProduct).filter(Boolean),
+                store: storeContext
             });
         }
 
         const detailResults = await Promise.allSettled(
-            productSummaries.map(summary =>
-                fetchFromPrintful(apiKey, `${PRODUCT_LIST_ENDPOINT}/${summary.id}`)
-            )
+            productSummaries.map(summary => {
+                const summaryId = getSummaryId(summary);
+                if (!summaryId) {
+                    return Promise.reject(new Error('Product summary missing identifier'));
+                }
+
+                const detailUrl = usedFallback && storeContext?.id
+                    ? `${PRINTFUL_API_BASE}/stores/${storeContext.id}/products/${summaryId}`
+                    : `${PRODUCT_LIST_ENDPOINT}/${summaryId}`;
+
+                return fetchFromPrintful(apiKey, detailUrl, { storeId: storeContext?.id });
+            })
         );
 
         const products = [];
@@ -276,7 +417,7 @@ export default async function handler(req, res) {
                 products.push(normaliseProduct(summary, result.value));
             } else {
                 errors.push({
-                    productId: summary?.id || null,
+                    productId: getSummaryId(summary),
                     message: result.reason?.message || 'Failed to load product detail'
                 });
             }
@@ -286,7 +427,8 @@ export default async function handler(req, res) {
         return res.status(errors.length > 0 ? 207 : 200).json({
             success: errors.length === 0,
             products,
-            errors: errors.length ? errors : undefined
+            errors: errors.length ? errors : undefined,
+            store: storeContext
         });
     } catch (error) {
         console.error('Failed to fetch Printful catalog', error);
