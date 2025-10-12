@@ -28,6 +28,179 @@ function parseNumber(value) {
     return Number.isFinite(numeric) ? numeric : null;
 }
 
+function normalisePlacementValue(value) {
+    if (!value || typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const lowered = trimmed.toLowerCase().replace(/[\s-]+/g, '_');
+
+    if (lowered === 'front') {
+        return 'front_large';
+    }
+
+    if (lowered === 'back') {
+        return 'back_large';
+    }
+
+    return lowered;
+}
+
+function deriveTechnique(file) {
+    if (!file || typeof file !== 'object') {
+        return null;
+    }
+
+    if (typeof file.technique === 'string' && file.technique.trim()) {
+        return file.technique.trim();
+    }
+
+    if (Array.isArray(file.options)) {
+        const option = file.options.find(opt => opt?.id === 'technique' && typeof opt?.value === 'string');
+        if (option) {
+            return option.value.trim();
+        }
+    }
+
+    return null;
+}
+
+function derivePlacementFromFile(file) {
+    if (!file || typeof file !== 'object') {
+        return null;
+    }
+
+    if (typeof file.placement === 'string' && file.placement.trim()) {
+        return normalisePlacementValue(file.placement);
+    }
+
+    if (Array.isArray(file.options)) {
+        const placementOption = file.options.find(opt => opt?.id === 'placement' && typeof opt?.value === 'string');
+        if (placementOption) {
+            return normalisePlacementValue(placementOption.value);
+        }
+    }
+
+    if (typeof file.type === 'string' && file.type.trim()) {
+        const typeLower = file.type.trim().toLowerCase();
+        if (typeLower !== 'preview' && typeLower !== 'default') {
+            return normalisePlacementValue(file.type);
+        }
+    }
+
+    return null;
+}
+
+function extractOrderFilePayload(file) {
+    if (!file || typeof file !== 'object') {
+        return null;
+    }
+
+    const placement = derivePlacementFromFile(file);
+    const filePayload = {
+        type: placement || (typeof file.type === 'string' ? file.type.trim().toLowerCase() : undefined)
+    };
+
+    if (typeof file.id === 'number' || typeof file.id === 'string') {
+        filePayload.file_id = file.id;
+    } else if (typeof file.file_id === 'number' || typeof file.file_id === 'string') {
+        filePayload.file_id = file.file_id;
+    }
+
+    const url = file.url || file.preview_url || file.thumbnail_url;
+    if (url) {
+        filePayload.url = url;
+    }
+
+    if (!filePayload.type && filePayload.url) {
+        filePayload.type = 'default';
+    }
+
+    if (!filePayload.type) {
+        return null;
+    }
+
+    return filePayload;
+}
+
+function buildVariantFulfilmentData(variant) {
+    const files = Array.isArray(variant?.files) ? variant.files : [];
+    const placementsMap = new Map();
+    const filesForOrder = [];
+
+    files.forEach(file => {
+        const placement = derivePlacementFromFile(file);
+        const technique = deriveTechnique(file) || 'dtg';
+        const orderFile = extractOrderFilePayload(file);
+
+        if (orderFile) {
+            filesForOrder.push(orderFile);
+        }
+
+        if (!placement) {
+            return;
+        }
+
+        const key = placement;
+        if (!placementsMap.has(key)) {
+            placementsMap.set(key, {
+                placement: key,
+                technique,
+                layers: []
+            });
+        }
+
+        const layer = { type: 'file' };
+        if (typeof file.id === 'number' || typeof file.id === 'string') {
+            layer.file_id = file.id;
+        } else if (typeof file.file_id === 'number' || typeof file.file_id === 'string') {
+            layer.file_id = file.file_id;
+        }
+
+        const url = file.url || file.preview_url || file.thumbnail_url;
+        if (url) {
+            layer.url = url;
+        }
+
+        if (!layer.file_id && !layer.url) {
+            return;
+        }
+
+        placementsMap.get(key).layers.push(layer);
+    });
+
+    const placements = Array.from(placementsMap.values())
+        .map(entry => ({
+            ...entry,
+            layers: entry.layers.filter(layer => layer && (layer.file_id || layer.url))
+        }))
+        .filter(entry => entry.layers.length > 0);
+
+    const uniqueFiles = [];
+    const seenFileKeys = new Set();
+    filesForOrder.forEach(file => {
+        if (!file || !file.type) {
+            return;
+        }
+        const key = `${file.type}|${file.file_id || file.url || ''}`;
+        if (seenFileKeys.has(key)) {
+            return;
+        }
+        seenFileKeys.add(key);
+        uniqueFiles.push(file);
+    });
+
+    return {
+        placements,
+        files: uniqueFiles
+    };
+}
+
 async function fetchFromPrintful(apiKey, url, options = {}) {
     const { headers: extraHeaders, storeId, ...fetchOptions } = options;
 
@@ -182,6 +355,8 @@ function normaliseVariant(variant, productName) {
         .map(file => file?.preview_url || file?.thumbnail_url || file?.url)
         .filter(url => typeof url === 'string' && url.trim().length > 0);
 
+    const fulfilmentData = buildVariantFulfilmentData(variant);
+
     return {
         id: `printful-variant-${printfulVariantId ?? catalogVariantId ?? name}`,
         printfulVariantId,
@@ -199,6 +374,8 @@ function normaliseVariant(variant, productName) {
             size: variant.size || variant.option_values?.size || null,
             color: variant.color || variant.option_values?.color || null
         },
+        placements: fulfilmentData.placements,
+        orderFiles: fulfilmentData.files,
         productName
     };
 }

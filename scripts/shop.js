@@ -552,18 +552,64 @@
         });
     }
 
+    function sanitisePlacementLayers(placements) {
+        if (!Array.isArray(placements)) {
+            return [];
+        }
+
+        return placements
+            .filter(entry => entry && typeof entry === 'object' && typeof entry.placement === 'string')
+            .map(entry => ({
+                placement: entry.placement,
+                technique: entry.technique || 'dtg',
+                layers: Array.isArray(entry.layers)
+                    ? entry.layers
+                        .filter(layer => layer && typeof layer === 'object' && (layer.file_id || layer.url))
+                        .map(layer => ({
+                            type: layer.type || 'file',
+                            file_id: layer.file_id || undefined,
+                            url: layer.url || undefined
+                        }))
+                    : []
+            }))
+            .filter(entry => entry.layers.length > 0);
+    }
+
+    function sanitiseOrderFiles(files) {
+        if (!Array.isArray(files)) {
+            return [];
+        }
+
+        return files
+            .filter(file => file && typeof file === 'object' && typeof file.type === 'string')
+            .map(file => ({
+                type: file.type,
+                file_id: file.file_id || undefined,
+                url: file.url || undefined
+            }));
+    }
+
     function addItemToCart(product, variant, quantity) {
         const existing = state.cart.find(item => item.variantId === variant.id);
         const price = Number.isFinite(variant.retailPrice) ? variant.retailPrice : product.priceRange?.min || 0;
         const currency = variant.currency || product.currency || state.currency || DEFAULT_CURRENCY;
         const image = variant.imageUrl || product.thumbnailUrl || (product.images && product.images[0]?.url) || null;
+        const placements = sanitisePlacementLayers(variant.placements);
+        const orderFiles = sanitiseOrderFiles(variant.orderFiles);
 
         if (existing) {
             existing.quantity += quantity;
+            if (!existing.placements?.length && placements.length) {
+                existing.placements = placements;
+            }
+            if (!existing.orderFiles?.length && orderFiles.length) {
+                existing.orderFiles = orderFiles;
+            }
         } else {
             state.cart.push({
                 productId: product.id,
                 productName: product.name,
+                productPrintfulId: product.printfulId || null,
                 variantId: variant.id,
                 catalogVariantId: variant.catalogVariantId,
                 quantity,
@@ -571,7 +617,9 @@
                 currency,
                 image,
                 variantName: variant.optionLabel || variant.name || 'Variant',
-                printfulVariantId: variant.printfulVariantId
+                printfulVariantId: variant.printfulVariantId,
+                placements,
+                orderFiles
             });
         }
 
@@ -699,8 +747,13 @@
             printful: {
                 catalogVariantId: item.catalogVariantId,
                 variantId: item.printfulVariantId || item.catalogVariantId,
-                variantName: item.variantName
-            }
+                variantName: item.variantName,
+                productId: item.productPrintfulId || null,
+                placements: item.placements && item.placements.length ? item.placements : undefined,
+                files: item.orderFiles && item.orderFiles.length ? item.orderFiles : undefined
+            },
+            placements: item.placements && item.placements.length ? item.placements : undefined,
+            files: item.orderFiles && item.orderFiles.length ? item.orderFiles : undefined
         }));
 
         const summary = {
@@ -731,7 +784,13 @@
             if (!Array.isArray(parsed)) {
                 return [];
             }
-            return parsed.filter(item => item && item.variantId && item.catalogVariantId);
+            return parsed
+                .filter(item => item && item.variantId && item.catalogVariantId)
+                .map(item => ({
+                    ...item,
+                    placements: sanitisePlacementLayers(item.placements),
+                    orderFiles: sanitiseOrderFiles(item.orderFiles)
+                }));
         } catch (error) {
             console.warn('Shop: Unable to read stored cart', error);
             return [];

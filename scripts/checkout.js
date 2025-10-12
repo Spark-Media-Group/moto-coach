@@ -871,6 +871,140 @@ function parsePositiveNumber(value) {
     return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
 }
 
+function normalisePlacementName(value) {
+    if (!value || typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const lowered = trimmed.toLowerCase().replace(/[\s-]+/g, '_');
+
+    if (lowered === 'default' || lowered === 'preview') {
+        return null;
+    }
+
+    if (lowered === 'front') {
+        return 'front_large';
+    }
+
+    if (lowered === 'back') {
+        return 'back_large';
+    }
+
+    return lowered;
+}
+
+function sanitiseOrderLayers(layers) {
+    if (!Array.isArray(layers)) {
+        return [];
+    }
+
+    return layers
+        .filter(layer => layer && typeof layer === 'object' && (layer.file_id || layer.url))
+        .map(layer => ({
+            type: layer.type || 'file',
+            file_id: layer.file_id || undefined,
+            url: layer.url || undefined
+        }))
+        .filter(layer => layer.file_id || layer.url);
+}
+
+function sanitiseOrderPlacements(placements) {
+    if (!Array.isArray(placements)) {
+        return [];
+    }
+
+    return placements
+        .filter(entry => entry && typeof entry === 'object' && typeof entry.placement === 'string')
+        .map(entry => {
+            const placement = normalisePlacementName(entry.placement) || normalisePlacementName(entry.type) || entry.placement;
+            const layers = sanitiseOrderLayers(entry.layers);
+            return {
+                placement,
+                technique: entry.technique || 'dtg',
+                layers
+            };
+        })
+        .filter(entry => entry.placement && entry.layers.length > 0);
+}
+
+function sanitiseOrderFiles(files) {
+    if (!Array.isArray(files)) {
+        return [];
+    }
+
+    return files
+        .filter(file => file && typeof file === 'object' && (typeof file.type === 'string' || typeof file.placement === 'string'))
+        .map(file => {
+            const normalised = normalisePlacementName(file.placement) || normalisePlacementName(file.type);
+            let placement = normalised;
+            if (!placement && typeof file.type === 'string') {
+                const fallback = file.type.trim().toLowerCase();
+                if (fallback && fallback !== 'default' && fallback !== 'preview') {
+                    placement = fallback;
+                }
+            }
+            const payload = {
+                type: placement
+            };
+
+            if (file.file_id || file.id) {
+                payload.file_id = file.file_id || file.id;
+            }
+
+            const url = file.url || file.preview_url || file.thumbnail_url;
+            if (url) {
+                payload.url = url;
+            }
+
+            return payload;
+        })
+        .filter(file => file.type && (file.file_id || file.url));
+}
+
+function derivePlacementsFromFiles(files) {
+    const placementsMap = new Map();
+
+    files.forEach(file => {
+        if (!file || typeof file !== 'object' || !file.type) {
+            return;
+        }
+
+        const placement = normalisePlacementName(file.type) || file.type;
+        if (!placement) {
+            return;
+        }
+
+        if (!placementsMap.has(placement)) {
+            placementsMap.set(placement, {
+                placement,
+                technique: 'dtg',
+                layers: []
+            });
+        }
+
+        const layer = { type: 'file' };
+        if (file.file_id) {
+            layer.file_id = file.file_id;
+        }
+        if (file.url) {
+            layer.url = file.url;
+        }
+
+        if (!layer.file_id && !layer.url) {
+            return;
+        }
+
+        placementsMap.get(placement).layers.push(layer);
+    });
+
+    return Array.from(placementsMap.values()).filter(entry => entry.layers.length > 0);
+}
+
 function extractPrintfulItemFromLine(line, currency) {
     if (!line) {
         return null;
@@ -912,9 +1046,22 @@ function extractPrintfulItemFromLine(line, currency) {
     }
 
     if (Array.isArray(line.placements)) {
-        item.placements = line.placements;
+        item.placements = sanitiseOrderPlacements(line.placements);
     } else if (Array.isArray(line.printful?.placements)) {
-        item.placements = line.printful.placements;
+        item.placements = sanitiseOrderPlacements(line.printful.placements);
+    }
+
+    if (Array.isArray(line.files)) {
+        item.files = sanitiseOrderFiles(line.files);
+    } else if (Array.isArray(line.printful?.files)) {
+        item.files = sanitiseOrderFiles(line.printful.files);
+    }
+
+    if ((!item.placements || item.placements.length === 0) && item.files?.length) {
+        const derived = derivePlacementsFromFiles(item.files);
+        if (derived.length > 0) {
+            item.placements = derived;
+        }
     }
 
     return item;
@@ -942,7 +1089,8 @@ function buildPrintfulOrderPayload(paymentIntentId, customerDetails) {
         address1: customerDetails.address1,
         address2: customerDetails.address2 || undefined,
         city: customerDetails.city,
-        state_code: stateCode,
+        state_code: stateCode || undefined,
+        state_name: customerDetails.state || undefined,
         country_code: countryCode,
         zip: customerDetails.postalCode
     };
