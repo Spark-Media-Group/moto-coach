@@ -6,6 +6,23 @@ const STORE_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/stores`;
 
 const DEFAULT_STORE_NAME = "Troy's Test Store";
 
+function normaliseRegionName(region) {
+    if (!region || typeof region !== 'string') {
+        return null;
+    }
+
+    const trimmed = region.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    return trimmed.toLowerCase();
+}
+
+const DEFAULT_SELLING_REGION_NAME = normaliseRegionName(process.env.PRINTFUL_SELLING_REGION_NAME)
+    || normaliseRegionName(process.env.PRINTFUL_SELLING_REGION)
+    || 'worldwide';
+
 function parseNumber(value) {
     const numeric = typeof value === 'number' ? value : parseFloat(value);
     return Number.isFinite(numeric) ? numeric : null;
@@ -57,7 +74,12 @@ async function resolveStoreContext(apiKey) {
     const explicitName = process.env.PRINTFUL_STORE_NAME?.trim();
 
     if (explicitId) {
-        const context = { id: explicitId, name: explicitName || null, source: 'env-id' };
+        const context = {
+            id: explicitId,
+            name: explicitName || null,
+            source: 'env-id',
+            sellingRegion: DEFAULT_SELLING_REGION_NAME
+        };
         STORE_CACHE.resolved = true;
         STORE_CACHE.value = context;
         return context;
@@ -90,8 +112,22 @@ async function resolveStoreContext(apiKey) {
         }
 
         const context = matchedStore
-            ? { id: matchedStore.id || matchedStore.store_id || null, name: matchedStore.name || null, source: 'api' }
-            : { id: null, name: preferredName || null, source: 'default' };
+            ? {
+                id: matchedStore.id || matchedStore.store_id || null,
+                name: matchedStore.name || null,
+                source: 'api',
+                sellingRegion: normaliseRegionName(
+                    matchedStore.selling_region_name
+                    || matchedStore.selling_region
+                    || matchedStore.default_selling_region
+                ) || DEFAULT_SELLING_REGION_NAME
+            }
+            : {
+                id: null,
+                name: preferredName || null,
+                source: 'default',
+                sellingRegion: DEFAULT_SELLING_REGION_NAME
+            };
 
         STORE_CACHE.resolved = true;
         STORE_CACHE.value = context;
@@ -99,7 +135,12 @@ async function resolveStoreContext(apiKey) {
     } catch (error) {
         console.warn('Printful: failed to resolve store context', error);
         STORE_CACHE.resolved = true;
-        STORE_CACHE.value = { id: null, name: explicitName || DEFAULT_STORE_NAME, source: 'error' };
+        STORE_CACHE.value = {
+            id: null,
+            name: explicitName || DEFAULT_STORE_NAME,
+            source: 'error',
+            sellingRegion: DEFAULT_SELLING_REGION_NAME
+        };
         return STORE_CACHE.value;
     }
 }
@@ -128,9 +169,13 @@ function extractProductSummaries(listResponse) {
     return [];
 }
 
-async function fetchProductList(apiKey, storeContext, limit) {
+async function fetchProductList(apiKey, storeContext, limit, sellingRegionName) {
     const listUrl = new URL(PRODUCT_LIST_ENDPOINT);
     listUrl.searchParams.set('limit', String(limit));
+
+    if (sellingRegionName) {
+        listUrl.searchParams.set('selling_region_name', sellingRegionName);
+    }
 
     const listResponse = await fetchFromPrintful(apiKey, listUrl.toString(), {
         storeId: storeContext?.id
@@ -403,16 +448,35 @@ export default async function handler(req, res) {
     const limitParam = parseInt(req.query.limit, 10);
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 1), 100) : 50;
 
+    const queryRegion = normaliseRegionName(
+        req.query.sellingRegion
+        || req.query.selling_region
+        || req.query.selling_region_name
+        || req.query.region
+    );
+
     try {
         const storeContext = await resolveStoreContext(apiKey);
-        const { summaries: productSummaries } = await fetchProductList(apiKey, storeContext, limit);
+        const sellingRegionName = queryRegion
+            || storeContext?.sellingRegion
+            || DEFAULT_SELLING_REGION_NAME;
+        const { summaries: productSummaries } = await fetchProductList(
+            apiKey,
+            storeContext,
+            limit,
+            sellingRegionName
+        );
+
+        const responseStoreContext = storeContext
+            ? { ...storeContext, sellingRegion: sellingRegionName }
+            : { id: null, name: DEFAULT_STORE_NAME, source: 'default', sellingRegion: sellingRegionName };
 
         if (!includeDetails) {
             res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
             return res.status(200).json({
                 success: true,
                 products: productSummaries.map(summariseProduct).filter(Boolean),
-                store: storeContext
+                store: responseStoreContext
             });
         }
 
@@ -423,9 +487,12 @@ export default async function handler(req, res) {
                     return Promise.reject(new Error('Product summary missing identifier'));
                 }
 
-                const detailUrl = `${PRODUCT_LIST_ENDPOINT}/${encodeURIComponent(summaryId)}`;
+                const detailUrl = new URL(`${PRODUCT_LIST_ENDPOINT}/${encodeURIComponent(summaryId)}`);
+                if (sellingRegionName) {
+                    detailUrl.searchParams.set('selling_region_name', sellingRegionName);
+                }
 
-                return fetchFromPrintful(apiKey, detailUrl, { storeId: storeContext?.id });
+                return fetchFromPrintful(apiKey, detailUrl.toString(), { storeId: storeContext?.id });
             })
         );
 
@@ -450,7 +517,7 @@ export default async function handler(req, res) {
             success: errors.length === 0,
             products,
             errors: errors.length ? errors : undefined,
-            store: storeContext
+            store: responseStoreContext
         });
     } catch (error) {
         console.error('Failed to fetch Printful catalog', error);
