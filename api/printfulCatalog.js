@@ -95,45 +95,35 @@ async function resolveStoreContext(apiKey) {
                     ? storesResponse.stores
                     : [];
 
-        const preferredName = explicitName || DEFAULT_STORE_NAME;
-        let matchedStore = null;
-
-        if (preferredName) {
-            matchedStore = stores.find(store => {
-                if (!store?.name) {
-                    return false;
-                }
-                return store.name.toLowerCase() === preferredName.toLowerCase();
-            });
-        }
-
-        if (!matchedStore && stores.length > 0) {
-            matchedStore = stores[0];
-        }
-
-        const context = matchedStore
-            ? {
-                id: matchedStore.id || matchedStore.store_id || null,
-                name: matchedStore.name || null,
-                source: 'api',
+        if (stores.length === 1) {
+            const store = stores[0];
+            const context = {
+                id: store.id || store.store_id || null,
+                name: store.name || explicitName || null,
+                source: 'api-single',
                 sellingRegion: normaliseRegionName(
-                    matchedStore.selling_region_name
-                    || matchedStore.selling_region
-                    || matchedStore.default_selling_region
+                    store.selling_region_name
+                    || store.default_selling_region
+                    || store.selling_region
                 ) || DEFAULT_SELLING_REGION_NAME
-            }
-            : {
-                id: null,
-                name: preferredName || null,
-                source: 'default',
-                sellingRegion: DEFAULT_SELLING_REGION_NAME
             };
+            STORE_CACHE.resolved = true;
+            STORE_CACHE.value = context;
+            return context;
+        }
 
+        console.warn('Printful: ambiguous or empty store list response', storesResponse);
+        const fallbackContext = {
+            id: null,
+            name: explicitName || DEFAULT_STORE_NAME,
+            source: 'fallback',
+            sellingRegion: DEFAULT_SELLING_REGION_NAME
+        };
         STORE_CACHE.resolved = true;
-        STORE_CACHE.value = context;
-        return context;
+        STORE_CACHE.value = fallbackContext;
+        return fallbackContext;
     } catch (error) {
-        console.warn('Printful: failed to resolve store context', error);
+        console.warn('Printful: failed to resolve store context (api error)', error);
         STORE_CACHE.resolved = true;
         STORE_CACHE.value = {
             id: null,
