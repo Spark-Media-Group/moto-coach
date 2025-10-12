@@ -66,10 +66,6 @@ const STORE_CACHE = {
 };
 
 async function resolveStoreContext(apiKey) {
-    if (STORE_CACHE.resolved) {
-        return STORE_CACHE.value;
-    }
-
     const explicitId = process.env.PRINTFUL_STORE_ID?.trim();
     const explicitName = process.env.PRINTFUL_STORE_NAME?.trim();
 
@@ -80,9 +76,22 @@ async function resolveStoreContext(apiKey) {
             source: 'env-id',
             sellingRegion: DEFAULT_SELLING_REGION_NAME
         };
-        STORE_CACHE.resolved = true;
-        STORE_CACHE.value = context;
-        return context;
+
+        const cached = STORE_CACHE.value;
+        if (!STORE_CACHE.resolved
+            || cached?.source !== 'env-id'
+            || cached?.id !== context.id
+            || cached?.name !== context.name
+            || cached?.sellingRegion !== context.sellingRegion) {
+            STORE_CACHE.resolved = true;
+            STORE_CACHE.value = context;
+        }
+
+        return STORE_CACHE.value;
+    }
+
+    if (STORE_CACHE.resolved) {
+        return STORE_CACHE.value;
     }
 
     try {
@@ -133,12 +142,12 @@ async function resolveStoreContext(apiKey) {
             source: 'fallback',
             sellingRegion: DEFAULT_SELLING_REGION_NAME
         };
-        STORE_CACHE.resolved = true;
+        STORE_CACHE.resolved = false;
         STORE_CACHE.value = fallbackContext;
         return fallbackContext;
     } catch (error) {
         console.warn('Printful: failed to resolve store context (api error)', error);
-        STORE_CACHE.resolved = true;
+        STORE_CACHE.resolved = false;
         STORE_CACHE.value = {
             id: null,
             name: explicitName || DEFAULT_STORE_NAME,
