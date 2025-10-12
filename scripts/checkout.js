@@ -886,15 +886,6 @@ function normalisePlacementName(value) {
     if (lowered === 'default' || lowered === 'preview') {
         return null;
     }
-
-    if (lowered === 'front') {
-        return 'front_large';
-    }
-
-    if (lowered === 'back') {
-        return 'back_large';
-    }
-
     return lowered;
 }
 
@@ -947,7 +938,7 @@ function sanitiseOrderFiles(files) {
                 const fallback = file.type.trim().toLowerCase();
                 if (fallback) {
                     if (fallback === 'default' || fallback === 'preview') {
-                        placement = 'front_large';
+                        placement = 'front';
                     } else {
                         placement = normalisePlacementName(fallback) || fallback;
                     }
@@ -955,7 +946,7 @@ function sanitiseOrderFiles(files) {
             }
 
             if (!placement) {
-                placement = 'front_large';
+                placement = 'front';
             }
 
             const payload = {

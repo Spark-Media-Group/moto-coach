@@ -567,15 +567,6 @@
         if (lowered === 'default' || lowered === 'preview') {
             return null;
         }
-
-        if (lowered === 'front') {
-            return 'front_large';
-        }
-
-        if (lowered === 'back') {
-            return 'back_large';
-        }
-
         return lowered;
     }
 
@@ -613,7 +604,7 @@
                 const placement = normalisePlacementValue(file.placement)
                     || normalisePlacementValue(file.type)
                     || (typeof file.type === 'string' ? file.type.trim().toLowerCase() : null)
-                    || 'front_large';
+                    || 'front';
 
                 const url = file.url || file.preview_url || file.thumbnail_url;
 

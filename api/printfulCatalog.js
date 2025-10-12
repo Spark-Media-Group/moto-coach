@@ -3,6 +3,8 @@ import { applyCors } from './_utils/cors';
 const PRINTFUL_API_BASE = 'https://api.printful.com';
 const SYNC_PRODUCTS_ENDPOINT = `${PRINTFUL_API_BASE}/sync/products`;
 const SYNC_PRODUCT_ENDPOINT = (productId) => `${SYNC_PRODUCTS_ENDPOINT}/${encodeURIComponent(productId)}`;
+const CATALOG_PRODUCT_ENDPOINT = (productId) => `${PRINTFUL_API_BASE}/v2/catalog-products/${encodeURIComponent(productId)}`;
+const CATALOG_VARIANT_ENDPOINT = (variantId) => `${PRINTFUL_API_BASE}/v2/catalog-variants/${encodeURIComponent(variantId)}`;
 
 const DEFAULT_STORE_NAME = 'Personal orders';
 
@@ -137,13 +139,116 @@ function extractOrderFilePayload(file, placementHint = null) {
     return filePayload;
 }
 
-function buildVariantFulfilmentData(variant) {
+function canonicalPlacement(value) {
+    if (!value || typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    return trimmed.toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function buildAllowedPlacementMap(placements = []) {
+    const map = new Map();
+
+    placements.forEach((placement) => {
+        if (typeof placement !== 'string') {
+            return;
+        }
+
+        const trimmed = placement.trim();
+        if (!trimmed) {
+            return;
+        }
+
+        const canonical = canonicalPlacement(trimmed);
+        if (!canonical) {
+            return;
+        }
+
+        if (!map.has(canonical)) {
+            map.set(canonical, trimmed);
+        }
+
+        if (canonical.endsWith('_large')) {
+            const reduced = canonical.replace(/_large$/, '');
+            if (reduced && !map.has(reduced)) {
+                map.set(reduced, trimmed);
+            }
+        } else {
+            const expanded = `${canonical}_large`;
+            if (!map.has(expanded)) {
+                map.set(expanded, trimmed);
+            }
+        }
+    });
+
+    return map;
+}
+
+function pickFirstAllowedPlacement(placements = []) {
+    if (!Array.isArray(placements)) {
+        return null;
+    }
+
+    for (const placement of placements) {
+        if (typeof placement === 'string') {
+            const trimmed = placement.trim();
+            if (trimmed) {
+                return trimmed;
+            }
+        }
+    }
+
+    return null;
+}
+
+function alignPlacementToAllowed(placement, allowedMap, fallbackPlacement = null) {
+    if (!allowedMap || !(allowedMap instanceof Map) || allowedMap.size === 0) {
+        return placement || fallbackPlacement || null;
+    }
+
+    const canonical = canonicalPlacement(placement);
+
+    if (canonical && allowedMap.has(canonical)) {
+        return allowedMap.get(canonical);
+    }
+
+    if (canonical && canonical.endsWith('_large')) {
+        const reduced = canonical.replace(/_large$/, '');
+        if (allowedMap.has(reduced)) {
+            return allowedMap.get(reduced);
+        }
+    }
+
+    if (canonical) {
+        const expanded = `${canonical}_large`;
+        if (allowedMap.has(expanded)) {
+            return allowedMap.get(expanded);
+        }
+    }
+
+    return fallbackPlacement || placement || null;
+}
+
+function buildVariantFulfilmentData(variant, allowedPlacements = []) {
     const files = Array.isArray(variant?.files) ? variant.files : [];
     const placementsMap = new Map();
     let filesForOrder = [];
+    const allowedList = Array.isArray(allowedPlacements) ? allowedPlacements.filter(p => typeof p === 'string' && p.trim()).map(p => p.trim()) : [];
+    const allowedMap = buildAllowedPlacementMap(allowedList);
+    const firstAllowedPlacement = pickFirstAllowedPlacement(allowedList);
 
     files.forEach(file => {
-        const placement = derivePlacementFromFile(file);
+        const placement = alignPlacementToAllowed(
+            derivePlacementFromFile(file),
+            allowedMap,
+            firstAllowedPlacement
+        );
         const technique = deriveTechnique(file) || 'dtg';
         const orderFile = extractOrderFilePayload(file, placement);
 
@@ -186,12 +291,17 @@ function buildVariantFulfilmentData(variant) {
     let placements = Array.from(placementsMap.values())
         .map(entry => ({
             ...entry,
+            placement: alignPlacementToAllowed(entry.placement, allowedMap, firstAllowedPlacement),
             layers: entry.layers.filter(layer => layer && (layer.file_id || layer.url))
         }))
         .filter(entry => entry.layers.length > 0);
 
     if (placements.length === 0 && filesForOrder.length > 0) {
-        const fallbackPlacement = normalisePlacementValue(filesForOrder[0]?.type) || 'front_large';
+        const fallbackPlacement = alignPlacementToAllowed(
+            normalisePlacementValue(filesForOrder[0]?.type),
+            allowedMap,
+            firstAllowedPlacement || normalisePlacementValue(filesForOrder[0]?.type) || 'front'
+        );
         const fallbackLayers = filesForOrder
             .map(file => ({
                 type: 'file',
@@ -212,7 +322,11 @@ function buildVariantFulfilmentData(variant) {
 
         filesForOrder = filesForOrder.map(file => ({
             ...file,
-            type: normalisePlacementValue(file.type) || fallbackPlacement
+            type: alignPlacementToAllowed(
+                normalisePlacementValue(file.type),
+                allowedMap,
+                fallbackPlacement
+            ) || fallbackPlacement
         }));
     }
 
@@ -227,7 +341,10 @@ function buildVariantFulfilmentData(variant) {
             return;
         }
         seenFileKeys.add(key);
-        uniqueFiles.push(file);
+        uniqueFiles.push({
+            ...file,
+            type: alignPlacementToAllowed(file.type, allowedMap, firstAllowedPlacement || file.type) || file.type
+        });
     });
 
     return {
@@ -269,6 +386,237 @@ async function fetchFromPrintful(apiKey, url, options = {}) {
 }
 
 let STORE_CONTEXT_CACHE = null;
+
+const PRODUCT_PLACEMENT_CACHE = new Map();
+const VARIANT_PRODUCT_CACHE = new Map();
+
+async function fetchCatalogPlacementsForProduct(apiKey, storeId, catalogProductId) {
+    const idPart = catalogProductId ? String(catalogProductId) : '';
+    const cacheKey = storeId ? `${storeId}:${idPart}` : idPart;
+
+    if (!cacheKey) {
+        return [];
+    }
+
+    if (PRODUCT_PLACEMENT_CACHE.has(cacheKey)) {
+        return PRODUCT_PLACEMENT_CACHE.get(cacheKey);
+    }
+
+    try {
+        const response = await fetchFromPrintful(
+            apiKey,
+            CATALOG_PRODUCT_ENDPOINT(idPart),
+            storeId ? { storeId } : undefined
+        );
+
+        const placementsSource = Array.isArray(response?.data?.placements)
+            ? response.data.placements
+            : Array.isArray(response?.result?.placements)
+                ? response.result.placements
+                : [];
+
+        const placements = placementsSource
+            .map((entry) => {
+                if (!entry) {
+                    return null;
+                }
+
+                if (typeof entry === 'string') {
+                    return entry.trim();
+                }
+
+                if (typeof entry.placement === 'string') {
+                    return entry.placement.trim();
+                }
+
+                if (typeof entry.id === 'string' || typeof entry.id === 'number') {
+                    return String(entry.id).trim();
+                }
+
+                return null;
+            })
+            .filter(Boolean);
+
+        PRODUCT_PLACEMENT_CACHE.set(cacheKey, placements);
+        return placements;
+    } catch (error) {
+        console.warn('Printful: failed to fetch catalog product placements', cacheKey, error);
+        PRODUCT_PLACEMENT_CACHE.set(cacheKey, []);
+        return [];
+    }
+}
+
+function extractCatalogProductIdFromVariant(variant) {
+    if (!variant) {
+        return null;
+    }
+
+    const candidates = [
+        variant.catalog_product_id,
+        variant.product?.product_id,
+        variant.product?.id,
+        variant.product_id,
+        variant.catalog_product?.id,
+        variant.catalog_product?.product_id
+    ];
+
+    for (const value of candidates) {
+        if (value == null) {
+            continue;
+        }
+        const str = String(value).trim();
+        if (str) {
+            return str;
+        }
+    }
+
+    return null;
+}
+
+async function resolveCatalogProductIdForVariant(apiKey, storeId, variant, catalogVariantId) {
+    const idPart = catalogVariantId ? String(catalogVariantId) : '';
+    const cacheKey = storeId ? `${storeId}:${idPart}` : idPart;
+
+    if (!cacheKey) {
+        return null;
+    }
+
+    if (VARIANT_PRODUCT_CACHE.has(cacheKey)) {
+        return VARIANT_PRODUCT_CACHE.get(cacheKey);
+    }
+
+    const directId = extractCatalogProductIdFromVariant(variant);
+    if (directId) {
+        VARIANT_PRODUCT_CACHE.set(cacheKey, directId);
+        return directId;
+    }
+
+    try {
+        const response = await fetchFromPrintful(
+            apiKey,
+            CATALOG_VARIANT_ENDPOINT(idPart),
+            storeId ? { storeId } : undefined
+        );
+
+        let productId = response?.data?.product?.id
+            || response?.data?.product_id
+            || response?.data?.product_details?.id
+            || response?.data?.product_details?.product_id
+            || null;
+
+        if (!productId && typeof response?.data?.product_details?.href === 'string') {
+            const match = response.data.product_details.href.match(/catalog-products\/(\d+)/);
+            if (match && match[1]) {
+                productId = match[1];
+            }
+        }
+
+        if (productId) {
+            VARIANT_PRODUCT_CACHE.set(cacheKey, String(productId));
+            return String(productId);
+        }
+
+        VARIANT_PRODUCT_CACHE.set(cacheKey, null);
+        return null;
+    } catch (error) {
+        console.warn('Printful: failed to resolve catalog product id for variant', cacheKey, error);
+        VARIANT_PRODUCT_CACHE.set(cacheKey, null);
+        return null;
+    }
+}
+
+function normaliseVariantPlacementKey(value) {
+    if (value == null) {
+        return null;
+    }
+
+    const str = String(value).trim();
+    return str || null;
+}
+
+async function resolveVariantPlacements(apiKey, storeId, detail) {
+    const result = detail?.result ?? detail ?? {};
+    const variants = Array.isArray(result.sync_variants)
+        ? result.sync_variants
+        : Array.isArray(result.variants)
+            ? result.variants
+            : Array.isArray(result.product?.variants)
+                ? result.product.variants
+                : [];
+
+    const placementMap = new Map();
+
+    for (const variant of variants) {
+        if (!variant) {
+            continue;
+        }
+
+        const candidateIds = [
+            normaliseVariantPlacementKey(variant.catalog_variant_id),
+            normaliseVariantPlacementKey(variant.variant_id),
+            normaliseVariantPlacementKey(variant.catalog_variant?.id),
+            normaliseVariantPlacementKey(variant.product?.variant_id),
+            normaliseVariantPlacementKey(variant.id),
+            normaliseVariantPlacementKey(variant.product_variant_id)
+        ].filter(Boolean);
+
+        if (candidateIds.length === 0) {
+            continue;
+        }
+
+        let catalogProductId = extractCatalogProductIdFromVariant(variant);
+
+        if (!catalogProductId) {
+            catalogProductId = await resolveCatalogProductIdForVariant(
+                apiKey,
+                storeId,
+                variant,
+                candidateIds[0]
+            );
+        }
+
+        let allowedPlacements = [];
+
+        if (catalogProductId) {
+            allowedPlacements = await fetchCatalogPlacementsForProduct(apiKey, storeId, catalogProductId);
+            if (allowedPlacements.length > 0) {
+                placementMap.set(`product:${catalogProductId}`, allowedPlacements);
+            }
+        }
+
+        const placementsFromVariant = Array.isArray(variant.product?.placements)
+            ? variant.product.placements
+            : Array.isArray(variant.placements)
+                ? variant.placements
+                : [];
+
+        if ((!allowedPlacements || allowedPlacements.length === 0) && placementsFromVariant.length > 0) {
+            allowedPlacements = placementsFromVariant
+                .map(entry => {
+                    if (typeof entry === 'string') {
+                        return entry.trim();
+                    }
+                    if (entry && typeof entry.placement === 'string') {
+                        return entry.placement.trim();
+                    }
+                    return null;
+                })
+                .filter(Boolean);
+        }
+
+        const variantKey = candidateIds.find(id => id != null);
+
+        if (variantKey) {
+            placementMap.set(variantKey, allowedPlacements || []);
+        }
+
+        if (catalogProductId && !placementMap.has(`product:${catalogProductId}`)) {
+            placementMap.set(`product:${catalogProductId}`, allowedPlacements || []);
+        }
+    }
+
+    return placementMap;
+}
 
 async function resolveStoreContext() {
     const storeId = process.env.PRINTFUL_STORE_ID?.trim();
@@ -336,7 +684,7 @@ async function fetchProductList(apiKey, storeContext, limit, sellingRegionName) 
     return { summaries };
 }
 
-function normaliseVariant(variant, productName) {
+function normaliseVariant(variant, productName, options = {}) {
     if (!variant) {
         return null;
     }
@@ -390,7 +738,11 @@ function normaliseVariant(variant, productName) {
         .map(file => file?.preview_url || file?.thumbnail_url || file?.url)
         .filter(url => typeof url === 'string' && url.trim().length > 0);
 
-    const fulfilmentData = buildVariantFulfilmentData(variant);
+    const allowedPlacements = options?.placementResolver
+        ? options.placementResolver(variant, catalogVariantId, printfulVariantId)
+        : [];
+
+    const fulfilmentData = buildVariantFulfilmentData(variant, allowedPlacements);
 
     return {
         id: `printful-variant-${printfulVariantId ?? catalogVariantId ?? name}`,
@@ -522,7 +874,7 @@ function getSummaryId(summary) {
         ?? null;
 }
 
-function normaliseProduct(summary, detail) {
+function normaliseProduct(summary, detail, options = {}) {
     const detailResult = detail?.result ?? detail ?? {};
     const product = detailResult.product || detailResult.sync_product || detailResult || summary || {};
     const variantsSource = detailResult.variants
@@ -530,8 +882,53 @@ function normaliseProduct(summary, detail) {
         || detailResult.product?.variants
         || [];
 
+    const placementMap = options?.variantPlacements instanceof Map
+        ? options.variantPlacements
+        : new Map(Array.isArray(options?.variantPlacements)
+            ? options.variantPlacements
+            : []);
+
+    const placementResolver = (variant, catalogVariantId, printfulVariantId) => {
+        const candidateIds = [
+            catalogVariantId,
+            printfulVariantId,
+            variant?.catalog_variant?.id,
+            variant?.product?.variant_id,
+            variant?.id,
+            variant?.product_variant_id
+        ].map(value => (value == null ? null : String(value).trim())).filter(Boolean);
+
+        const productId = extractCatalogProductIdFromVariant(variant);
+
+        if (productId && placementMap.has(`product:${productId}`)) {
+            const placements = placementMap.get(`product:${productId}`);
+            if (Array.isArray(placements) && placements.length > 0) {
+                return placements;
+            }
+        }
+
+        for (const id of candidateIds) {
+            if (id && placementMap.has(id)) {
+                const placements = placementMap.get(id);
+                if (Array.isArray(placements) && placements.length > 0) {
+                    return placements;
+                }
+            }
+        }
+
+        if (productId && placementMap.has(`product:${productId}`)) {
+            return placementMap.get(`product:${productId}`) || [];
+        }
+
+        return [];
+    };
+
     const variants = variantsSource
-        .map(variant => normaliseVariant(variant, product.name || summary?.name || 'Product'))
+        .map(variant => normaliseVariant(
+            variant,
+            product.name || summary?.name || 'Product',
+            { placementResolver }
+        ))
         .filter(Boolean);
 
     const priceRange = computePriceRange(variants);
@@ -659,11 +1056,19 @@ export default async function handler(req, res) {
                     throw new Error('Product summary missing identifier');
                 }
 
-                return fetchFromPrintful(
+                const detail = await fetchFromPrintful(
                     apiKey,
                     SYNC_PRODUCT_ENDPOINT(productId),
                     { storeId: storeContext.id }
                 );
+
+                const variantPlacements = await resolveVariantPlacements(
+                    apiKey,
+                    storeContext.id,
+                    detail
+                );
+
+                return { detail, variantPlacements };
             })
         );
 
@@ -674,7 +1079,9 @@ export default async function handler(req, res) {
             const summary = productSummaries[index];
 
             if (result.status === 'fulfilled') {
-                products.push(normaliseProduct(summary, result.value));
+                products.push(normaliseProduct(summary, result.value.detail, {
+                    variantPlacements: result.value.variantPlacements
+                }));
             } else {
                 errors.push({
                     productId: getSummaryId(summary),
