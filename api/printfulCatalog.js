@@ -1,7 +1,7 @@
 import { applyCors } from './_utils/cors';
 
 const PRINTFUL_API_BASE = 'https://api.printful.com/v2';
-const PRODUCT_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/store/products`;
+const PRODUCT_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/catalog-products`;
 const STORE_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/stores`;
 
 const DEFAULT_STORE_NAME = "Troy's Test Store";
@@ -132,30 +132,11 @@ async function fetchProductList(apiKey, storeContext, limit) {
     const listUrl = new URL(PRODUCT_LIST_ENDPOINT);
     listUrl.searchParams.set('limit', String(limit));
 
-    if (storeContext?.id) {
-        listUrl.searchParams.set('store_id', String(storeContext.id));
-    }
-
-    try {
-        const listResponse = await fetchFromPrintful(apiKey, listUrl.toString(), {
-            storeId: storeContext?.id
-        });
-        const summaries = extractProductSummaries(listResponse);
-        return { summaries, usedFallback: false };
-    } catch (error) {
-        if (error.status === 404 && storeContext?.id) {
-            const fallbackUrl = `${PRINTFUL_API_BASE}/stores/${storeContext.id}/products`;
-            const url = new URL(fallbackUrl);
-            url.searchParams.set('limit', String(limit));
-            const listResponse = await fetchFromPrintful(apiKey, url.toString(), {
-                storeId: storeContext.id
-            });
-            const summaries = extractProductSummaries(listResponse);
-            return { summaries, usedFallback: true };
-        }
-
-        throw error;
-    }
+    const listResponse = await fetchFromPrintful(apiKey, listUrl.toString(), {
+        storeId: storeContext?.id
+    });
+    const summaries = extractProductSummaries(listResponse);
+    return { summaries };
 }
 
 function normaliseVariant(variant, productName) {
@@ -163,18 +144,46 @@ function normaliseVariant(variant, productName) {
         return null;
     }
 
-    const printfulVariantId = variant.id ?? null;
+    const printfulVariantId = variant.id ?? variant.product_variant_id ?? null;
     const catalogVariantId = variant.catalog_variant_id
         ?? variant.variant_id
+        ?? variant.catalog_variant?.id
         ?? variant.product?.variant_id
         ?? null;
 
-    const retailPrice = parseNumber(variant.retail_price ?? variant.price);
-    const currency = variant.currency || variant.retail_currency || 'AUD';
+    const priceFromPrices = variant.prices?.retail?.amount
+        ?? variant.prices?.default?.amount
+        ?? variant.prices?.price
+        ?? null;
+
+    const retailPrice = parseNumber(
+        variant.retail_price
+        ?? variant.price
+        ?? variant.default_price
+        ?? priceFromPrices
+    );
+
+    const currency = variant.currency
+        || variant.retail_currency
+        || variant.prices?.retail?.currency
+        || variant.prices?.default?.currency
+        || 'AUD';
     const name = variant.name || variant.title || `Variant ${catalogVariantId || printfulVariantId || ''}`.trim();
     const optionLabel = name || `Variant ${catalogVariantId || printfulVariantId || ''}`.trim();
 
-    const imageCandidates = Array.isArray(variant.files) ? variant.files : [];
+    const fileCandidates = Array.isArray(variant.files) ? variant.files : [];
+    const imageArray = Array.isArray(variant.images)
+        ? variant.images.map(image => (
+            typeof image === 'string'
+                ? { preview_url: image }
+                : image
+        ))
+        : [];
+    const singleImages = [variant.image, variant.default_image]
+        .filter(Boolean)
+        .map(url => ({ preview_url: url }));
+
+    const imageCandidates = [...fileCandidates, ...imageArray, ...singleImages];
     const primaryImage = imageCandidates.find(file => file?.preview_url)
         || imageCandidates.find(file => file?.thumbnail_url)
         || imageCandidates.find(file => file?.url)
@@ -248,6 +257,17 @@ function collectImages(product, variants) {
     };
 
     addImage(product.thumbnail_url, product.name);
+    addImage(product.preview_image, product.name);
+
+    if (Array.isArray(product.preview_images)) {
+        product.preview_images.forEach(image => {
+            if (typeof image === 'string') {
+                addImage(image, product.name);
+            } else if (image) {
+                addImage(image.preview_url || image.url, product.name);
+            }
+        });
+    }
 
     variants.forEach(variant => {
         if (!variant) {
@@ -302,8 +322,12 @@ function getSummaryId(summary) {
 }
 
 function normaliseProduct(summary, detail) {
-    const product = detail?.result?.sync_product || detail?.sync_product || summary || {};
-    const variantsSource = detail?.result?.sync_variants || detail?.sync_variants || [];
+    const detailResult = detail?.result ?? detail ?? {};
+    const product = detailResult.product || detailResult.sync_product || detailResult || summary || {};
+    const variantsSource = detailResult.variants
+        || detailResult.sync_variants
+        || detailResult.product?.variants
+        || [];
 
     const variants = variantsSource
         .map(variant => normaliseVariant(variant, product.name || summary?.name || 'Product'))
@@ -381,7 +405,7 @@ export default async function handler(req, res) {
 
     try {
         const storeContext = await resolveStoreContext(apiKey);
-        const { summaries: productSummaries, usedFallback } = await fetchProductList(apiKey, storeContext, limit);
+        const { summaries: productSummaries } = await fetchProductList(apiKey, storeContext, limit);
 
         if (!includeDetails) {
             res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
@@ -399,9 +423,7 @@ export default async function handler(req, res) {
                     return Promise.reject(new Error('Product summary missing identifier'));
                 }
 
-                const detailUrl = usedFallback && storeContext?.id
-                    ? `${PRINTFUL_API_BASE}/stores/${storeContext.id}/products/${summaryId}`
-                    : `${PRODUCT_LIST_ENDPOINT}/${summaryId}`;
+                const detailUrl = `${PRODUCT_LIST_ENDPOINT}/${encodeURIComponent(summaryId)}`;
 
                 return fetchFromPrintful(apiKey, detailUrl, { storeId: storeContext?.id });
             })
