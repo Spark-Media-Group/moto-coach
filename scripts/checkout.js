@@ -556,18 +556,32 @@ function renderSummary(summary) {
     }
 
     if (hasShopItems) {
+        const shippingAmountValue = parsePositiveNumber(summary?.cost?.shippingAmount?.amount);
+        const shippingCurrency = summary?.cost?.shippingAmount?.currencyCode || currencyCode;
+        const shopCurrency = summary?.cost?.subtotalAmount?.currencyCode || currencyCode;
         totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Shop items</span>
-                <span>${formatMoney(shopTotals.total, currencyCode)}</span>
+                <span>${formatMoney(shopTotals.subtotal, shopCurrency)}</span>
             </div>
         `);
         totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Shipping</span>
-                <span>Calculated separately</span>
+                <span>${shippingAmountValue != null ? formatMoney(shippingAmountValue, shippingCurrency) : 'Calculated separately'}</span>
             </div>
         `);
+
+        const taxAmountValue = parsePositiveNumber(summary?.cost?.taxAmount?.amount);
+        if (taxAmountValue != null && taxAmountValue > 0) {
+            const taxCurrency = summary?.cost?.taxAmount?.currencyCode || shippingCurrency || currencyCode;
+            totalsRows.push(`
+                <div class="checkout-total-row">
+                    <span>Taxes</span>
+                    <span>${formatMoney(taxAmountValue, taxCurrency)}</span>
+                </div>
+            `);
+        }
     }
 
     totalsRows.push(`
@@ -869,6 +883,115 @@ function normaliseStateCode(countryCode, state) {
 function parsePositiveNumber(value) {
     const numeric = typeof value === 'number' ? value : parseFloat(value);
     return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+}
+
+function applyPrintfulQuoteToCheckout(quoteResponse) {
+    if (!checkoutData || !quoteResponse || typeof quoteResponse !== 'object') {
+        return;
+    }
+
+    const retailCosts = quoteResponse.retail_costs && typeof quoteResponse.retail_costs === 'object'
+        ? quoteResponse.retail_costs
+        : null;
+    const costs = quoteResponse.costs && typeof quoteResponse.costs === 'object'
+        ? quoteResponse.costs
+        : null;
+
+    const currency = quoteResponse.currency
+        || retailCosts?.currency
+        || costs?.currency
+        || checkoutData?.cost?.totalAmount?.currencyCode
+        || currencyCode;
+
+    const subtotal = parsePositiveNumber(retailCosts?.subtotal ?? costs?.subtotal ?? checkoutData?.cost?.subtotalAmount?.amount) ?? 0;
+    const shippingAmount = parsePositiveNumber(retailCosts?.shipping ?? costs?.shipping);
+    const taxAmount = parsePositiveNumber(retailCosts?.tax ?? costs?.tax);
+    const total = parsePositiveNumber(retailCosts?.total ?? costs?.total);
+    const computedTotal = total ?? (subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0));
+
+    checkoutData.cost = checkoutData.cost || {};
+    checkoutData.cost.subtotalAmount = {
+        amount: subtotal.toFixed(2),
+        currencyCode: currency
+    };
+    checkoutData.cost.totalAmount = {
+        amount: computedTotal.toFixed(2),
+        currencyCode: currency
+    };
+
+    if (shippingAmount != null) {
+        checkoutData.cost.shippingAmount = {
+            amount: shippingAmount.toFixed(2),
+            currencyCode: currency
+        };
+    } else {
+        delete checkoutData.cost.shippingAmount;
+    }
+
+    if (taxAmount != null) {
+        checkoutData.cost.taxAmount = {
+            amount: taxAmount.toFixed(2),
+            currencyCode: currency
+        };
+    } else {
+        delete checkoutData.cost.taxAmount;
+    }
+
+    checkoutData.printfulQuote = {
+        shippingMethod: quoteResponse.shipping || checkoutData?.printfulQuote?.shippingMethod || 'STANDARD',
+        currency,
+        totals: {
+            subtotal,
+            shipping: shippingAmount ?? 0,
+            tax: taxAmount ?? 0,
+            total: computedTotal
+        }
+    };
+}
+
+async function ensurePrintfulQuote(customerDetails) {
+    if (!hasShopLineItems(checkoutData)) {
+        return null;
+    }
+
+    const payload = buildPrintfulOrderPayload(null, customerDetails, { externalIdPrefix: 'motocoach-quote' });
+
+    if (!payload) {
+        return null;
+    }
+
+    payload.metadata = {
+        ...(payload.metadata || {}),
+        quote: 'true'
+    };
+
+    try {
+        const response = await fetch('/api/printfulQuote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const data = isJson ? await response.json() : await response.text();
+
+        if (!response.ok) {
+            const errorText = typeof data === 'string' ? data : (data?.error ? data.error : JSON.stringify(data));
+            throw new Error(errorText || 'Printful quote request failed');
+        }
+
+        if (data && typeof data === 'object') {
+            applyPrintfulQuoteToCheckout(data);
+            saveCheckoutData(checkoutData);
+            renderSummary(checkoutData);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Checkout: failed to generate Printful quote', error);
+        throw new Error(error.message || 'Unable to calculate shipping for your order.');
+    }
 }
 
 function normalisePlacementName(value) {
@@ -1237,7 +1360,7 @@ function extractPrintfulItemFromLine(line, currency) {
 }
 
 
-function buildPrintfulOrderPayload(paymentIntentId, customerDetails) {
+function buildPrintfulOrderPayload(paymentIntentId, customerDetails, { externalIdPrefix = 'motocoach-checkout' } = {}) {
     const shopTotals = calculateOrderTotal(checkoutData);
     const orderCurrency = shopTotals.currency || currencyCode;
 
@@ -1265,24 +1388,39 @@ function buildPrintfulOrderPayload(paymentIntentId, customerDetails) {
         zip: customerDetails.postalCode
     };
 
-    const subtotalAmount = parsePositiveNumber(shopTotals.total) ?? 0;
+    const subtotalAmount = parsePositiveNumber(shopTotals.subtotal) ?? parsePositiveNumber(shopTotals.total) ?? 0;
+    const shippingAmount = parsePositiveNumber(checkoutData?.cost?.shippingAmount?.amount);
+    const taxAmount = parsePositiveNumber(checkoutData?.cost?.taxAmount?.amount);
+    const totalAmount = parsePositiveNumber(checkoutData?.cost?.totalAmount?.amount);
+
+    const externalId = paymentIntentId || `${externalIdPrefix}-${Date.now()}`;
+
+    const metadata = {
+        source: 'motocoach-checkout',
+        cart_id: checkoutData?.cartId || null
+    };
+
+    if (paymentIntentId) {
+        metadata.payment_intent_id = paymentIntentId;
+    }
 
     return {
-        external_id: paymentIntentId,
+        external_id: externalId,
         recipient,
         items,
         retail_costs: {
             currency: orderCurrency,
-            subtotal: subtotalAmount.toFixed(2)
+            subtotal: subtotalAmount.toFixed(2),
+            ...(shippingAmount != null ? { shipping: shippingAmount.toFixed(2) } : {}),
+            ...(taxAmount != null ? { tax: taxAmount.toFixed(2) } : {}),
+            ...(totalAmount != null ? { total: totalAmount.toFixed(2) } : {})
         },
+        shipping: checkoutData?.printfulQuote?.shippingMethod || 'STANDARD',
         packing_slip: {
             email: customerDetails.email,
             message: 'Thank you for supporting Moto Coach!'
         },
-        metadata: {
-            source: 'motocoach-checkout',
-            cart_id: checkoutData?.cartId || null
-        }
+        metadata
     };
 }
 
@@ -1569,10 +1707,16 @@ async function handleFormSubmit(event) {
     }
 
     clearPaymentError();
-    showStatusMessage('Confirming payment…');
+    showStatusMessage('Preparing your order…');
     setProcessingState(true);
 
     try {
+        if (hasShopLineItems(checkoutData)) {
+            showStatusMessage('Calculating shipping and taxes…');
+            await ensurePrintfulQuote(customerDetails);
+        }
+
+        showStatusMessage('Confirming payment…');
         const { clientSecret, paymentIntentId } = await createPaymentIntent({
             email: customerDetails.email
         });

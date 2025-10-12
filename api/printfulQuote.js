@@ -8,8 +8,6 @@ import {
     waitForOrderCosts
 } from './_utils/printful';
 
-const PRINTFUL_API_URL = PRINTFUL_ORDERS_ENDPOINT;
-
 function parseRequestBody(req) {
     if (!req) {
         return null;
@@ -19,7 +17,7 @@ function parseRequestBody(req) {
         return req.body;
     }
 
-    if (typeof req.body === 'string' && req.body.trim().length > 0) {
+    if (typeof req.body === 'string' && req.body.trim()) {
         try {
             return JSON.parse(req.body);
         } catch (error) {
@@ -39,15 +37,20 @@ function validateOrderPayload(payload) {
         return 'Missing recipient information';
     }
 
-    const hasItems = Array.isArray(payload.items)
-        ? payload.items.length > 0
-        : Array.isArray(payload.order_items) && payload.order_items.length > 0;
-
-    if (!hasItems) {
+    const items = Array.isArray(payload.items) ? payload.items : payload.order_items;
+    if (!Array.isArray(items) || items.length === 0) {
         return 'Order must include at least one item';
     }
 
     return null;
+}
+
+async function deleteDraftOrder(orderId, apiKey, storeId) {
+    try {
+        await fetch(`${PRINTFUL_ORDERS_ENDPOINT}/${encodeURIComponent(orderId)}`, buildPrintfulOptions('DELETE', apiKey, { storeId }));
+    } catch (error) {
+        console.warn('Printful quote: failed to delete draft', orderId, error);
+    }
 }
 
 export default async function handler(req, res) {
@@ -66,7 +69,6 @@ export default async function handler(req, res) {
     }
 
     const apiKey = process.env.PRINTFUL_API_KEY;
-
     if (!apiKey) {
         console.error('Printful API key is not configured');
         return res.status(500).json({ error: 'Printful API key is not configured' });
@@ -79,9 +81,10 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: validationError });
     }
 
+    const storeId = process.env.PRINTFUL_STORE_ID?.trim() || undefined;
+
     try {
-        const storeId = process.env.PRINTFUL_STORE_ID?.trim() || undefined;
-        const createUrl = new URL(PRINTFUL_API_URL);
+        const createUrl = new URL(PRINTFUL_ORDERS_ENDPOINT);
         createUrl.searchParams.set('confirm', 'false');
 
         if (!orderPayload.items && Array.isArray(orderPayload.order_items)) {
@@ -96,7 +99,6 @@ export default async function handler(req, res) {
         });
 
         const orderId = extractOrderId(createResponse);
-
         if (!orderId) {
             return res.status(502).json({
                 error: 'Unable to determine Printful order ID from response',
@@ -109,6 +111,8 @@ export default async function handler(req, res) {
             const { order } = await waitForOrderCosts(orderId, apiKey, { storeId });
             calculatedOrder = order;
         } catch (pollError) {
+            await deleteDraftOrder(orderId, apiKey, storeId);
+
             if (pollError.status) {
                 return res.status(pollError.status).json({
                     error: 'Printful cost calculation did not complete',
@@ -122,30 +126,22 @@ export default async function handler(req, res) {
             });
         }
 
-        const confirmEndpoint = createResponse?._links?.order_confirmation?.href
-            || createResponse?.data?._links?.order_confirmation?.href
-            || calculatedOrder?._links?.order_confirmation?.href
-            || `${PRINTFUL_API_URL}/${orderId}/confirm`;
-
-        const confirmResponse = await callPrintful(confirmEndpoint, {
-            method: 'POST',
-            apiKey,
-            storeId
-        });
+        await deleteDraftOrder(orderId, apiKey, storeId);
 
         return res.status(200).json({
             success: true,
-            draft: extractOrderData(createResponse) || createResponse,
-            order: extractOrderData(confirmResponse) || confirmResponse,
             costs: calculatedOrder?.costs || null,
-            retail_costs: calculatedOrder?.retail_costs || null
+            retail_costs: calculatedOrder?.retail_costs || null,
+            shipping: calculatedOrder?.shipping || null,
+            currency: calculatedOrder?.retail_costs?.currency || calculatedOrder?.costs?.currency || null,
+            quote: extractOrderData(calculatedOrder)
         });
     } catch (error) {
-        console.error('Error processing Printful order:', error);
+        console.error('Error generating Printful quote:', error);
 
         const status = error.status && Number.isInteger(error.status) ? error.status : 500;
         return res.status(status).json({
-            error: 'Failed to process Printful order',
+            error: 'Failed to generate Printful quote',
             details: error.body || error.message
         });
     }
