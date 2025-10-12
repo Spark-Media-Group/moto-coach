@@ -4,7 +4,7 @@ const PRINTFUL_API_BASE = 'https://api.printful.com/v2';
 const STORE_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/stores`;
 const STORE_PRODUCTS_ENDPOINT = (storeId) => `${STORE_LIST_ENDPOINT}/${encodeURIComponent(storeId)}/products`;
 
-const DEFAULT_STORE_NAME = "Troy's Test Store";
+const DEFAULT_STORE_NAME = 'Personal Orders';
 
 function normaliseRegionName(region) {
     if (!region || typeof region !== 'string') {
