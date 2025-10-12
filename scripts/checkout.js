@@ -1405,6 +1405,7 @@ function buildPrintfulOrderPayload(paymentIntentId, customerDetails, { externalI
     }
 
     return {
+        source: 'catalog',
         external_id: externalId,
         recipient,
         items,

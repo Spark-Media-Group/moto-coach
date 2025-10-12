@@ -88,6 +88,10 @@ export default async function handler(req, res) {
             orderPayload.items = orderPayload.order_items;
         }
 
+        if (!orderPayload.source) {
+            orderPayload.source = 'catalog';
+        }
+
         const createResponse = await callPrintful(createUrl.toString(), {
             method: 'POST',
             apiKey,
