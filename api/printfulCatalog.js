@@ -87,13 +87,27 @@ async function resolveStoreContext(apiKey) {
 
     try {
         const storesResponse = await fetchFromPrintful(apiKey, STORE_LIST_ENDPOINT);
-        const stores = Array.isArray(storesResponse?.result)
-            ? storesResponse.result
-            : Array.isArray(storesResponse?.result?.items)
-                ? storesResponse.result.items
-                : Array.isArray(storesResponse?.stores)
-                    ? storesResponse.stores
-                    : [];
+        const rawStores = storesResponse?.data
+            ?? storesResponse?.result
+            ?? storesResponse?.stores
+            ?? storesResponse?.result?.items
+            ?? null;
+
+        let stores = [];
+
+        if (Array.isArray(rawStores)) {
+            stores = rawStores;
+        } else if (rawStores && typeof rawStores === 'object') {
+            if (Array.isArray(rawStores.items)) {
+                stores = rawStores.items;
+            } else if (Array.isArray(rawStores.result)) {
+                stores = rawStores.result;
+            } else if (Array.isArray(rawStores.sync_stores)) {
+                stores = rawStores.sync_stores;
+            } else {
+                stores = [rawStores];
+            }
+        }
 
         if (stores.length === 1) {
             const store = stores[0];
