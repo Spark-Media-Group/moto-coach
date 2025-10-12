@@ -110,8 +110,14 @@ async function fetchProductList(apiKey, storeContext, limit, sellingRegionName) 
         storeId: storeContext.id
     });
 
-    const data = Array.isArray(listResponse?.data) ? listResponse.data : [];
-    const summaries = data.map((product) => ({
+    const rawData = listResponse?.data;
+    const dataItems = Array.isArray(rawData?.items)
+        ? rawData.items
+        : Array.isArray(rawData)
+            ? rawData
+            : [];
+
+    const summaries = dataItems.map((product) => ({
         id: product.id,
         name: product.name,
         description: product.description || '',
@@ -414,6 +420,21 @@ export default async function handler(req, res) {
             ? { ...storeContext, sellingRegion: sellingRegionName }
             : { id: null, name: DEFAULT_STORE_NAME, source: 'default', sellingRegion: sellingRegionName };
 
+        if (productSummaries.length === 0) {
+            res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=300');
+            return res.status(200).json({
+                success: true,
+                products: [],
+                store: responseStoreContext,
+                debug: {
+                    reason: 'PRINTFUL_NO_PRODUCTS',
+                    message: 'Printful returned zero catalog products for the current store and selling region.',
+                    sellingRegion: sellingRegionName,
+                    storeId: storeContext.id
+                }
+            });
+        }
+
         if (!includeDetails) {
             res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
             return res.status(200).json({
@@ -444,8 +465,19 @@ export default async function handler(req, res) {
                     fetchFromPrintful(apiKey, availabilityUrl.toString(), { storeId: storeContext.id })
                 ]);
 
-                const variants = Array.isArray(variantsRes?.data) ? variantsRes.data : [];
-                const availability = Array.isArray(availabilityRes?.data) ? availabilityRes.data : [];
+                const variantsRaw = variantsRes?.data;
+                const variants = Array.isArray(variantsRaw?.items)
+                    ? variantsRaw.items
+                    : Array.isArray(variantsRaw)
+                        ? variantsRaw
+                        : [];
+
+                const availabilityRaw = availabilityRes?.data;
+                const availability = Array.isArray(availabilityRaw?.items)
+                    ? availabilityRaw.items
+                    : Array.isArray(availabilityRaw)
+                        ? availabilityRaw
+                        : [];
 
                 const fauxDetail = {
                     result: {
@@ -464,7 +496,7 @@ export default async function handler(req, res) {
                                 ? variantAvailability.availability
                                 : [];
                             const isAvailable = availabilityEntries.length === 0
-                                ? Boolean(variantAvailability)
+                                ? variantAvailability != null
                                 : availabilityEntries.some((entry) => entry.status !== 'not_available');
 
                             const variantImages = [];
