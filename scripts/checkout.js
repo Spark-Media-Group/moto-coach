@@ -556,18 +556,32 @@ function renderSummary(summary) {
     }
 
     if (hasShopItems) {
+        const shippingAmountValue = parsePositiveNumber(summary?.cost?.shippingAmount?.amount);
+        const shippingCurrency = summary?.cost?.shippingAmount?.currencyCode || currencyCode;
+        const shopCurrency = summary?.cost?.subtotalAmount?.currencyCode || currencyCode;
         totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Shop items</span>
-                <span>${formatMoney(shopTotals.total, currencyCode)}</span>
+                <span>${formatMoney(shopTotals.subtotal, shopCurrency)}</span>
             </div>
         `);
         totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Shipping</span>
-                <span>Calculated separately</span>
+                <span>${shippingAmountValue != null ? formatMoney(shippingAmountValue, shippingCurrency) : 'Calculated separately'}</span>
             </div>
         `);
+
+        const taxAmountValue = parsePositiveNumber(summary?.cost?.taxAmount?.amount);
+        if (taxAmountValue != null && taxAmountValue > 0) {
+            const taxCurrency = summary?.cost?.taxAmount?.currencyCode || shippingCurrency || currencyCode;
+            totalsRows.push(`
+                <div class="checkout-total-row">
+                    <span>Taxes</span>
+                    <span>${formatMoney(taxAmountValue, taxCurrency)}</span>
+                </div>
+            `);
+        }
     }
 
     totalsRows.push(`
@@ -753,85 +767,707 @@ async function createPaymentIntent(metadata = {}) {
     return data;
 }
 
-async function recordShopifyOrder(paymentIntentId, customerDetails) {
+const COUNTRY_CODE_MAP = {
+    Australia: 'AU',
+    'United States': 'US',
+    'United Kingdom': 'GB',
+    Canada: 'CA',
+    'New Zealand': 'NZ'
+};
+
+const AU_STATE_CODE_MAP = {
+    'Australian Capital Territory': 'ACT',
+    'New South Wales': 'NSW',
+    'Northern Territory': 'NT',
+    Queensland: 'QLD',
+    'South Australia': 'SA',
+    Tasmania: 'TAS',
+    Victoria: 'VIC',
+    'Western Australia': 'WA'
+};
+
+const US_STATE_CODE_MAP = {
+    Alabama: 'AL',
+    Alaska: 'AK',
+    Arizona: 'AZ',
+    Arkansas: 'AR',
+    California: 'CA',
+    Colorado: 'CO',
+    Connecticut: 'CT',
+    Delaware: 'DE',
+    'District of Columbia': 'DC',
+    Florida: 'FL',
+    Georgia: 'GA',
+    Hawaii: 'HI',
+    Idaho: 'ID',
+    Illinois: 'IL',
+    Indiana: 'IN',
+    Iowa: 'IA',
+    Kansas: 'KS',
+    Kentucky: 'KY',
+    Louisiana: 'LA',
+    Maine: 'ME',
+    Maryland: 'MD',
+    Massachusetts: 'MA',
+    Michigan: 'MI',
+    Minnesota: 'MN',
+    Mississippi: 'MS',
+    Missouri: 'MO',
+    Montana: 'MT',
+    Nebraska: 'NE',
+    Nevada: 'NV',
+    'New Hampshire': 'NH',
+    'New Jersey': 'NJ',
+    'New Mexico': 'NM',
+    'New York': 'NY',
+    'North Carolina': 'NC',
+    'North Dakota': 'ND',
+    Ohio: 'OH',
+    Oklahoma: 'OK',
+    Oregon: 'OR',
+    Pennsylvania: 'PA',
+    'Rhode Island': 'RI',
+    'South Carolina': 'SC',
+    'South Dakota': 'SD',
+    Tennessee: 'TN',
+    Texas: 'TX',
+    Utah: 'UT',
+    Vermont: 'VT',
+    Virginia: 'VA',
+    Washington: 'WA',
+    'West Virginia': 'WV',
+    Wisconsin: 'WI',
+    Wyoming: 'WY'
+};
+
+function normaliseCountryCode(country) {
+    if (!country) {
+        return null;
+    }
+
+    const trimmed = String(country).trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (trimmed.length === 2 && /^[A-Za-z]{2}$/.test(trimmed)) {
+        return trimmed.toUpperCase();
+    }
+
+    const mapped = COUNTRY_CODE_MAP[trimmed];
+    return mapped || null;
+}
+
+function normaliseStateCode(countryCode, state) {
+    if (!state) {
+        return null;
+    }
+
+    const trimmed = String(state).trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (trimmed.length <= 3 && /^[A-Za-z]{1,3}$/.test(trimmed)) {
+        return trimmed.toUpperCase();
+    }
+
+    const lookup = countryCode === 'AU' ? AU_STATE_CODE_MAP : countryCode === 'US' ? US_STATE_CODE_MAP : null;
+    if (lookup && lookup[trimmed]) {
+        return lookup[trimmed];
+    }
+
+    return null;
+}
+
+function parsePositiveNumber(value) {
+    const numeric = typeof value === 'number' ? value : parseFloat(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+}
+
+function applyPrintfulQuoteToCheckout(quoteResponse) {
+    if (!checkoutData || !quoteResponse || typeof quoteResponse !== 'object') {
+        return;
+    }
+
+    const retailCosts = quoteResponse.retail_costs && typeof quoteResponse.retail_costs === 'object'
+        ? quoteResponse.retail_costs
+        : null;
+    const costs = quoteResponse.costs && typeof quoteResponse.costs === 'object'
+        ? quoteResponse.costs
+        : null;
+
+    const currency = quoteResponse.currency
+        || retailCosts?.currency
+        || costs?.currency
+        || checkoutData?.cost?.totalAmount?.currencyCode
+        || currencyCode;
+
+    const subtotal = parsePositiveNumber(retailCosts?.subtotal ?? costs?.subtotal ?? checkoutData?.cost?.subtotalAmount?.amount) ?? 0;
+    const shippingAmount = parsePositiveNumber(retailCosts?.shipping ?? costs?.shipping);
+    const taxAmount = parsePositiveNumber(retailCosts?.tax ?? costs?.tax);
+    const total = parsePositiveNumber(retailCosts?.total ?? costs?.total);
+    const computedTotal = total ?? (subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0));
+
+    checkoutData.cost = checkoutData.cost || {};
+    checkoutData.cost.subtotalAmount = {
+        amount: subtotal.toFixed(2),
+        currencyCode: currency
+    };
+    checkoutData.cost.totalAmount = {
+        amount: computedTotal.toFixed(2),
+        currencyCode: currency
+    };
+
+    if (shippingAmount != null) {
+        checkoutData.cost.shippingAmount = {
+            amount: shippingAmount.toFixed(2),
+            currencyCode: currency
+        };
+    } else {
+        delete checkoutData.cost.shippingAmount;
+    }
+
+    if (taxAmount != null) {
+        checkoutData.cost.taxAmount = {
+            amount: taxAmount.toFixed(2),
+            currencyCode: currency
+        };
+    } else {
+        delete checkoutData.cost.taxAmount;
+    }
+
+    checkoutData.printfulQuote = {
+        shippingMethod: quoteResponse.shipping || checkoutData?.printfulQuote?.shippingMethod || 'STANDARD',
+        currency,
+        totals: {
+            subtotal,
+            shipping: shippingAmount ?? 0,
+            tax: taxAmount ?? 0,
+            total: computedTotal
+        }
+    };
+}
+
+async function ensurePrintfulQuote(customerDetails) {
     if (!hasShopLineItems(checkoutData)) {
         return null;
     }
 
-    let response;
-    const shopTotals = calculateOrderTotal(checkoutData);
-    const shopAmount = toNumber(shopTotals.total);
-    const shopCurrency = shopTotals.currency || currencyCode;
+    const payload = buildPrintfulOrderPayload(null, customerDetails, { externalIdPrefix: 'motocoach-quote' });
+
+    if (!payload) {
+        return null;
+    }
+
+    payload.metadata = {
+        ...(payload.metadata || {}),
+        quote: 'true'
+    };
 
     try {
-        response = await fetch('/api/create-shopify-order', {
+        const response = await fetch('/api/printfulQuote', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                cartId: checkoutData?.cartId || null,
-                paymentIntentId,
-                amount: shopAmount,
-                currency: shopCurrency,
-                customer: {
-                    email: customerDetails.email,
-                    phone: customerDetails.phone,
-                    firstName: customerDetails.firstName,
-                    lastName: customerDetails.lastName
-                },
-                shippingAddress: {
-                    firstName: customerDetails.firstName,
-                    lastName: customerDetails.lastName,
-                    address1: customerDetails.address1,
-                    address2: customerDetails.address2,
-                    city: customerDetails.city,
-                    state: customerDetails.state,
-                    postalCode: customerDetails.postalCode,
-                    country: customerDetails.country,
-                    phone: customerDetails.phone
-                },
-                lineItems: (checkoutData?.lines || []).map(line => ({
-                    merchandiseId: line.merchandiseId,
-                    quantity: line.quantity,
-                    price: parseFloat(line.price?.amount ?? '0'),
-                    currency: line.price?.currencyCode || shopCurrency,
-                    title: line.title,
-                    variantTitle: line.variantTitle
-                }))
+            body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const data = isJson ? await response.json() : await response.text();
+
+        if (!response.ok) {
+            const errorText = typeof data === 'string' ? data : (data?.error ? data.error : JSON.stringify(data));
+            throw new Error(errorText || 'Printful quote request failed');
+        }
+
+        if (data && typeof data === 'object') {
+            applyPrintfulQuoteToCheckout(data);
+            saveCheckoutData(checkoutData);
+            renderSummary(checkoutData);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Checkout: failed to generate Printful quote', error);
+        throw new Error(error.message || 'Unable to calculate shipping for your order.');
+    }
+}
+
+function normalisePlacementName(value) {
+    if (!value || typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const lowered = trimmed.toLowerCase().replace(/[\s-]+/g, '_');
+
+    if (lowered === 'default' || lowered === 'preview') {
+        return null;
+    }
+    return lowered;
+}
+
+function sanitiseOrderLayers(layers) {
+    if (!Array.isArray(layers)) {
+        return [];
+    }
+
+    return layers
+        .filter(layer => layer && typeof layer === 'object' && (layer.file_id || layer.url))
+        .map(layer => ({
+            type: layer.type || 'file',
+            file_id: layer.file_id || undefined,
+            url: layer.url || undefined
+        }))
+        .filter(layer => layer.file_id || layer.url);
+}
+
+function sanitiseOrderPlacements(placements) {
+    if (!Array.isArray(placements)) {
+        return [];
+    }
+
+    return placements
+        .filter(entry => entry && typeof entry === 'object' && typeof entry.placement === 'string')
+        .map(entry => {
+            const placement = normalisePlacementName(entry.placement) || normalisePlacementName(entry.type) || entry.placement;
+            const layers = sanitiseOrderLayers(entry.layers);
+
+            const techniqueCandidates = [];
+
+            if (typeof entry.technique === 'string' && entry.technique.trim()) {
+                techniqueCandidates.push(entry.technique.trim());
+            }
+
+            if (Array.isArray(entry.techniques)) {
+                entry.techniques.forEach(tech => {
+                    if (typeof tech === 'string' && tech.trim()) {
+                        techniqueCandidates.push(tech.trim());
+                    }
+                });
+            }
+
+            if (typeof entry.defaultTechnique === 'string' && entry.defaultTechnique.trim()) {
+                techniqueCandidates.push(entry.defaultTechnique.trim());
+            }
+
+            const uniqueTechniques = Array.from(new Set(techniqueCandidates));
+            const technique = uniqueTechniques[0] || null;
+
+            const payload = {
+                placement,
+                technique,
+                layers
+            };
+
+            if (uniqueTechniques.length > 0) {
+                payload.techniques = uniqueTechniques;
+            }
+
+            return payload;
+        })
+        .filter(entry => entry.placement && entry.layers.length > 0);
+}
+
+function sanitiseOrderFiles(files) {
+    if (!Array.isArray(files)) {
+        return [];
+    }
+
+    return files
+        .filter(file => file && typeof file === 'object' && (typeof file.type === 'string' || typeof file.placement === 'string'))
+        .map(file => {
+            const fromPlacement = normalisePlacementName(file.placement);
+            let placement = fromPlacement || normalisePlacementName(file.type);
+
+            if (!placement && typeof file.type === 'string') {
+                const fallback = file.type.trim().toLowerCase();
+                if (fallback) {
+                    if (fallback === 'default' || fallback === 'preview') {
+                        placement = 'front';
+                    } else {
+                        placement = normalisePlacementName(fallback) || fallback;
+                    }
+                }
+            }
+
+            if (!placement) {
+                placement = 'front';
+            }
+
+            const payload = {
+                type: placement
+            };
+
+            if (file.file_id || file.id) {
+                payload.file_id = file.file_id || file.id;
+            }
+
+            const url = file.url || file.preview_url || file.thumbnail_url;
+            if (url) {
+                payload.url = url;
+            }
+
+            return payload;
+        })
+        .filter(file => file.type && (file.file_id || file.url));
+}
+
+function derivePlacementsFromFiles(files, defaultTechnique = null) {
+    const placementsMap = new Map();
+
+    files.forEach(file => {
+        if (!file || typeof file !== 'object' || !file.type) {
+            return;
+        }
+
+        const placement = normalisePlacementName(file.type) || file.type;
+        if (!placement) {
+            return;
+        }
+
+        if (!placementsMap.has(placement)) {
+            placementsMap.set(placement, {
+                placement,
+                technique: typeof file.technique === 'string' && file.technique.trim()
+                    ? file.technique.trim()
+                    : (defaultTechnique || null),
+                layers: []
+            });
+        }
+
+        const placementEntry = placementsMap.get(placement);
+
+        if (!placementEntry.technique && typeof file.technique === 'string' && file.technique.trim()) {
+            placementEntry.technique = file.technique.trim();
+        }
+
+        if (!placementEntry.technique && defaultTechnique) {
+            placementEntry.technique = defaultTechnique;
+        }
+
+        const layer = { type: 'file' };
+        if (file.file_id) {
+            layer.file_id = file.file_id;
+        }
+        if (file.url) {
+            layer.url = file.url;
+        }
+
+        if (!layer.file_id && !layer.url) {
+            return;
+        }
+
+        placementEntry.layers.push(layer);
+    });
+
+    return Array.from(placementsMap.values())
+        .map(entry => ({
+            placement: entry.placement,
+            technique: entry.technique || defaultTechnique || null,
+            layers: entry.layers
+        }))
+        .filter(entry => entry.layers.length > 0);
+}
+
+function extractPrintfulItemFromLine(line, currency) {
+    if (!line) {
+        return null;
+    }
+
+    const quantity = Number(line.quantity) || 0;
+    if (quantity <= 0) {
+        return null;
+    }
+
+    const candidateIds = [
+        line.printfulCatalogVariantId,
+        line.catalogVariantId,
+        line.printfulVariantId,
+        line.printful?.catalogVariantId,
+        line.printful?.variantId,
+        line.metadata?.printfulCatalogVariantId
+    ].map(parsePositiveNumber).filter(Boolean);
+
+    const catalogVariantId = candidateIds[0];
+
+    if (!catalogVariantId) {
+        return null;
+    }
+
+    const retailPrice = parsePositiveNumber(line.price?.amount);
+
+    const item = {
+        source: 'catalog',
+        catalog_variant_id: catalogVariantId,
+        quantity,
+        external_id: line.id || undefined,
+        name: line.title || undefined
+    };
+
+    if (retailPrice) {
+        item.retail_price = retailPrice.toFixed(2);
+        item.retail_currency = line.price?.currencyCode || currency || 'AUD';
+    }
+
+    const techniqueOrder = [];
+
+    const addTechnique = (value) => {
+        if (typeof value !== 'string') {
+            return;
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return;
+        }
+        if (!techniqueOrder.includes(trimmed)) {
+            techniqueOrder.push(trimmed);
+        }
+    };
+
+    const addTechniqueList = (value) => {
+        if (Array.isArray(value)) {
+            value.forEach(addTechnique);
+        } else if (typeof value === 'string') {
+            addTechnique(value);
+        }
+    };
+
+    addTechnique(line.defaultTechnique);
+    addTechnique(line.printful?.defaultTechnique);
+    addTechniqueList(line.availableTechniques);
+    addTechniqueList(line.printful?.availableTechniques);
+
+    const collectPlacementTechniques = (placements) => {
+        if (!Array.isArray(placements)) {
+            return;
+        }
+        placements.forEach(entry => {
+            if (!entry || typeof entry !== 'object') {
+                return;
+            }
+            addTechnique(entry.technique);
+            addTechniqueList(entry.techniques);
+            addTechnique(entry.defaultTechnique);
+        });
+    };
+
+    collectPlacementTechniques(line.placements);
+    collectPlacementTechniques(line.printful?.placements);
+
+    const fallbackTechniqueCandidate = techniqueOrder[0] || null;
+    const finalFallbackTechnique = fallbackTechniqueCandidate || 'dtg';
+
+    const applyPlacementTechniques = (placementsList) => {
+        if (!Array.isArray(placementsList)) {
+            return [];
+        }
+
+        return placementsList
+            .map(entry => {
+                if (!entry || typeof entry !== 'object') {
+                    return null;
+                }
+
+                const layers = Array.isArray(entry.layers)
+                    ? entry.layers.filter(layer => layer && (layer.file_id || layer.url))
+                    : [];
+
+                if (layers.length === 0) {
+                    return null;
+                }
+
+                const techniqueCandidates = [];
+
+                if (typeof entry.technique === 'string' && entry.technique.trim()) {
+                    techniqueCandidates.push(entry.technique.trim());
+                }
+
+                if (Array.isArray(entry.techniques)) {
+                    entry.techniques.forEach(tech => {
+                        if (typeof tech === 'string' && tech.trim()) {
+                            techniqueCandidates.push(tech.trim());
+                        }
+                    });
+                }
+
+                if (typeof entry.defaultTechnique === 'string' && entry.defaultTechnique.trim()) {
+                    techniqueCandidates.push(entry.defaultTechnique.trim());
+                }
+
+                const uniqueTechniques = Array.from(new Set(techniqueCandidates));
+                let technique = uniqueTechniques[0] || fallbackTechniqueCandidate || null;
+
+                if (!technique) {
+                    technique = finalFallbackTechnique;
+                }
+
+                if (technique) {
+                    addTechnique(technique);
+                }
+
+                const payload = {
+                    placement: entry.placement,
+                    technique,
+                    layers
+                };
+
+                const techniqueList = uniqueTechniques.length > 0
+                    ? uniqueTechniques
+                    : (technique ? [technique] : []);
+
+                if (techniqueList.length > 0) {
+                    payload.techniques = Array.from(new Set(techniqueList));
+                }
+
+                return payload;
             })
+            .filter(entry => entry && entry.placement && entry.layers.length > 0);
+    };
+
+    if (Array.isArray(line.placements)) {
+        item.placements = applyPlacementTechniques(sanitiseOrderPlacements(line.placements));
+    } else if (Array.isArray(line.printful?.placements)) {
+        item.placements = applyPlacementTechniques(sanitiseOrderPlacements(line.printful.placements));
+    }
+
+    if (Array.isArray(line.files)) {
+        item.files = sanitiseOrderFiles(line.files);
+    } else if (Array.isArray(line.printful?.files)) {
+        item.files = sanitiseOrderFiles(line.printful.files);
+    }
+
+    if ((!item.placements || item.placements.length === 0) && item.files?.length) {
+        const derived = derivePlacementsFromFiles(item.files, fallbackTechniqueCandidate || finalFallbackTechnique);
+        if (derived.length > 0) {
+            item.placements = applyPlacementTechniques(derived);
+        }
+    }
+
+    if ((!item.placements || item.placements.length === 0) && item.files?.length) {
+        const derivedFallback = derivePlacementsFromFiles(item.files, finalFallbackTechnique);
+        if (derivedFallback.length > 0) {
+            item.placements = applyPlacementTechniques(derivedFallback);
+        }
+    }
+
+    return item;
+}
+
+
+function buildPrintfulOrderPayload(paymentIntentId, customerDetails, { externalIdPrefix = 'motocoach-checkout' } = {}) {
+    const shopTotals = calculateOrderTotal(checkoutData);
+    const orderCurrency = shopTotals.currency || currencyCode;
+
+    const items = (checkoutData?.lines || [])
+        .map(line => extractPrintfulItemFromLine(line, orderCurrency))
+        .filter(Boolean);
+
+    if (items.length === 0) {
+        return null;
+    }
+
+    const countryCode = normaliseCountryCode(customerDetails.country) || 'AU';
+    const stateCode = normaliseStateCode(countryCode, customerDetails.state) || undefined;
+
+    const recipient = {
+        name: `${customerDetails.firstName} ${customerDetails.lastName}`.trim(),
+        email: customerDetails.email,
+        phone: customerDetails.phone || undefined,
+        address1: customerDetails.address1,
+        address2: customerDetails.address2 || undefined,
+        city: customerDetails.city,
+        state_code: stateCode || undefined,
+        state_name: customerDetails.state || undefined,
+        country_code: countryCode,
+        zip: customerDetails.postalCode
+    };
+
+    const subtotalAmount = parsePositiveNumber(shopTotals.subtotal) ?? parsePositiveNumber(shopTotals.total) ?? 0;
+    const shippingAmount = parsePositiveNumber(checkoutData?.cost?.shippingAmount?.amount);
+    const taxAmount = parsePositiveNumber(checkoutData?.cost?.taxAmount?.amount);
+    const totalAmount = parsePositiveNumber(checkoutData?.cost?.totalAmount?.amount);
+
+    const externalId = paymentIntentId || `${externalIdPrefix}-${Date.now()}`;
+
+    const metadata = {
+        source: 'motocoach-checkout',
+        cart_id: checkoutData?.cartId || null
+    };
+
+    if (paymentIntentId) {
+        metadata.payment_intent_id = paymentIntentId;
+    }
+
+    return {
+        source: 'catalog',
+        external_id: externalId,
+        recipient,
+        items,
+        retail_costs: {
+            currency: orderCurrency,
+            subtotal: subtotalAmount.toFixed(2),
+            ...(shippingAmount != null ? { shipping: shippingAmount.toFixed(2) } : {}),
+            ...(taxAmount != null ? { tax: taxAmount.toFixed(2) } : {}),
+            ...(totalAmount != null ? { total: totalAmount.toFixed(2) } : {})
+        },
+        shipping: checkoutData?.printfulQuote?.shippingMethod || 'STANDARD',
+        packing_slip: {
+            email: customerDetails.email,
+            message: 'Thank you for supporting Moto Coach!'
+        },
+        metadata
+    };
+}
+
+async function submitPrintfulOrder(paymentIntentId, customerDetails) {
+    if (!hasShopLineItems(checkoutData)) {
+        return null;
+    }
+
+    const payload = buildPrintfulOrderPayload(paymentIntentId, customerDetails);
+
+    if (!payload) {
+        return {
+            success: false,
+            message: 'Payment received! We will finalise your Printful order manually shortly.'
+        };
+    }
+
+    let response;
+    try {
+        response = await fetch('/api/printfulOrder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
         });
     } catch (networkError) {
-        throw new Error('Payment captured, but we could not reach Shopify to record the order. Please contact support with your receipt.');
+        throw new Error('Payment captured, but we could not reach Printful to submit the order. Please contact support with your receipt.');
     }
 
     const contentType = response.headers.get('content-type') || '';
     const isJson = contentType.includes('application/json');
-    const payload = isJson ? await response.json() : await response.text();
+    const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
-        if (response.status >= 500) {
-            const message = typeof payload === 'string' ? payload : payload?.error || payload?.message;
-            const messageText = typeof message === 'string' ? message : '';
-            if (messageText.toLowerCase().includes('misconfiguration')) {
-                return {
-                    success: false,
-                    message: 'Payment received! Our team will finalise your order in Shopify as soon as admin access is configured.'
-                };
-            }
-        }
-
-        const errorText = typeof payload === 'string' ? payload : JSON.stringify(payload);
-        throw new Error(`Failed to create Shopify order: ${errorText}`);
+        const errorText = typeof data === 'string' ? data : JSON.stringify(data);
+        throw new Error(`Failed to submit Printful order: ${errorText}`);
     }
 
-    if (payload && typeof payload === 'object') {
+    if (data && typeof data === 'object') {
         return {
-            ...payload,
-            success: payload.success ?? true,
-            transactionRecorded: payload.transactionRecorded ?? true
+            success: data.success !== false,
+            order: data.order || data.result || data,
+            draft: data.draft || null
         };
     }
 
-    return { success: true };
+    return { success: true, order: data };
 }
 
 function setProcessingState(isProcessing) {
@@ -896,17 +1532,16 @@ function showSuccess({ orderData = null, registrationResult = null } = {}) {
         }
 
         if (orderData) {
-            const { orderName, orderId, message, success, transactionRecorded } = orderData;
+            const { message, success, order, draft } = orderData;
             if (success === false) {
                 parts.push(message || 'We received your payment and will confirm your booking shortly.');
-            } else if (transactionRecorded === false) {
-                parts.push('We created your Shopify order and will finish recording the payment shortly.');
-            } else if (orderName) {
-                parts.push(`We received your payment and created Shopify order ${orderName}.`);
-            } else if (orderId) {
-                parts.push(`We received your payment and created Shopify order ${orderId}.`);
             } else {
-                parts.push('We received your payment.');
+                const orderIdentifier = order?.id || order?.order_id || draft?.id || draft?.order_id;
+                if (orderIdentifier) {
+                    parts.push(`We received your payment and submitted Printful order #${orderIdentifier}.`);
+                } else {
+                    parts.push('We received your payment and submitted your order for fulfilment.');
+                }
             }
         } else if (hasRegistration) {
             parts.push('Thank you! We received your payment.');
@@ -1073,10 +1708,16 @@ async function handleFormSubmit(event) {
     }
 
     clearPaymentError();
-    showStatusMessage('Confirming payment…');
+    showStatusMessage('Preparing your order…');
     setProcessingState(true);
 
     try {
+        if (hasShopLineItems(checkoutData)) {
+            showStatusMessage('Calculating shipping and taxes…');
+            await ensurePrintfulQuote(customerDetails);
+        }
+
+        showStatusMessage('Confirming payment…');
         const { clientSecret, paymentIntentId } = await createPaymentIntent({
             email: customerDetails.email
         });
@@ -1114,15 +1755,13 @@ async function handleFormSubmit(event) {
 
         let orderData = null;
         if (hasShopLineItems(checkoutData)) {
-            showStatusMessage('Recording your order in Shopify…');
-            orderData = await recordShopifyOrder(finalPaymentIntentId, customerDetails);
+            showStatusMessage('Submitting your order for fulfilment…');
+            orderData = await submitPrintfulOrder(finalPaymentIntentId, customerDetails);
 
             if (orderData?.success === false) {
                 showStatusMessage(orderData.message || 'Payment received! We will finish your order manually.');
-            } else if (orderData?.transactionRecorded === false) {
-                showStatusMessage('Order created! We will finish recording the payment in Shopify shortly.');
             } else {
-                showStatusMessage('Order complete!');
+                showStatusMessage('Order submitted!');
             }
         } else if (registrationResult) {
             showStatusMessage('Registration complete!');
