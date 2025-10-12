@@ -1,10 +1,9 @@
 import { applyCors } from './_utils/cors';
 
 const PRINTFUL_API_BASE = 'https://api.printful.com/v2';
-const STORE_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/stores`;
-const STORE_PRODUCTS_ENDPOINT = (storeId) => `${STORE_LIST_ENDPOINT}/${encodeURIComponent(storeId)}/products`;
+const STORE_PRODUCTS_ENDPOINT = (storeId) => `${PRINTFUL_API_BASE}/stores/${encodeURIComponent(storeId)}/products`;
 
-const DEFAULT_STORE_NAME = 'Personal Orders';
+const DEFAULT_STORE_NAME = 'Personal orders';
 
 function normaliseRegionName(region) {
     if (!region || typeof region !== 'string') {
@@ -60,102 +59,34 @@ async function fetchFromPrintful(apiKey, url, options = {}) {
     return data;
 }
 
-const STORE_CACHE = {
-    resolved: false,
-    value: null
-};
+let STORE_CONTEXT_CACHE = null;
 
-async function resolveStoreContext(apiKey) {
-    const explicitId = process.env.PRINTFUL_STORE_ID?.trim();
-    const explicitName = process.env.PRINTFUL_STORE_NAME?.trim();
+async function resolveStoreContext() {
+    const storeId = process.env.PRINTFUL_STORE_ID?.trim();
 
-    if (explicitId) {
-        const context = {
-            id: explicitId,
-            name: explicitName || null,
-            source: 'env-id',
-            sellingRegion: DEFAULT_SELLING_REGION_NAME
-        };
-
-        const cached = STORE_CACHE.value;
-        if (!STORE_CACHE.resolved
-            || cached?.source !== 'env-id'
-            || cached?.id !== context.id
-            || cached?.name !== context.name
-            || cached?.sellingRegion !== context.sellingRegion) {
-            STORE_CACHE.resolved = true;
-            STORE_CACHE.value = context;
-        }
-
-        return STORE_CACHE.value;
+    if (!storeId) {
+        const error = new Error('Printful store ID is not defined in env');
+        error.status = 500;
+        throw error;
     }
 
-    if (STORE_CACHE.resolved) {
-        return STORE_CACHE.value;
+    const storeName = process.env.PRINTFUL_STORE_NAME?.trim() || DEFAULT_STORE_NAME;
+
+    if (STORE_CONTEXT_CACHE
+        && STORE_CONTEXT_CACHE.id === storeId
+        && STORE_CONTEXT_CACHE.name === storeName
+        && STORE_CONTEXT_CACHE.sellingRegion === DEFAULT_SELLING_REGION_NAME) {
+        return STORE_CONTEXT_CACHE;
     }
 
-    try {
-        const storesResponse = await fetchFromPrintful(apiKey, STORE_LIST_ENDPOINT);
-        const rawStores = storesResponse?.data
-            ?? storesResponse?.result
-            ?? storesResponse?.stores
-            ?? storesResponse?.result?.items
-            ?? null;
+    STORE_CONTEXT_CACHE = {
+        id: storeId,
+        name: storeName,
+        source: 'env',
+        sellingRegion: DEFAULT_SELLING_REGION_NAME
+    };
 
-        let stores = [];
-
-        if (Array.isArray(rawStores)) {
-            stores = rawStores;
-        } else if (rawStores && typeof rawStores === 'object') {
-            if (Array.isArray(rawStores.items)) {
-                stores = rawStores.items;
-            } else if (Array.isArray(rawStores.result)) {
-                stores = rawStores.result;
-            } else if (Array.isArray(rawStores.sync_stores)) {
-                stores = rawStores.sync_stores;
-            } else {
-                stores = [rawStores];
-            }
-        }
-
-        if (stores.length === 1) {
-            const store = stores[0];
-            const context = {
-                id: store.id || store.store_id || null,
-                name: store.name || explicitName || null,
-                source: 'api-single',
-                sellingRegion: normaliseRegionName(
-                    store.selling_region_name
-                    || store.default_selling_region
-                    || store.selling_region
-                ) || DEFAULT_SELLING_REGION_NAME
-            };
-            STORE_CACHE.resolved = true;
-            STORE_CACHE.value = context;
-            return context;
-        }
-
-        console.warn('Printful: ambiguous or empty store list response', storesResponse);
-        const fallbackContext = {
-            id: null,
-            name: explicitName || DEFAULT_STORE_NAME,
-            source: 'fallback',
-            sellingRegion: DEFAULT_SELLING_REGION_NAME
-        };
-        STORE_CACHE.resolved = false;
-        STORE_CACHE.value = fallbackContext;
-        return fallbackContext;
-    } catch (error) {
-        console.warn('Printful: failed to resolve store context (api error)', error);
-        STORE_CACHE.resolved = false;
-        STORE_CACHE.value = {
-            id: null,
-            name: explicitName || DEFAULT_STORE_NAME,
-            source: 'error',
-            sellingRegion: DEFAULT_SELLING_REGION_NAME
-        };
-        return STORE_CACHE.value;
-    }
+    return STORE_CONTEXT_CACHE;
 }
 
 function extractProductSummaries(listResponse) {
@@ -473,7 +404,7 @@ export default async function handler(req, res) {
     );
 
     try {
-        const storeContext = await resolveStoreContext(apiKey);
+        const storeContext = await resolveStoreContext();
         const sellingRegionName = queryRegion
             || storeContext?.sellingRegion
             || DEFAULT_SELLING_REGION_NAME;
