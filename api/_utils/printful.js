@@ -1,5 +1,6 @@
 export const PRINTFUL_API_BASE = 'https://api.printful.com';
 export const PRINTFUL_ORDERS_ENDPOINT = `${PRINTFUL_API_BASE}/v2/orders`;
+export const PRINTFUL_ORDER_ESTIMATION_ENDPOINT = `${PRINTFUL_API_BASE}/v2/order-estimation-tasks`;
 
 function resolveStoreId(explicit) {
     if (typeof explicit === 'string' && explicit.trim()) {
@@ -124,6 +125,66 @@ export function extractOrderId(response) {
     return null;
 }
 
+function coerceTaskCandidate(candidate) {
+    if (!candidate) {
+        return null;
+    }
+
+    if (Array.isArray(candidate)) {
+        return candidate.length > 0 ? candidate[0] : null;
+    }
+
+    if (typeof candidate === 'object') {
+        return candidate;
+    }
+
+    return null;
+}
+
+export function extractEstimationTask(response) {
+    if (!response || typeof response !== 'object') {
+        return null;
+    }
+
+    const candidates = [
+        response.data,
+        response.result,
+        response.task,
+        response.tasks,
+        response.data?.task,
+        response.data?.tasks,
+        response.result?.task,
+        response.result?.tasks
+    ];
+
+    for (const candidate of candidates) {
+        const task = coerceTaskCandidate(candidate);
+        if (task && typeof task === 'object') {
+            return task;
+        }
+    }
+
+    return null;
+}
+
+export function extractEstimationTaskId(response) {
+    const task = extractEstimationTask(response);
+
+    if (!task || typeof task !== 'object') {
+        return null;
+    }
+
+    if (task.id) {
+        return task.id;
+    }
+
+    if (task.task_id) {
+        return task.task_id;
+    }
+
+    return null;
+}
+
 function getCalculationStatus(costBlock) {
     if (!costBlock || typeof costBlock !== 'object') {
         return null;
@@ -175,6 +236,59 @@ export async function waitForOrderCosts(orderId, apiKey, { storeId, intervalMs =
     }
 
     const timeoutError = new Error('Timed out waiting for Printful cost calculations');
+    timeoutError.status = 504;
+    throw timeoutError;
+}
+
+function getEstimationStatus(task) {
+    if (!task || typeof task !== 'object') {
+        return null;
+    }
+
+    const status = typeof task.status === 'string'
+        ? task.status
+        : typeof task.state === 'string'
+            ? task.state
+            : null;
+
+    return status ? status.toLowerCase() : null;
+}
+
+export async function waitForOrderEstimation(taskId, apiKey, { storeId, intervalMs = 1500, timeoutMs = 45000 } = {}) {
+    if (!taskId) {
+        throw new Error('Estimation task ID is required to poll Printful quotes');
+    }
+
+    const resolvedStoreId = resolveStoreId(storeId);
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+        const queryUrl = new URL(PRINTFUL_ORDER_ESTIMATION_ENDPOINT);
+        queryUrl.searchParams.set('id', taskId);
+
+        const response = await callPrintful(queryUrl.toString(), {
+            apiKey,
+            storeId: resolvedStoreId
+        });
+
+        const task = extractEstimationTask(response) || {};
+        const status = getEstimationStatus(task) || 'unknown';
+
+        if (status === 'failed') {
+            const error = new Error('Printful order estimation failed');
+            error.status = 502;
+            error.body = response;
+            throw error;
+        }
+
+        if (status === 'completed') {
+            return { task, raw: response };
+        }
+
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+
+    const timeoutError = new Error('Timed out waiting for Printful order estimation');
     timeoutError.status = 504;
     throw timeoutError;
 }

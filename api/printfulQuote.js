@@ -1,11 +1,9 @@
 import { applyCors } from './_utils/cors';
 import {
-    PRINTFUL_ORDERS_ENDPOINT,
-    buildPrintfulOptions,
+    PRINTFUL_ORDER_ESTIMATION_ENDPOINT,
     callPrintful,
-    extractOrderData,
-    extractOrderId,
-    waitForOrderCosts
+    extractEstimationTaskId,
+    waitForOrderEstimation
 } from './_utils/printful';
 
 function parseRequestBody(req) {
@@ -45,14 +43,6 @@ function validateOrderPayload(payload) {
     return null;
 }
 
-async function deleteDraftOrder(orderId, apiKey, storeId) {
-    try {
-        await fetch(`${PRINTFUL_ORDERS_ENDPOINT}/${encodeURIComponent(orderId)}`, buildPrintfulOptions('DELETE', apiKey, { storeId }));
-    } catch (error) {
-        console.warn('Printful quote: failed to delete draft', orderId, error);
-    }
-}
-
 export default async function handler(req, res) {
     const cors = applyCors(req, res, {
         methods: ['POST', 'OPTIONS'],
@@ -84,57 +74,48 @@ export default async function handler(req, res) {
     const storeId = process.env.PRINTFUL_STORE_ID?.trim() || undefined;
 
     try {
-        const createUrl = new URL(PRINTFUL_ORDERS_ENDPOINT);
-        createUrl.searchParams.set('confirm', 'false');
-
         if (!orderPayload.items && Array.isArray(orderPayload.order_items)) {
             orderPayload.items = orderPayload.order_items;
         }
 
-        const createResponse = await callPrintful(createUrl.toString(), {
+        const createResponse = await callPrintful(PRINTFUL_ORDER_ESTIMATION_ENDPOINT, {
             method: 'POST',
             apiKey,
             body: orderPayload,
             storeId
         });
 
-        const orderId = extractOrderId(createResponse);
-        if (!orderId) {
+        const taskId = extractEstimationTaskId(createResponse);
+
+        if (!taskId) {
             return res.status(502).json({
-                error: 'Unable to determine Printful order ID from response',
+                error: 'Unable to determine Printful estimation task ID from response',
                 details: createResponse
             });
         }
 
-        let calculatedOrder;
+        let completedTask;
+
         try {
-            const { order } = await waitForOrderCosts(orderId, apiKey, { storeId });
-            calculatedOrder = order;
+            const { task } = await waitForOrderEstimation(taskId, apiKey, { storeId });
+            completedTask = task;
         } catch (pollError) {
-            await deleteDraftOrder(orderId, apiKey, storeId);
-
-            if (pollError.status) {
-                return res.status(pollError.status).json({
-                    error: 'Printful cost calculation did not complete',
-                    details: pollError.body || pollError.message
-                });
-            }
-
-            return res.status(504).json({
-                error: 'Printful cost calculation did not complete',
-                details: pollError.message
+            const status = pollError.status && Number.isInteger(pollError.status) ? pollError.status : 504;
+            return res.status(status).json({
+                error: status === 504
+                    ? 'Printful cost calculation did not complete'
+                    : 'Printful cost calculation failed',
+                details: pollError.body || pollError.message
             });
         }
 
-        await deleteDraftOrder(orderId, apiKey, storeId);
-
         return res.status(200).json({
             success: true,
-            costs: calculatedOrder?.costs || null,
-            retail_costs: calculatedOrder?.retail_costs || null,
-            shipping: calculatedOrder?.shipping || null,
-            currency: calculatedOrder?.retail_costs?.currency || calculatedOrder?.costs?.currency || null,
-            quote: extractOrderData(calculatedOrder)
+            costs: completedTask?.costs || null,
+            retail_costs: completedTask?.retail_costs || null,
+            shipping: completedTask?.shipping || null,
+            currency: completedTask?.retail_costs?.currency || completedTask?.costs?.currency || null,
+            quote: completedTask
         });
     } catch (error) {
         console.error('Error generating Printful quote:', error);
