@@ -68,6 +68,11 @@ function buildFetchOptions(method, apiKey, body) {
         'Content-Type': 'application/json'
     };
 
+    const storeId = process.env.PRINTFUL_STORE_ID?.trim();
+    if (storeId) {
+        headers['X-PF-Store-Id'] = storeId;
+    }
+
     const options = { method, headers };
 
     if (typeof body !== 'undefined') {

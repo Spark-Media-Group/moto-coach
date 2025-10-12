@@ -1,7 +1,9 @@
 import { applyCors } from './_utils/cors';
 
 const PRINTFUL_API_BASE = 'https://api.printful.com/v2';
-const STORE_PRODUCTS_ENDPOINT = (storeId) => `${PRINTFUL_API_BASE}/stores/${encodeURIComponent(storeId)}/products`;
+const CATALOG_PRODUCTS_ENDPOINT = `${PRINTFUL_API_BASE}/catalog-products`;
+const CATALOG_PRODUCT_VARIANTS_ENDPOINT = (catalogProductId) => `${PRINTFUL_API_BASE}/catalog-products/${encodeURIComponent(catalogProductId)}/catalog-variants`;
+const CATALOG_AVAILABILITY_ENDPOINT = (catalogProductId) => `${PRINTFUL_API_BASE}/catalog-products/${encodeURIComponent(catalogProductId)}/availability`;
 
 const DEFAULT_STORE_NAME = 'Personal orders';
 
@@ -89,30 +91,6 @@ async function resolveStoreContext() {
     return STORE_CONTEXT_CACHE;
 }
 
-function extractProductSummaries(listResponse) {
-    if (!listResponse) {
-        return [];
-    }
-
-    if (Array.isArray(listResponse.result)) {
-        return listResponse.result;
-    }
-
-    if (Array.isArray(listResponse.result?.sync_products)) {
-        return listResponse.result.sync_products;
-    }
-
-    if (Array.isArray(listResponse.sync_products)) {
-        return listResponse.sync_products;
-    }
-
-    if (Array.isArray(listResponse.result?.items)) {
-        return listResponse.result.items;
-    }
-
-    return [];
-}
-
 async function fetchProductList(apiKey, storeContext, limit, sellingRegionName) {
     if (!storeContext?.id) {
         const error = new Error('Printful store context did not resolve an id');
@@ -120,15 +98,32 @@ async function fetchProductList(apiKey, storeContext, limit, sellingRegionName) 
         throw error;
     }
 
-    const listUrl = new URL(STORE_PRODUCTS_ENDPOINT(storeContext.id));
+    const listUrl = new URL(CATALOG_PRODUCTS_ENDPOINT);
     listUrl.searchParams.set('limit', String(limit));
+    listUrl.searchParams.set('offset', '0');
 
     if (sellingRegionName) {
         listUrl.searchParams.set('selling_region_name', sellingRegionName);
     }
 
-    const listResponse = await fetchFromPrintful(apiKey, listUrl.toString());
-    const summaries = extractProductSummaries(listResponse);
+    const listResponse = await fetchFromPrintful(apiKey, listUrl.toString(), {
+        storeId: storeContext.id
+    });
+
+    const data = Array.isArray(listResponse?.data) ? listResponse.data : [];
+    const summaries = data.map((product) => ({
+        id: product.id,
+        name: product.name,
+        description: product.description || '',
+        thumbnail_url: product.image || product.thumbnail_url || null,
+        tags: Array.isArray(product.tags) ? product.tags : [],
+        product: {
+            main_category: {
+                name: product.main_category_name || product.type || null
+            }
+        }
+    }));
+
     return { summaries };
 }
 
@@ -429,18 +424,83 @@ export default async function handler(req, res) {
         }
 
         const detailResults = await Promise.allSettled(
-            productSummaries.map(summary => {
-                const summaryId = getSummaryId(summary);
-                if (!summaryId) {
-                    return Promise.reject(new Error('Product summary missing identifier'));
+            productSummaries.map(async (summary) => {
+                const catalogProductId = getSummaryId(summary);
+                if (!catalogProductId) {
+                    throw new Error('Product summary missing identifier');
                 }
 
-                const detailUrl = new URL(`${STORE_PRODUCTS_ENDPOINT(storeContext.id)}/${encodeURIComponent(summaryId)}`);
+                const variantsUrl = new URL(CATALOG_PRODUCT_VARIANTS_ENDPOINT(catalogProductId));
+                variantsUrl.searchParams.set('limit', '100');
+                variantsUrl.searchParams.set('offset', '0');
+
+                const availabilityUrl = new URL(CATALOG_AVAILABILITY_ENDPOINT(catalogProductId));
                 if (sellingRegionName) {
-                    detailUrl.searchParams.set('selling_region_name', sellingRegionName);
+                    availabilityUrl.searchParams.set('selling_region_name', sellingRegionName);
                 }
 
-                return fetchFromPrintful(apiKey, detailUrl.toString());
+                const [variantsRes, availabilityRes] = await Promise.all([
+                    fetchFromPrintful(apiKey, variantsUrl.toString(), { storeId: storeContext.id }),
+                    fetchFromPrintful(apiKey, availabilityUrl.toString(), { storeId: storeContext.id })
+                ]);
+
+                const variants = Array.isArray(variantsRes?.data) ? variantsRes.data : [];
+                const availability = Array.isArray(availabilityRes?.data) ? availabilityRes.data : [];
+
+                const fauxDetail = {
+                    result: {
+                        product: {
+                            id: catalogProductId,
+                            name: summary.name,
+                            description: summary.description || '',
+                            thumbnail_url: summary.thumbnail_url || null,
+                            tags: summary.tags || [],
+                            product: summary.product || null,
+                            main_category_name: summary.product?.main_category?.name || null
+                        },
+                        variants: variants.map((variant) => {
+                            const variantAvailability = availability.find((entry) => entry.catalog_variant_id === variant.id);
+                            const availabilityEntries = Array.isArray(variantAvailability?.availability)
+                                ? variantAvailability.availability
+                                : [];
+                            const isAvailable = availabilityEntries.length === 0
+                                ? Boolean(variantAvailability)
+                                : availabilityEntries.some((entry) => entry.status !== 'not_available');
+
+                            const variantImages = [];
+                            if (Array.isArray(variant.images)) {
+                                variantImages.push(
+                                    ...variant.images.map((image) => (typeof image === 'string' ? { preview_url: image } : image))
+                                );
+                            }
+                            if (Array.isArray(variant.preview_images)) {
+                                variantImages.push(
+                                    ...variant.preview_images.map((image) => (typeof image === 'string' ? { preview_url: image } : image))
+                                );
+                            }
+
+                            const singleImages = [variant.image, variant.default_image, variant.preview_image]
+                                .filter(Boolean)
+                                .map((image) => (typeof image === 'string' ? { preview_url: image } : image));
+
+                            const defaultPrice = variant.default_price || variant.price || null;
+                            const retailPrice = typeof defaultPrice === 'object' ? defaultPrice.amount : defaultPrice;
+
+                            return {
+                                id: variant.id,
+                                catalog_variant_id: variant.id,
+                                name: variant.name,
+                                retail_price: retailPrice ?? variant.retail_price ?? null,
+                                currency: (typeof defaultPrice === 'object' && defaultPrice.currency) || variant.currency || 'AUD',
+                                images: [...variantImages, ...singleImages],
+                                is_ignored: isAvailable ? false : true,
+                                sku: variant.sku || null
+                            };
+                        })
+                    }
+                };
+
+                return fauxDetail;
             })
         );
 
