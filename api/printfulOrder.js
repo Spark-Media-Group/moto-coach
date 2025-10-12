@@ -31,7 +31,11 @@ function validateOrderPayload(payload) {
         return 'Missing recipient information';
     }
 
-    if (!Array.isArray(payload.order_items) || payload.order_items.length === 0) {
+    const hasItems = Array.isArray(payload.items)
+        ? payload.items.length > 0
+        : Array.isArray(payload.order_items) && payload.order_items.length > 0;
+
+    if (!hasItems) {
         return 'Order must include at least one item';
     }
 
@@ -103,8 +107,15 @@ export default async function handler(req, res) {
     }
 
     try {
+        const createUrl = new URL(PRINTFUL_API_URL);
+        createUrl.searchParams.set('confirm', 'false');
+
+        if (!orderPayload.items && Array.isArray(orderPayload.order_items)) {
+            orderPayload.items = orderPayload.order_items;
+        }
+
         const createResponse = await callPrintful(
-            PRINTFUL_API_URL,
+            createUrl.toString(),
             buildFetchOptions('POST', apiKey, orderPayload)
         );
 
@@ -124,6 +135,7 @@ export default async function handler(req, res) {
 
         return res.status(200).json({
             success: true,
+            draft: createResponse?.result || createResponse,
             order: confirmResponse?.result || confirmResponse
         });
     } catch (error) {

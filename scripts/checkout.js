@@ -753,85 +753,264 @@ async function createPaymentIntent(metadata = {}) {
     return data;
 }
 
-async function recordShopifyOrder(paymentIntentId, customerDetails) {
+const COUNTRY_CODE_MAP = {
+    Australia: 'AU',
+    'United States': 'US',
+    'United Kingdom': 'GB',
+    Canada: 'CA',
+    'New Zealand': 'NZ'
+};
+
+const AU_STATE_CODE_MAP = {
+    'Australian Capital Territory': 'ACT',
+    'New South Wales': 'NSW',
+    'Northern Territory': 'NT',
+    Queensland: 'QLD',
+    'South Australia': 'SA',
+    Tasmania: 'TAS',
+    Victoria: 'VIC',
+    'Western Australia': 'WA'
+};
+
+const US_STATE_CODE_MAP = {
+    Alabama: 'AL',
+    Alaska: 'AK',
+    Arizona: 'AZ',
+    Arkansas: 'AR',
+    California: 'CA',
+    Colorado: 'CO',
+    Connecticut: 'CT',
+    Delaware: 'DE',
+    'District of Columbia': 'DC',
+    Florida: 'FL',
+    Georgia: 'GA',
+    Hawaii: 'HI',
+    Idaho: 'ID',
+    Illinois: 'IL',
+    Indiana: 'IN',
+    Iowa: 'IA',
+    Kansas: 'KS',
+    Kentucky: 'KY',
+    Louisiana: 'LA',
+    Maine: 'ME',
+    Maryland: 'MD',
+    Massachusetts: 'MA',
+    Michigan: 'MI',
+    Minnesota: 'MN',
+    Mississippi: 'MS',
+    Missouri: 'MO',
+    Montana: 'MT',
+    Nebraska: 'NE',
+    Nevada: 'NV',
+    'New Hampshire': 'NH',
+    'New Jersey': 'NJ',
+    'New Mexico': 'NM',
+    'New York': 'NY',
+    'North Carolina': 'NC',
+    'North Dakota': 'ND',
+    Ohio: 'OH',
+    Oklahoma: 'OK',
+    Oregon: 'OR',
+    Pennsylvania: 'PA',
+    'Rhode Island': 'RI',
+    'South Carolina': 'SC',
+    'South Dakota': 'SD',
+    Tennessee: 'TN',
+    Texas: 'TX',
+    Utah: 'UT',
+    Vermont: 'VT',
+    Virginia: 'VA',
+    Washington: 'WA',
+    'West Virginia': 'WV',
+    Wisconsin: 'WI',
+    Wyoming: 'WY'
+};
+
+function normaliseCountryCode(country) {
+    if (!country) {
+        return null;
+    }
+
+    const trimmed = String(country).trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (trimmed.length === 2 && /^[A-Za-z]{2}$/.test(trimmed)) {
+        return trimmed.toUpperCase();
+    }
+
+    const mapped = COUNTRY_CODE_MAP[trimmed];
+    return mapped || null;
+}
+
+function normaliseStateCode(countryCode, state) {
+    if (!state) {
+        return null;
+    }
+
+    const trimmed = String(state).trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    if (trimmed.length <= 3 && /^[A-Za-z]{1,3}$/.test(trimmed)) {
+        return trimmed.toUpperCase();
+    }
+
+    const lookup = countryCode === 'AU' ? AU_STATE_CODE_MAP : countryCode === 'US' ? US_STATE_CODE_MAP : null;
+    if (lookup && lookup[trimmed]) {
+        return lookup[trimmed];
+    }
+
+    return null;
+}
+
+function parsePositiveNumber(value) {
+    const numeric = typeof value === 'number' ? value : parseFloat(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+}
+
+function extractPrintfulItemFromLine(line, currency) {
+    if (!line) {
+        return null;
+    }
+
+    const quantity = Number(line.quantity) || 0;
+    if (quantity <= 0) {
+        return null;
+    }
+
+    const candidateIds = [
+        line.printfulCatalogVariantId,
+        line.catalogVariantId,
+        line.printfulVariantId,
+        line.printful?.catalogVariantId,
+        line.printful?.variantId,
+        line.metadata?.printfulCatalogVariantId
+    ].map(parsePositiveNumber).filter(Boolean);
+
+    const catalogVariantId = candidateIds[0];
+
+    if (!catalogVariantId) {
+        return null;
+    }
+
+    const retailPrice = parsePositiveNumber(line.price?.amount);
+
+    const item = {
+        source: 'catalog',
+        catalog_variant_id: catalogVariantId,
+        quantity,
+        external_id: line.id || undefined,
+        name: line.title || undefined
+    };
+
+    if (retailPrice) {
+        item.retail_price = retailPrice.toFixed(2);
+        item.retail_currency = line.price?.currencyCode || currency || 'AUD';
+    }
+
+    if (Array.isArray(line.placements)) {
+        item.placements = line.placements;
+    } else if (Array.isArray(line.printful?.placements)) {
+        item.placements = line.printful.placements;
+    }
+
+    return item;
+}
+
+function buildPrintfulOrderPayload(paymentIntentId, customerDetails) {
+    const shopTotals = calculateOrderTotal(checkoutData);
+    const orderCurrency = shopTotals.currency || currencyCode;
+
+    const items = (checkoutData?.lines || [])
+        .map(line => extractPrintfulItemFromLine(line, orderCurrency))
+        .filter(Boolean);
+
+    if (items.length === 0) {
+        return null;
+    }
+
+    const countryCode = normaliseCountryCode(customerDetails.country) || 'AU';
+    const stateCode = normaliseStateCode(countryCode, customerDetails.state) || undefined;
+
+    const recipient = {
+        name: `${customerDetails.firstName} ${customerDetails.lastName}`.trim(),
+        email: customerDetails.email,
+        phone: customerDetails.phone || undefined,
+        address1: customerDetails.address1,
+        address2: customerDetails.address2 || undefined,
+        city: customerDetails.city,
+        state_code: stateCode,
+        country_code: countryCode,
+        zip: customerDetails.postalCode
+    };
+
+    const subtotalAmount = parsePositiveNumber(shopTotals.total) ?? 0;
+
+    return {
+        external_id: paymentIntentId,
+        recipient,
+        items,
+        retail_costs: {
+            currency: orderCurrency,
+            subtotal: subtotalAmount.toFixed(2)
+        },
+        packing_slip: {
+            email: customerDetails.email,
+            message: 'Thank you for supporting Moto Coach!'
+        },
+        metadata: {
+            source: 'motocoach-checkout',
+            cart_id: checkoutData?.cartId || null
+        }
+    };
+}
+
+async function submitPrintfulOrder(paymentIntentId, customerDetails) {
     if (!hasShopLineItems(checkoutData)) {
         return null;
     }
 
-    let response;
-    const shopTotals = calculateOrderTotal(checkoutData);
-    const shopAmount = toNumber(shopTotals.total);
-    const shopCurrency = shopTotals.currency || currencyCode;
+    const payload = buildPrintfulOrderPayload(paymentIntentId, customerDetails);
 
+    if (!payload) {
+        return {
+            success: false,
+            message: 'Payment received! We will finalise your Printful order manually shortly.'
+        };
+    }
+
+    let response;
     try {
-        response = await fetch('/api/create-shopify-order', {
+        response = await fetch('/api/printfulOrder', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                cartId: checkoutData?.cartId || null,
-                paymentIntentId,
-                amount: shopAmount,
-                currency: shopCurrency,
-                customer: {
-                    email: customerDetails.email,
-                    phone: customerDetails.phone,
-                    firstName: customerDetails.firstName,
-                    lastName: customerDetails.lastName
-                },
-                shippingAddress: {
-                    firstName: customerDetails.firstName,
-                    lastName: customerDetails.lastName,
-                    address1: customerDetails.address1,
-                    address2: customerDetails.address2,
-                    city: customerDetails.city,
-                    state: customerDetails.state,
-                    postalCode: customerDetails.postalCode,
-                    country: customerDetails.country,
-                    phone: customerDetails.phone
-                },
-                lineItems: (checkoutData?.lines || []).map(line => ({
-                    merchandiseId: line.merchandiseId,
-                    quantity: line.quantity,
-                    price: parseFloat(line.price?.amount ?? '0'),
-                    currency: line.price?.currencyCode || shopCurrency,
-                    title: line.title,
-                    variantTitle: line.variantTitle
-                }))
-            })
+            body: JSON.stringify(payload)
         });
     } catch (networkError) {
-        throw new Error('Payment captured, but we could not reach Shopify to record the order. Please contact support with your receipt.');
+        throw new Error('Payment captured, but we could not reach Printful to submit the order. Please contact support with your receipt.');
     }
 
     const contentType = response.headers.get('content-type') || '';
     const isJson = contentType.includes('application/json');
-    const payload = isJson ? await response.json() : await response.text();
+    const data = isJson ? await response.json() : await response.text();
 
     if (!response.ok) {
-        if (response.status >= 500) {
-            const message = typeof payload === 'string' ? payload : payload?.error || payload?.message;
-            const messageText = typeof message === 'string' ? message : '';
-            if (messageText.toLowerCase().includes('misconfiguration')) {
-                return {
-                    success: false,
-                    message: 'Payment received! Our team will finalise your order in Shopify as soon as admin access is configured.'
-                };
-            }
-        }
-
-        const errorText = typeof payload === 'string' ? payload : JSON.stringify(payload);
-        throw new Error(`Failed to create Shopify order: ${errorText}`);
+        const errorText = typeof data === 'string' ? data : JSON.stringify(data);
+        throw new Error(`Failed to submit Printful order: ${errorText}`);
     }
 
-    if (payload && typeof payload === 'object') {
+    if (data && typeof data === 'object') {
         return {
-            ...payload,
-            success: payload.success ?? true,
-            transactionRecorded: payload.transactionRecorded ?? true
+            success: data.success !== false,
+            order: data.order || data.result || data,
+            draft: data.draft || null
         };
     }
 
-    return { success: true };
+    return { success: true, order: data };
 }
 
 function setProcessingState(isProcessing) {
@@ -896,17 +1075,16 @@ function showSuccess({ orderData = null, registrationResult = null } = {}) {
         }
 
         if (orderData) {
-            const { orderName, orderId, message, success, transactionRecorded } = orderData;
+            const { message, success, order, draft } = orderData;
             if (success === false) {
                 parts.push(message || 'We received your payment and will confirm your booking shortly.');
-            } else if (transactionRecorded === false) {
-                parts.push('We created your Shopify order and will finish recording the payment shortly.');
-            } else if (orderName) {
-                parts.push(`We received your payment and created Shopify order ${orderName}.`);
-            } else if (orderId) {
-                parts.push(`We received your payment and created Shopify order ${orderId}.`);
             } else {
-                parts.push('We received your payment.');
+                const orderIdentifier = order?.id || order?.order_id || draft?.id || draft?.order_id;
+                if (orderIdentifier) {
+                    parts.push(`We received your payment and submitted Printful order #${orderIdentifier}.`);
+                } else {
+                    parts.push('We received your payment and submitted your order for fulfilment.');
+                }
             }
         } else if (hasRegistration) {
             parts.push('Thank you! We received your payment.');
@@ -1114,15 +1292,13 @@ async function handleFormSubmit(event) {
 
         let orderData = null;
         if (hasShopLineItems(checkoutData)) {
-            showStatusMessage('Recording your order in Shopify…');
-            orderData = await recordShopifyOrder(finalPaymentIntentId, customerDetails);
+            showStatusMessage('Submitting your order for fulfilment…');
+            orderData = await submitPrintfulOrder(finalPaymentIntentId, customerDetails);
 
             if (orderData?.success === false) {
                 showStatusMessage(orderData.message || 'Payment received! We will finish your order manually.');
-            } else if (orderData?.transactionRecorded === false) {
-                showStatusMessage('Order created! We will finish recording the payment in Shopify shortly.');
             } else {
-                showStatusMessage('Order complete!');
+                showStatusMessage('Order submitted!');
             }
         } else if (registrationResult) {
             showStatusMessage('Registration complete!');
