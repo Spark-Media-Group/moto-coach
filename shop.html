@@ -14,8 +14,8 @@
           content="default-src 'self';
                    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.vercel-insights.com https://va.vercel-scripts.com https://vercel.live;
                    style-src 'self' 'unsafe-inline' fonts.googleapis.com;
-                   img-src 'self' data: cdn.shopify.com *.shopifycdn.com https://cdn.vercel-insights.com;
-                   connect-src 'self' *.myshopify.com https://va.vercel-scripts.com https://cdn.vercel-insights.com;
+                   img-src 'self' data: cdn.shopify.com *.shopifycdn.com https://cdn.vercel-insights.com https://files.cdn.printful.com https://img.printful.com https://images.printful.com https://printful.s3.amazonaws.com;
+                   connect-src 'self' https://va.vercel-scripts.com https://cdn.vercel-insights.com;
                    font-src 'self' fonts.gstatic.com;
                    object-src 'none';
                    base-uri 'self';">
@@ -167,42 +167,7 @@
 
             <!-- Products Grid -->
             <div id="products-grid" class="products-grid">
-                <article id="product-flexfit-cap" class="product-card product-card--static">
-                    <div class="product-image">
-                        <img src="images/hat-mockup.jpg" alt="Moto Coach Flexfit cap for motocross riders" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Moto Coach Flexfit Cap</h3>
-                        <div class="product-price">
-                            <span class="price-current">$39.00</span>
-                        </div>
-                        <div class="product-type">Apparel</div>
-                    </div>
-                </article>
-                <article id="product-skills-cone-set" class="product-card product-card--static">
-                    <div class="product-image">
-                        <img src="images/pexels-pixabay-258118.jpg" alt="Moto Coach motocross training cone and drill kit" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Moto Coach Skills Cone Set</h3>
-                        <div class="product-price">
-                            <span class="price-current">$65.00</span>
-                        </div>
-                        <div class="product-type">Training Equipment</div>
-                    </div>
-                </article>
-                <article id="product-rider-development-pack" class="product-card product-card--static">
-                    <div class="product-image">
-                        <img src="images/pexels-pixelcop-1878293.jpg" alt="Moto Coach rider development workbook and strength band" loading="lazy">
-                    </div>
-                    <div class="product-info">
-                        <h3 class="product-title">Moto Coach Rider Development Pack</h3>
-                        <div class="product-price">
-                            <span class="price-current">$120.00</span>
-                        </div>
-                        <div class="product-type">Coaching Resources</div>
-                    </div>
-                </article>
+                <!-- Products populate dynamically once the Printful catalog loads -->
             </div>
 
             <!-- Empty State -->
@@ -274,93 +239,7 @@
             </div>
         </div>
     </footer>
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        "name": "Moto Coach Shop Products",
-        "itemListElement": [
-            {
-                "@type": "ListItem",
-                "position": 1,
-                "url": "https://motocoach.com.au/shop#product-flexfit-cap",
-                "item": {
-                    "@type": "Product",
-                    "name": "Moto Coach Flexfit Cap",
-                    "image": "https://motocoach.com.au/images/hat-mockup.jpg",
-                    "description": "Breathable Flexfit cap with embroidered Moto Coach crest to keep riders cool in the paddock.",
-                    "brand": {
-                        "@type": "Brand",
-                        "name": "Moto Coach"
-                    },
-                    "offers": {
-                        "@type": "Offer",
-                        "priceCurrency": "AUD",
-                        "price": "39.00",
-                        "availability": "https://schema.org/InStock",
-                        "url": "https://motocoach.com.au/shop#product-flexfit-cap",
-                        "seller": {
-                            "@type": "Organization",
-                            "name": "Moto Coach"
-                        }
-                    }
-                }
-            },
-            {
-                "@type": "ListItem",
-                "position": 2,
-                "url": "https://motocoach.com.au/shop#product-skills-cone-set",
-                "item": {
-                    "@type": "Product",
-                    "name": "Moto Coach Skills Cone Set",
-                    "image": "https://motocoach.com.au/images/pexels-pixabay-258118.jpg",
-                    "description": "Twenty-piece cone kit used in Moto Coach drills to sharpen corner entry and braking technique.",
-                    "brand": {
-                        "@type": "Brand",
-                        "name": "Moto Coach"
-                    },
-                    "offers": {
-                        "@type": "Offer",
-                        "priceCurrency": "AUD",
-                        "price": "65.00",
-                        "availability": "https://schema.org/InStock",
-                        "url": "https://motocoach.com.au/shop#product-skills-cone-set",
-                        "seller": {
-                            "@type": "Organization",
-                            "name": "Moto Coach"
-                        }
-                    }
-                }
-            },
-            {
-                "@type": "ListItem",
-                "position": 3,
-                "url": "https://motocoach.com.au/shop#product-rider-development-pack",
-                "item": {
-                    "@type": "Product",
-                    "name": "Moto Coach Rider Development Pack",
-                    "image": "https://motocoach.com.au/images/pexels-pixelcop-1878293.jpg",
-                    "description": "Complete training bundle with strength band, skills workbook, and goal tracking templates designed by Leigh Gainfort.",
-                    "brand": {
-                        "@type": "Brand",
-                        "name": "Moto Coach"
-                    },
-                    "offers": {
-                        "@type": "Offer",
-                        "priceCurrency": "AUD",
-                        "price": "120.00",
-                        "availability": "https://schema.org/InStock",
-                        "url": "https://motocoach.com.au/shop#product-rider-development-pack",
-                        "seller": {
-                            "@type": "Organization",
-                            "name": "Moto Coach"
-                        }
-                    }
-                }
-            }
-        ]
-    }
-    </script>
+    
 
     <script src="scripts/main.js"></script>
     <script src="scripts/shop.js"></script>
