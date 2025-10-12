@@ -1,8 +1,8 @@
 import { applyCors } from './_utils/cors';
 
 const PRINTFUL_API_BASE = 'https://api.printful.com/v2';
-const PRODUCT_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/catalog-products`;
 const STORE_LIST_ENDPOINT = `${PRINTFUL_API_BASE}/stores`;
+const STORE_PRODUCTS_ENDPOINT = (storeId) => `${STORE_LIST_ENDPOINT}/${encodeURIComponent(storeId)}/products`;
 
 const DEFAULT_STORE_NAME = "Troy's Test Store";
 
@@ -170,16 +170,20 @@ function extractProductSummaries(listResponse) {
 }
 
 async function fetchProductList(apiKey, storeContext, limit, sellingRegionName) {
-    const listUrl = new URL(PRODUCT_LIST_ENDPOINT);
+    if (!storeContext?.id) {
+        const error = new Error('Printful store context did not resolve an id');
+        error.status = 502;
+        throw error;
+    }
+
+    const listUrl = new URL(STORE_PRODUCTS_ENDPOINT(storeContext.id));
     listUrl.searchParams.set('limit', String(limit));
 
     if (sellingRegionName) {
         listUrl.searchParams.set('selling_region_name', sellingRegionName);
     }
 
-    const listResponse = await fetchFromPrintful(apiKey, listUrl.toString(), {
-        storeId: storeContext?.id
-    });
+    const listResponse = await fetchFromPrintful(apiKey, listUrl.toString());
     const summaries = extractProductSummaries(listResponse);
     return { summaries };
 }
@@ -487,12 +491,12 @@ export default async function handler(req, res) {
                     return Promise.reject(new Error('Product summary missing identifier'));
                 }
 
-                const detailUrl = new URL(`${PRODUCT_LIST_ENDPOINT}/${encodeURIComponent(summaryId)}`);
+                const detailUrl = new URL(`${STORE_PRODUCTS_ENDPOINT(storeContext.id)}/${encodeURIComponent(summaryId)}`);
                 if (sellingRegionName) {
                     detailUrl.searchParams.set('selling_region_name', sellingRegionName);
                 }
 
-                return fetchFromPrintful(apiKey, detailUrl.toString(), { storeId: storeContext?.id });
+                return fetchFromPrintful(apiKey, detailUrl.toString());
             })
         );
 
