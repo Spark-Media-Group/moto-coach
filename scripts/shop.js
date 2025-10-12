@@ -577,10 +577,13 @@
 
         return placements
             .filter(entry => entry && typeof entry === 'object' && (typeof entry.placement === 'string' || typeof entry.type === 'string'))
-            .map(entry => ({
-                placement: normalisePlacementValue(entry.placement) || normalisePlacementValue(entry.type) || entry.placement,
-                technique: entry.technique || 'dtg',
-                layers: Array.isArray(entry.layers)
+            .map(entry => {
+                const placement = normalisePlacementValue(entry.placement)
+                    || normalisePlacementValue(entry.type)
+                    || (typeof entry.placement === 'string' ? entry.placement.trim() : null)
+                    || (typeof entry.type === 'string' ? entry.type.trim() : null);
+
+                const layers = Array.isArray(entry.layers)
                     ? entry.layers
                         .filter(layer => layer && typeof layer === 'object' && (layer.file_id || layer.id || layer.url))
                         .map(layer => ({
@@ -588,9 +591,42 @@
                             file_id: layer.file_id || layer.id || undefined,
                             url: layer.url || layer.preview_url || layer.thumbnail_url || undefined
                         }))
-                    : []
-            }))
-            .filter(entry => entry.layers.length > 0);
+                    : [];
+
+                const techniqueCandidates = [];
+
+                if (typeof entry.technique === 'string' && entry.technique.trim()) {
+                    techniqueCandidates.push(entry.technique.trim());
+                }
+
+                if (Array.isArray(entry.techniques)) {
+                    entry.techniques.forEach(tech => {
+                        if (typeof tech === 'string' && tech.trim()) {
+                            techniqueCandidates.push(tech.trim());
+                        }
+                    });
+                }
+
+                if (typeof entry.defaultTechnique === 'string' && entry.defaultTechnique.trim()) {
+                    techniqueCandidates.push(entry.defaultTechnique.trim());
+                }
+
+                const uniqueTechniques = Array.from(new Set(techniqueCandidates));
+                const technique = uniqueTechniques[0] || null;
+
+                const payload = {
+                    placement,
+                    technique,
+                    layers
+                };
+
+                if (uniqueTechniques.length > 0) {
+                    payload.techniques = uniqueTechniques;
+                }
+
+                return payload;
+            })
+            .filter(entry => entry.placement && entry.layers.length > 0);
     }
 
     function sanitiseOrderFiles(files) {
@@ -624,6 +660,12 @@
         const image = variant.imageUrl || product.thumbnailUrl || (product.images && product.images[0]?.url) || null;
         const placements = sanitisePlacementLayers(variant.placements);
         const orderFiles = sanitiseOrderFiles(variant.orderFiles);
+        const defaultTechnique = typeof variant.defaultTechnique === 'string' && variant.defaultTechnique.trim()
+            ? variant.defaultTechnique.trim()
+            : null;
+        const availableTechniques = Array.isArray(variant.availableTechniques)
+            ? Array.from(new Set(variant.availableTechniques.filter(tech => typeof tech === 'string' && tech.trim()).map(tech => tech.trim())))
+            : [];
 
         if (existing) {
             existing.quantity += quantity;
@@ -632,6 +674,12 @@
             }
             if (!existing.orderFiles?.length && orderFiles.length) {
                 existing.orderFiles = orderFiles;
+            }
+            if (!existing.defaultTechnique && defaultTechnique) {
+                existing.defaultTechnique = defaultTechnique;
+            }
+            if ((!existing.availableTechniques || existing.availableTechniques.length === 0) && availableTechniques.length > 0) {
+                existing.availableTechniques = availableTechniques;
             }
         } else {
             state.cart.push({
@@ -647,7 +695,9 @@
                 variantName: variant.optionLabel || variant.name || 'Variant',
                 printfulVariantId: variant.printfulVariantId,
                 placements,
-                orderFiles
+                orderFiles,
+                defaultTechnique,
+                availableTechniques
             });
         }
 
@@ -772,13 +822,17 @@
             printfulCatalogVariantId: item.catalogVariantId,
             printfulVariantId: item.printfulVariantId,
             catalogVariantId: item.catalogVariantId,
+            defaultTechnique: item.defaultTechnique || null,
+            availableTechniques: item.availableTechniques && item.availableTechniques.length ? item.availableTechniques : [],
             printful: {
                 catalogVariantId: item.catalogVariantId,
                 variantId: item.printfulVariantId || item.catalogVariantId,
                 variantName: item.variantName,
                 productId: item.productPrintfulId || null,
                 placements: item.placements && item.placements.length ? item.placements : undefined,
-                files: item.orderFiles && item.orderFiles.length ? item.orderFiles : undefined
+                files: item.orderFiles && item.orderFiles.length ? item.orderFiles : undefined,
+                defaultTechnique: item.defaultTechnique || undefined,
+                availableTechniques: item.availableTechniques && item.availableTechniques.length ? item.availableTechniques : undefined
             },
             placements: item.placements && item.placements.length ? item.placements : undefined,
             files: item.orderFiles && item.orderFiles.length ? item.orderFiles : undefined
@@ -817,7 +871,15 @@
                 .map(item => ({
                     ...item,
                     placements: sanitisePlacementLayers(item.placements),
-                    orderFiles: sanitiseOrderFiles(item.orderFiles)
+                    orderFiles: sanitiseOrderFiles(item.orderFiles),
+                    defaultTechnique: typeof item.defaultTechnique === 'string' && item.defaultTechnique.trim()
+                        ? item.defaultTechnique.trim()
+                        : null,
+                    availableTechniques: Array.isArray(item.availableTechniques)
+                        ? Array.from(new Set(item.availableTechniques
+                            .filter(tech => typeof tech === 'string' && tech.trim())
+                            .map(tech => tech.trim())))
+                        : []
                 }));
         } catch (error) {
             console.warn('Shop: Unable to read stored cart', error);

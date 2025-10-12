@@ -152,37 +152,159 @@ function canonicalPlacement(value) {
     return trimmed.toLowerCase().replace(/[\s-]+/g, '_');
 }
 
+function normaliseTechniqueValue(value) {
+    if (!value || typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    return trimmed.toLowerCase();
+}
+
+function collectTechniqueValues(targetSet, source) {
+    if (!source) {
+        return;
+    }
+
+    if (Array.isArray(source)) {
+        source.forEach(item => collectTechniqueValues(targetSet, item));
+        return;
+    }
+
+    const value = normaliseTechniqueValue(source);
+    if (value) {
+        targetSet.add(value);
+    }
+}
+
+function normalisePlacementDefinition(entry) {
+    if (!entry) {
+        return null;
+    }
+
+    if (entry.__normalisedPlacement) {
+        return entry;
+    }
+
+    let placement = null;
+
+    if (typeof entry === 'string') {
+        placement = entry.trim();
+    } else if (typeof entry === 'object') {
+        const candidates = [
+            entry.placement,
+            entry.id,
+            entry.name,
+            entry.value,
+            entry.type
+        ];
+
+        for (const candidate of candidates) {
+            if (typeof candidate === 'string' && candidate.trim()) {
+                placement = candidate.trim();
+                break;
+            }
+        }
+    }
+
+    if (!placement) {
+        return null;
+    }
+
+    const canonical = canonicalPlacement(placement) || placement.trim().toLowerCase();
+    const techniques = new Set();
+
+    if (typeof entry === 'object' && entry) {
+        collectTechniqueValues(techniques, entry.technique);
+        collectTechniqueValues(techniques, entry.techniques);
+        collectTechniqueValues(techniques, entry.supported_techniques);
+        collectTechniqueValues(techniques, entry.supportedTechniques);
+        collectTechniqueValues(techniques, entry.allowed_techniques);
+        collectTechniqueValues(techniques, entry.allowedTechniques);
+        collectTechniqueValues(techniques, entry.available_techniques);
+        collectTechniqueValues(techniques, entry.availableTechniques);
+
+        if (Array.isArray(entry.layers)) {
+            entry.layers.forEach(layer => {
+                if (layer && typeof layer === 'object') {
+                    collectTechniqueValues(techniques, layer.technique);
+                    collectTechniqueValues(techniques, layer.techniques);
+                }
+            });
+        }
+    }
+
+    return {
+        placement,
+        canonical,
+        techniques: Array.from(techniques),
+        raw: entry,
+        __normalisedPlacement: true
+    };
+}
+
+function ensurePlacementEntry(value) {
+    if (!value) {
+        return null;
+    }
+
+    if (value.__normalisedPlacement) {
+        return value;
+    }
+
+    return normalisePlacementDefinition(value);
+}
+
+function pickTechniqueForEntry(entry, fallback = null) {
+    const normalised = ensurePlacementEntry(entry);
+
+    if (!normalised) {
+        return fallback;
+    }
+
+    const techniques = Array.isArray(normalised.techniques) ? normalised.techniques : [];
+
+    for (const technique of techniques) {
+        if (typeof technique === 'string' && technique.trim()) {
+            return technique.trim();
+        }
+    }
+
+    return fallback;
+}
+
 function buildAllowedPlacementMap(placements = []) {
     const map = new Map();
 
-    placements.forEach((placement) => {
-        if (typeof placement !== 'string') {
+    placements.forEach((entry) => {
+        const normalised = ensurePlacementEntry(entry);
+
+        if (!normalised || typeof normalised.placement !== 'string') {
             return;
         }
 
-        const trimmed = placement.trim();
-        if (!trimmed) {
-            return;
-        }
-
-        const canonical = canonicalPlacement(trimmed);
+        const canonical = normalised.canonical || canonicalPlacement(normalised.placement);
         if (!canonical) {
             return;
         }
 
         if (!map.has(canonical)) {
-            map.set(canonical, trimmed);
+            map.set(canonical, normalised);
         }
 
         if (canonical.endsWith('_large')) {
             const reduced = canonical.replace(/_large$/, '');
             if (reduced && !map.has(reduced)) {
-                map.set(reduced, trimmed);
+                map.set(reduced, normalised);
             }
         } else {
             const expanded = `${canonical}_large`;
             if (!map.has(expanded)) {
-                map.set(expanded, trimmed);
+                map.set(expanded, normalised);
             }
         }
     });
@@ -196,11 +318,9 @@ function pickFirstAllowedPlacement(placements = []) {
     }
 
     for (const placement of placements) {
-        if (typeof placement === 'string') {
-            const trimmed = placement.trim();
-            if (trimmed) {
-                return trimmed;
-            }
+        const normalised = ensurePlacementEntry(placement);
+        if (normalised && typeof normalised.placement === 'string' && normalised.placement.trim()) {
+            return normalised;
         }
     }
 
@@ -208,8 +328,18 @@ function pickFirstAllowedPlacement(placements = []) {
 }
 
 function alignPlacementToAllowed(placement, allowedMap, fallbackPlacement = null) {
+    const fallbackEntry = ensurePlacementEntry(fallbackPlacement);
+
     if (!allowedMap || !(allowedMap instanceof Map) || allowedMap.size === 0) {
-        return placement || fallbackPlacement || null;
+        return ensurePlacementEntry(placement) || fallbackEntry || null;
+    }
+
+    if (placement && typeof placement === 'object' && placement.__normalisedPlacement) {
+        const canonical = placement.canonical || canonicalPlacement(placement.placement);
+        if (canonical && allowedMap.has(canonical)) {
+            return allowedMap.get(canonical);
+        }
+        return placement;
     }
 
     const canonical = canonicalPlacement(placement);
@@ -232,41 +362,72 @@ function alignPlacementToAllowed(placement, allowedMap, fallbackPlacement = null
         }
     }
 
-    return fallbackPlacement || placement || null;
+    return fallbackEntry || ensurePlacementEntry(placement) || null;
 }
 
 function buildVariantFulfilmentData(variant, allowedPlacements = []) {
     const files = Array.isArray(variant?.files) ? variant.files : [];
     const placementsMap = new Map();
     let filesForOrder = [];
-    const allowedList = Array.isArray(allowedPlacements) ? allowedPlacements.filter(p => typeof p === 'string' && p.trim()).map(p => p.trim()) : [];
-    const allowedMap = buildAllowedPlacementMap(allowedList);
-    const firstAllowedPlacement = pickFirstAllowedPlacement(allowedList);
+    const allowedEntries = Array.isArray(allowedPlacements)
+        ? allowedPlacements.map(entry => ensurePlacementEntry(entry)).filter(Boolean)
+        : [];
+    const allowedMap = buildAllowedPlacementMap(allowedEntries);
+    const firstAllowedPlacement = pickFirstAllowedPlacement(allowedEntries);
+    const baseTechnique = pickTechniqueForEntry(firstAllowedPlacement, null);
 
     files.forEach(file => {
-        const placement = alignPlacementToAllowed(
-            derivePlacementFromFile(file),
+        const derivedPlacement = derivePlacementFromFile(file);
+        const placementEntry = alignPlacementToAllowed(
+            derivedPlacement,
             allowedMap,
             firstAllowedPlacement
         );
-        const technique = deriveTechnique(file) || 'dtg';
-        const orderFile = extractOrderFilePayload(file, placement);
+        const placementValue = placementEntry?.placement
+            || derivedPlacement
+            || firstAllowedPlacement?.placement
+            || null;
+        const technique = deriveTechnique(file)
+            || pickTechniqueForEntry(placementEntry, null)
+            || baseTechnique
+            || null;
+        const orderFile = extractOrderFilePayload(file, placementValue);
 
         if (orderFile) {
             filesForOrder.push(orderFile);
         }
 
-        if (!placement) {
+        if (!placementValue) {
             return;
         }
 
-        const key = placement;
+        const key = placementEntry?.canonical || canonicalPlacement(placementValue) || placementValue;
         if (!placementsMap.has(key)) {
             placementsMap.set(key, {
-                placement: key,
+                placement: placementValue,
+                placementEntry,
                 technique,
+                techniques: Array.isArray(placementEntry?.techniques) ? placementEntry.techniques : [],
                 layers: []
             });
+        }
+
+        const placementRecord = placementsMap.get(key);
+
+        if (!placementRecord.placement && placementValue) {
+            placementRecord.placement = placementValue;
+        }
+        if (!placementRecord.placementEntry && placementEntry) {
+            placementRecord.placementEntry = placementEntry;
+        }
+        if (!placementRecord.technique && technique) {
+            placementRecord.technique = technique;
+        }
+        if (Array.isArray(placementEntry?.techniques) && placementEntry.techniques.length) {
+            placementRecord.techniques = Array.from(new Set([
+                ...(placementRecord.techniques || []),
+                ...placementEntry.techniques
+            ]));
         }
 
         const layer = { type: 'file' };
@@ -285,23 +446,51 @@ function buildVariantFulfilmentData(variant, allowedPlacements = []) {
             return;
         }
 
-        placementsMap.get(key).layers.push(layer);
+        placementRecord.layers.push(layer);
     });
 
     let placements = Array.from(placementsMap.values())
-        .map(entry => ({
-            ...entry,
-            placement: alignPlacementToAllowed(entry.placement, allowedMap, firstAllowedPlacement),
-            layers: entry.layers.filter(layer => layer && (layer.file_id || layer.url))
-        }))
-        .filter(entry => entry.layers.length > 0);
+        .map(entry => {
+            const resolvedEntry = entry.placementEntry
+                || alignPlacementToAllowed(entry.placement, allowedMap, firstAllowedPlacement)
+                || firstAllowedPlacement
+                || ensurePlacementEntry(entry.placement);
+
+            const placementValue = resolvedEntry?.placement
+                || entry.placement
+                || firstAllowedPlacement?.placement
+                || null;
+
+            const resolvedTechnique = entry.technique
+                || pickTechniqueForEntry(entry.placementEntry, null)
+                || pickTechniqueForEntry(resolvedEntry, null)
+                || baseTechnique
+                || null;
+
+            const techniqueOptions = Array.from(new Set([
+                ...(entry.techniques || []),
+                ...(resolvedEntry?.techniques || []),
+                resolvedTechnique
+            ].filter(Boolean)));
+
+            return {
+                placement: placementValue,
+                technique: resolvedTechnique || null,
+                techniques: techniqueOptions,
+                layers: (entry.layers || []).filter(layer => layer && (layer.file_id || layer.url))
+            };
+        })
+        .filter(entry => entry.placement && entry.layers.length > 0);
 
     if (placements.length === 0 && filesForOrder.length > 0) {
-        const fallbackPlacement = alignPlacementToAllowed(
-            normalisePlacementValue(filesForOrder[0]?.type),
+        const initialFileType = normalisePlacementValue(filesForOrder[0]?.type) || filesForOrder[0]?.type;
+        const fallbackEntry = alignPlacementToAllowed(
+            initialFileType,
             allowedMap,
-            firstAllowedPlacement || normalisePlacementValue(filesForOrder[0]?.type) || 'front'
-        );
+            firstAllowedPlacement || initialFileType || 'front_large'
+        ) || ensurePlacementEntry(initialFileType) || firstAllowedPlacement || ensurePlacementEntry('front_large');
+        const fallbackPlacementValue = fallbackEntry?.placement || firstAllowedPlacement?.placement || 'front_large';
+        const fallbackTechnique = pickTechniqueForEntry(fallbackEntry, baseTechnique) || baseTechnique || null;
         const fallbackLayers = filesForOrder
             .map(file => ({
                 type: 'file',
@@ -311,45 +500,113 @@ function buildVariantFulfilmentData(variant, allowedPlacements = []) {
             .filter(layer => layer.file_id || layer.url);
 
         if (fallbackLayers.length > 0) {
+            const fallbackTechniqueOptions = Array.from(new Set([
+                ...(fallbackEntry?.techniques || []),
+                fallbackTechnique
+            ].filter(Boolean)));
+
             placements = [
                 {
-                    placement: fallbackPlacement,
-                    technique: 'dtg',
+                    placement: fallbackPlacementValue,
+                    technique: fallbackTechnique || null,
+                    techniques: fallbackTechniqueOptions,
                     layers: fallbackLayers
                 }
             ];
         }
 
-        filesForOrder = filesForOrder.map(file => ({
-            ...file,
-            type: alignPlacementToAllowed(
-                normalisePlacementValue(file.type),
+        filesForOrder = filesForOrder.map(file => {
+            const aligned = alignPlacementToAllowed(
+                normalisePlacementValue(file.type) || file.type,
                 allowedMap,
-                fallbackPlacement
-            ) || fallbackPlacement
-        }));
+                fallbackEntry
+            );
+            const typeValue = aligned?.placement || fallbackPlacementValue;
+            return {
+                ...file,
+                type: typeValue
+            };
+        });
     }
 
     const uniqueFiles = [];
     const seenFileKeys = new Set();
     filesForOrder.forEach(file => {
-        if (!file || !file.type) {
+        if (!file) {
             return;
         }
-        const key = `${file.type}|${file.file_id || file.url || ''}`;
+
+        const alignedEntry = alignPlacementToAllowed(
+            file.type,
+            allowedMap,
+            firstAllowedPlacement || file.type
+        );
+        const typeValue = alignedEntry?.placement
+            || (typeof file.type === 'string' ? file.type : null)
+            || firstAllowedPlacement?.placement
+            || null;
+
+        if (!typeValue) {
+            return;
+        }
+
+        const key = `${typeValue}|${file.file_id || file.url || ''}`;
         if (seenFileKeys.has(key)) {
             return;
         }
         seenFileKeys.add(key);
+
         uniqueFiles.push({
             ...file,
-            type: alignPlacementToAllowed(file.type, allowedMap, firstAllowedPlacement || file.type) || file.type
+            type: typeValue
         });
     });
 
+    const techniqueSet = new Set();
+    placements.forEach(entry => {
+        if (entry.technique) {
+            techniqueSet.add(entry.technique);
+        }
+        (entry.techniques || []).forEach(tech => {
+            if (typeof tech === 'string' && tech.trim()) {
+                techniqueSet.add(tech.trim());
+            }
+        });
+    });
+
+    if (baseTechnique) {
+        techniqueSet.add(baseTechnique);
+    }
+
+    let defaultTechnique = baseTechnique || placements[0]?.technique || null;
+
+    if (!defaultTechnique && techniqueSet.size > 0) {
+        defaultTechnique = Array.from(techniqueSet)[0];
+    }
+
+    if (!defaultTechnique) {
+        defaultTechnique = 'dtg';
+    }
+
+    if (!techniqueSet.has(defaultTechnique)) {
+        techniqueSet.add(defaultTechnique);
+    }
+
+    const availableTechniques = Array.from(techniqueSet);
+
+    placements = placements.map(entry => ({
+        ...entry,
+        technique: entry.technique || defaultTechnique,
+        techniques: entry.techniques && entry.techniques.length
+            ? Array.from(new Set([...entry.techniques, entry.technique || defaultTechnique].filter(Boolean)))
+            : [entry.technique || defaultTechnique]
+    }));
+
     return {
         placements,
-        files: uniqueFiles
+        files: uniqueFiles,
+        defaultTechnique,
+        availableTechniques
     };
 }
 
@@ -416,25 +673,7 @@ async function fetchCatalogPlacementsForProduct(apiKey, storeId, catalogProductI
                 : [];
 
         const placements = placementsSource
-            .map((entry) => {
-                if (!entry) {
-                    return null;
-                }
-
-                if (typeof entry === 'string') {
-                    return entry.trim();
-                }
-
-                if (typeof entry.placement === 'string') {
-                    return entry.placement.trim();
-                }
-
-                if (typeof entry.id === 'string' || typeof entry.id === 'number') {
-                    return String(entry.id).trim();
-                }
-
-                return null;
-            })
+            .map(entry => normalisePlacementDefinition(entry))
             .filter(Boolean);
 
         PRODUCT_PLACEMENT_CACHE.set(cacheKey, placements);
@@ -578,9 +817,10 @@ async function resolveVariantPlacements(apiKey, storeId, detail) {
         let allowedPlacements = [];
 
         if (catalogProductId) {
-            allowedPlacements = await fetchCatalogPlacementsForProduct(apiKey, storeId, catalogProductId);
-            if (allowedPlacements.length > 0) {
-                placementMap.set(`product:${catalogProductId}`, allowedPlacements);
+            const productPlacements = await fetchCatalogPlacementsForProduct(apiKey, storeId, catalogProductId);
+            if (productPlacements.length > 0) {
+                allowedPlacements = [...productPlacements];
+                placementMap.set(`product:${catalogProductId}`, productPlacements);
             }
         }
 
@@ -590,28 +830,38 @@ async function resolveVariantPlacements(apiKey, storeId, detail) {
                 ? variant.placements
                 : [];
 
-        if ((!allowedPlacements || allowedPlacements.length === 0) && placementsFromVariant.length > 0) {
-            allowedPlacements = placementsFromVariant
-                .map(entry => {
-                    if (typeof entry === 'string') {
-                        return entry.trim();
+        const normalisedVariantPlacements = placementsFromVariant
+            .map(entry => normalisePlacementDefinition(entry))
+            .filter(Boolean);
+
+        if (normalisedVariantPlacements.length > 0) {
+            if (allowedPlacements.length === 0) {
+                allowedPlacements = [...normalisedVariantPlacements];
+            } else {
+                const existingKeys = new Set(
+                    allowedPlacements
+                        .map(entry => entry?.canonical || canonicalPlacement(entry?.placement) || entry?.placement)
+                        .filter(Boolean)
+                );
+
+                normalisedVariantPlacements.forEach(entry => {
+                    const key = entry?.canonical || canonicalPlacement(entry?.placement) || entry?.placement;
+                    if (key && !existingKeys.has(key)) {
+                        allowedPlacements = [...allowedPlacements, entry];
+                        existingKeys.add(key);
                     }
-                    if (entry && typeof entry.placement === 'string') {
-                        return entry.placement.trim();
-                    }
-                    return null;
-                })
-                .filter(Boolean);
+                });
+            }
         }
 
         const variantKey = candidateIds.find(id => id != null);
 
         if (variantKey) {
-            placementMap.set(variantKey, allowedPlacements || []);
+            placementMap.set(variantKey, allowedPlacements);
         }
 
         if (catalogProductId && !placementMap.has(`product:${catalogProductId}`)) {
-            placementMap.set(`product:${catalogProductId}`, allowedPlacements || []);
+            placementMap.set(`product:${catalogProductId}`, allowedPlacements);
         }
     }
 
@@ -763,6 +1013,8 @@ function normaliseVariant(variant, productName, options = {}) {
         },
         placements: fulfilmentData.placements,
         orderFiles: fulfilmentData.files,
+        defaultTechnique: fulfilmentData.defaultTechnique || null,
+        availableTechniques: fulfilmentData.availableTechniques || [],
         productName
     };
 }

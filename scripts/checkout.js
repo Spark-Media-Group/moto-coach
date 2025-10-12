@@ -914,11 +914,39 @@ function sanitiseOrderPlacements(placements) {
         .map(entry => {
             const placement = normalisePlacementName(entry.placement) || normalisePlacementName(entry.type) || entry.placement;
             const layers = sanitiseOrderLayers(entry.layers);
-            return {
+
+            const techniqueCandidates = [];
+
+            if (typeof entry.technique === 'string' && entry.technique.trim()) {
+                techniqueCandidates.push(entry.technique.trim());
+            }
+
+            if (Array.isArray(entry.techniques)) {
+                entry.techniques.forEach(tech => {
+                    if (typeof tech === 'string' && tech.trim()) {
+                        techniqueCandidates.push(tech.trim());
+                    }
+                });
+            }
+
+            if (typeof entry.defaultTechnique === 'string' && entry.defaultTechnique.trim()) {
+                techniqueCandidates.push(entry.defaultTechnique.trim());
+            }
+
+            const uniqueTechniques = Array.from(new Set(techniqueCandidates));
+            const technique = uniqueTechniques[0] || null;
+
+            const payload = {
                 placement,
-                technique: entry.technique || 'dtg',
+                technique,
                 layers
             };
+
+            if (uniqueTechniques.length > 0) {
+                payload.techniques = uniqueTechniques;
+            }
+
+            return payload;
         })
         .filter(entry => entry.placement && entry.layers.length > 0);
 }
@@ -967,7 +995,7 @@ function sanitiseOrderFiles(files) {
         .filter(file => file.type && (file.file_id || file.url));
 }
 
-function derivePlacementsFromFiles(files) {
+function derivePlacementsFromFiles(files, defaultTechnique = null) {
     const placementsMap = new Map();
 
     files.forEach(file => {
@@ -983,9 +1011,21 @@ function derivePlacementsFromFiles(files) {
         if (!placementsMap.has(placement)) {
             placementsMap.set(placement, {
                 placement,
-                technique: 'dtg',
+                technique: typeof file.technique === 'string' && file.technique.trim()
+                    ? file.technique.trim()
+                    : (defaultTechnique || null),
                 layers: []
             });
+        }
+
+        const placementEntry = placementsMap.get(placement);
+
+        if (!placementEntry.technique && typeof file.technique === 'string' && file.technique.trim()) {
+            placementEntry.technique = file.technique.trim();
+        }
+
+        if (!placementEntry.technique && defaultTechnique) {
+            placementEntry.technique = defaultTechnique;
         }
 
         const layer = { type: 'file' };
@@ -1000,10 +1040,16 @@ function derivePlacementsFromFiles(files) {
             return;
         }
 
-        placementsMap.get(placement).layers.push(layer);
+        placementEntry.layers.push(layer);
     });
 
-    return Array.from(placementsMap.values()).filter(entry => entry.layers.length > 0);
+    return Array.from(placementsMap.values())
+        .map(entry => ({
+            placement: entry.placement,
+            technique: entry.technique || defaultTechnique || null,
+            layers: entry.layers
+        }))
+        .filter(entry => entry.layers.length > 0);
 }
 
 function extractPrintfulItemFromLine(line, currency) {
@@ -1046,10 +1092,125 @@ function extractPrintfulItemFromLine(line, currency) {
         item.retail_currency = line.price?.currencyCode || currency || 'AUD';
     }
 
+    const techniqueOrder = [];
+
+    const addTechnique = (value) => {
+        if (typeof value !== 'string') {
+            return;
+        }
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return;
+        }
+        if (!techniqueOrder.includes(trimmed)) {
+            techniqueOrder.push(trimmed);
+        }
+    };
+
+    const addTechniqueList = (value) => {
+        if (Array.isArray(value)) {
+            value.forEach(addTechnique);
+        } else if (typeof value === 'string') {
+            addTechnique(value);
+        }
+    };
+
+    addTechnique(line.defaultTechnique);
+    addTechnique(line.printful?.defaultTechnique);
+    addTechniqueList(line.availableTechniques);
+    addTechniqueList(line.printful?.availableTechniques);
+
+    const collectPlacementTechniques = (placements) => {
+        if (!Array.isArray(placements)) {
+            return;
+        }
+        placements.forEach(entry => {
+            if (!entry || typeof entry !== 'object') {
+                return;
+            }
+            addTechnique(entry.technique);
+            addTechniqueList(entry.techniques);
+            addTechnique(entry.defaultTechnique);
+        });
+    };
+
+    collectPlacementTechniques(line.placements);
+    collectPlacementTechniques(line.printful?.placements);
+
+    const fallbackTechniqueCandidate = techniqueOrder[0] || null;
+    const finalFallbackTechnique = fallbackTechniqueCandidate || 'dtg';
+
+    const applyPlacementTechniques = (placementsList) => {
+        if (!Array.isArray(placementsList)) {
+            return [];
+        }
+
+        return placementsList
+            .map(entry => {
+                if (!entry || typeof entry !== 'object') {
+                    return null;
+                }
+
+                const layers = Array.isArray(entry.layers)
+                    ? entry.layers.filter(layer => layer && (layer.file_id || layer.url))
+                    : [];
+
+                if (layers.length === 0) {
+                    return null;
+                }
+
+                const techniqueCandidates = [];
+
+                if (typeof entry.technique === 'string' && entry.technique.trim()) {
+                    techniqueCandidates.push(entry.technique.trim());
+                }
+
+                if (Array.isArray(entry.techniques)) {
+                    entry.techniques.forEach(tech => {
+                        if (typeof tech === 'string' && tech.trim()) {
+                            techniqueCandidates.push(tech.trim());
+                        }
+                    });
+                }
+
+                if (typeof entry.defaultTechnique === 'string' && entry.defaultTechnique.trim()) {
+                    techniqueCandidates.push(entry.defaultTechnique.trim());
+                }
+
+                const uniqueTechniques = Array.from(new Set(techniqueCandidates));
+                let technique = uniqueTechniques[0] || fallbackTechniqueCandidate || null;
+
+                if (!technique) {
+                    technique = finalFallbackTechnique;
+                }
+
+                if (technique) {
+                    addTechnique(technique);
+                }
+
+                const payload = {
+                    placement: entry.placement,
+                    technique,
+                    layers
+                };
+
+                const techniqueList = uniqueTechniques.length > 0
+                    ? uniqueTechniques
+                    : (technique ? [technique] : []);
+
+                if (techniqueList.length > 0) {
+                    payload.techniques = Array.from(new Set(techniqueList));
+                }
+
+                return payload;
+            })
+            .filter(entry => entry && entry.placement && entry.layers.length > 0);
+    };
+
     if (Array.isArray(line.placements)) {
-        item.placements = sanitiseOrderPlacements(line.placements);
+        item.placements = applyPlacementTechniques(sanitiseOrderPlacements(line.placements));
     } else if (Array.isArray(line.printful?.placements)) {
-        item.placements = sanitiseOrderPlacements(line.printful.placements);
+        item.placements = applyPlacementTechniques(sanitiseOrderPlacements(line.printful.placements));
     }
 
     if (Array.isArray(line.files)) {
@@ -1059,14 +1220,22 @@ function extractPrintfulItemFromLine(line, currency) {
     }
 
     if ((!item.placements || item.placements.length === 0) && item.files?.length) {
-        const derived = derivePlacementsFromFiles(item.files);
+        const derived = derivePlacementsFromFiles(item.files, fallbackTechniqueCandidate || finalFallbackTechnique);
         if (derived.length > 0) {
-            item.placements = derived;
+            item.placements = applyPlacementTechniques(derived);
+        }
+    }
+
+    if ((!item.placements || item.placements.length === 0) && item.files?.length) {
+        const derivedFallback = derivePlacementsFromFiles(item.files, finalFallbackTechnique);
+        if (derivedFallback.length > 0) {
+            item.placements = applyPlacementTechniques(derivedFallback);
         }
     }
 
     return item;
 }
+
 
 function buildPrintfulOrderPayload(paymentIntentId, customerDetails) {
     const shopTotals = calculateOrderTotal(checkoutData);
