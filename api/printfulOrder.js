@@ -126,7 +126,9 @@ export default async function handler(req, res) {
 
         const orderId = createResponse?.result?.id
             || createResponse?.result?.order?.id
-            || createResponse?.id;
+            || createResponse?.id
+            || createResponse?.data?.id
+            || createResponse?.data?.order?.id;
 
         if (!orderId) {
             return res.status(502).json({
@@ -135,15 +137,19 @@ export default async function handler(req, res) {
             });
         }
 
+        const confirmEndpoint = createResponse?._links?.order_confirmation?.href
+            || createResponse?.data?._links?.order_confirmation?.href
+            || `${PRINTFUL_API_URL}/${orderId}/confirm`;
+
         const confirmResponse = await callPrintful(
-            `${PRINTFUL_API_URL}/${orderId}/confirm`,
+            confirmEndpoint,
             buildFetchOptions('POST', apiKey)
         );
 
         return res.status(200).json({
             success: true,
-            draft: createResponse?.result || createResponse,
-            order: confirmResponse?.result || confirmResponse
+            draft: createResponse?.result || createResponse?.data || createResponse,
+            order: confirmResponse?.result || confirmResponse?.data || confirmResponse
         });
     } catch (error) {
         console.error('Error processing Printful order:', error);
