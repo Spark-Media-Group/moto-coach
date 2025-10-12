@@ -124,7 +124,9 @@ export default async function handler(req, res) {
             buildFetchOptions('POST', apiKey, orderPayload)
         );
 
-        const orderId = createResponse?.result?.id || createResponse?.result?.order?.id;
+        const orderId = createResponse?.result?.id
+            || createResponse?.result?.order?.id
+            || createResponse?.id;
 
         if (!orderId) {
             return res.status(502).json({
