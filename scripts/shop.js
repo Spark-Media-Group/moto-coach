@@ -552,23 +552,50 @@
         });
     }
 
+    function normalisePlacementValue(value) {
+        if (!value || typeof value !== 'string') {
+            return null;
+        }
+
+        const trimmed = value.trim();
+        if (!trimmed) {
+            return null;
+        }
+
+        const lowered = trimmed.toLowerCase().replace(/[\s-]+/g, '_');
+
+        if (lowered === 'default' || lowered === 'preview') {
+            return null;
+        }
+
+        if (lowered === 'front') {
+            return 'front_large';
+        }
+
+        if (lowered === 'back') {
+            return 'back_large';
+        }
+
+        return lowered;
+    }
+
     function sanitisePlacementLayers(placements) {
         if (!Array.isArray(placements)) {
             return [];
         }
 
         return placements
-            .filter(entry => entry && typeof entry === 'object' && typeof entry.placement === 'string')
+            .filter(entry => entry && typeof entry === 'object' && (typeof entry.placement === 'string' || typeof entry.type === 'string'))
             .map(entry => ({
-                placement: entry.placement,
+                placement: normalisePlacementValue(entry.placement) || normalisePlacementValue(entry.type) || entry.placement,
                 technique: entry.technique || 'dtg',
                 layers: Array.isArray(entry.layers)
                     ? entry.layers
-                        .filter(layer => layer && typeof layer === 'object' && (layer.file_id || layer.url))
+                        .filter(layer => layer && typeof layer === 'object' && (layer.file_id || layer.id || layer.url))
                         .map(layer => ({
                             type: layer.type || 'file',
-                            file_id: layer.file_id || undefined,
-                            url: layer.url || undefined
+                            file_id: layer.file_id || layer.id || undefined,
+                            url: layer.url || layer.preview_url || layer.thumbnail_url || undefined
                         }))
                     : []
             }))
@@ -582,11 +609,21 @@
 
         return files
             .filter(file => file && typeof file === 'object' && typeof file.type === 'string')
-            .map(file => ({
-                type: file.type,
-                file_id: file.file_id || undefined,
-                url: file.url || undefined
-            }));
+            .map(file => {
+                const placement = normalisePlacementValue(file.placement)
+                    || normalisePlacementValue(file.type)
+                    || (typeof file.type === 'string' ? file.type.trim().toLowerCase() : null)
+                    || 'front_large';
+
+                const url = file.url || file.preview_url || file.thumbnail_url;
+
+                return {
+                    type: placement,
+                    file_id: file.file_id || file.id || undefined,
+                    url: url || undefined
+                };
+            })
+            .filter(file => file.type && (file.file_id || file.url));
     }
 
     function addItemToCart(product, variant, quantity) {

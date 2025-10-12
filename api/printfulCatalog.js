@@ -96,15 +96,28 @@ function derivePlacementFromFile(file) {
     return null;
 }
 
-function extractOrderFilePayload(file) {
+function extractOrderFilePayload(file, placementHint = null) {
     if (!file || typeof file !== 'object') {
         return null;
     }
 
-    const placement = derivePlacementFromFile(file);
-    const filePayload = {
-        type: placement || (typeof file.type === 'string' ? file.type.trim().toLowerCase() : undefined)
-    };
+    const placement = placementHint || derivePlacementFromFile(file);
+    let type = placement
+        || (typeof file.placement === 'string' ? normalisePlacementValue(file.placement) : null)
+        || (typeof file.type === 'string' ? normalisePlacementValue(file.type) : null);
+
+    if (!type && typeof file.type === 'string') {
+        const fallbackType = file.type.trim().toLowerCase();
+        if (fallbackType && fallbackType !== 'preview') {
+            type = fallbackType === 'default' ? null : fallbackType;
+        }
+    }
+
+    if (!type) {
+        type = 'front_large';
+    }
+
+    const filePayload = { type };
 
     if (typeof file.id === 'number' || typeof file.id === 'string') {
         filePayload.file_id = file.id;
@@ -117,11 +130,7 @@ function extractOrderFilePayload(file) {
         filePayload.url = url;
     }
 
-    if (!filePayload.type && filePayload.url) {
-        filePayload.type = 'default';
-    }
-
-    if (!filePayload.type) {
+    if (!filePayload.file_id && !filePayload.url) {
         return null;
     }
 
@@ -131,12 +140,12 @@ function extractOrderFilePayload(file) {
 function buildVariantFulfilmentData(variant) {
     const files = Array.isArray(variant?.files) ? variant.files : [];
     const placementsMap = new Map();
-    const filesForOrder = [];
+    let filesForOrder = [];
 
     files.forEach(file => {
         const placement = derivePlacementFromFile(file);
         const technique = deriveTechnique(file) || 'dtg';
-        const orderFile = extractOrderFilePayload(file);
+        const orderFile = extractOrderFilePayload(file, placement);
 
         if (orderFile) {
             filesForOrder.push(orderFile);
@@ -174,12 +183,38 @@ function buildVariantFulfilmentData(variant) {
         placementsMap.get(key).layers.push(layer);
     });
 
-    const placements = Array.from(placementsMap.values())
+    let placements = Array.from(placementsMap.values())
         .map(entry => ({
             ...entry,
             layers: entry.layers.filter(layer => layer && (layer.file_id || layer.url))
         }))
         .filter(entry => entry.layers.length > 0);
+
+    if (placements.length === 0 && filesForOrder.length > 0) {
+        const fallbackPlacement = normalisePlacementValue(filesForOrder[0]?.type) || 'front_large';
+        const fallbackLayers = filesForOrder
+            .map(file => ({
+                type: 'file',
+                file_id: file.file_id || undefined,
+                url: file.url || undefined
+            }))
+            .filter(layer => layer.file_id || layer.url);
+
+        if (fallbackLayers.length > 0) {
+            placements = [
+                {
+                    placement: fallbackPlacement,
+                    technique: 'dtg',
+                    layers: fallbackLayers
+                }
+            ];
+        }
+
+        filesForOrder = filesForOrder.map(file => ({
+            ...file,
+            type: normalisePlacementValue(file.type) || fallbackPlacement
+        }));
+    }
 
     const uniqueFiles = [];
     const seenFileKeys = new Set();

@@ -940,14 +940,24 @@ function sanitiseOrderFiles(files) {
     return files
         .filter(file => file && typeof file === 'object' && (typeof file.type === 'string' || typeof file.placement === 'string'))
         .map(file => {
-            const normalised = normalisePlacementName(file.placement) || normalisePlacementName(file.type);
-            let placement = normalised;
+            const fromPlacement = normalisePlacementName(file.placement);
+            let placement = fromPlacement || normalisePlacementName(file.type);
+
             if (!placement && typeof file.type === 'string') {
                 const fallback = file.type.trim().toLowerCase();
-                if (fallback && fallback !== 'default' && fallback !== 'preview') {
-                    placement = fallback;
+                if (fallback) {
+                    if (fallback === 'default' || fallback === 'preview') {
+                        placement = 'front_large';
+                    } else {
+                        placement = normalisePlacementName(fallback) || fallback;
+                    }
                 }
             }
+
+            if (!placement) {
+                placement = 'front_large';
+            }
+
             const payload = {
                 type: placement
             };
