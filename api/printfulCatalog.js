@@ -939,9 +939,14 @@ function normaliseVariant(variant, productName, options = {}) {
         return null;
     }
 
-    const printfulVariantId = variant.id ?? variant.product_variant_id ?? null;
-    const catalogVariantId = variant.catalog_variant_id
-        ?? variant.variant_id
+    // printfulVariantId should be the actual Printful product catalog variant ID (e.g., 16709)
+    // This is what the shipping rates API expects
+    const printfulVariantId = variant.variant_id ?? variant.product_variant_id ?? variant.id ?? null;
+    
+    // catalogVariantId is the sync product variant ID (e.g., 5008952970)
+    // This is used for creating orders via the sync product API
+    const catalogVariantId = variant.id
+        ?? variant.catalog_variant_id
         ?? variant.catalog_variant?.id
         ?? variant.product?.variant_id
         ?? null;

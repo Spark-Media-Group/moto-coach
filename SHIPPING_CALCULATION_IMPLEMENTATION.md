@@ -149,6 +149,19 @@ The shipping calculation is now live and will:
 2. Only calculates for addresses with all required fields
 3. Uses cheapest shipping option by default (future: let user choose)
 4. Currently supports US, Canada, Australia, New Zealand (expandable)
+5. **Important**: After deploying the variant ID fix, users need to clear their cart and re-add items for proper variant IDs to be used
+
+## Variant ID Fix
+
+**Issue**: The shipping rates API was receiving sync variant IDs (e.g., 5008952970) instead of Printful catalog variant IDs (e.g., 16709).
+
+**Root Cause**: In `api/printfulCatalog.js`, the `printfulVariantId` was being set to `variant.id` (sync variant ID) instead of `variant.variant_id` (catalog variant ID).
+
+**Fix**: Swapped the priority in the catalog API:
+- `printfulVariantId = variant.variant_id` (actual Printful catalog variant ID - used for shipping rates)
+- `catalogVariantId = variant.id` (sync variant ID - used for creating orders)
+
+**Testing**: Clear browser cache and cart, re-add products, then test shipping calculation.
 
 ## Future Enhancements
 
