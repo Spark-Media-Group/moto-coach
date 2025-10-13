@@ -1415,23 +1415,35 @@ function extractPrintfulItemFromLine(line, currency) {
         return null;
     }
 
-    // For Printful orders, we need the sync variant ID (printfulCatalogVariantId)
-    // NOT the product catalog variant ID (printfulVariantId)
-    const candidateIds = [
+    // For Printful orders, we need BOTH IDs:
+    // - catalog_variant_id: Sync variant ID (e.g., 5008952970) for order submission
+    // - printfulVariantId: Catalog variant ID (e.g., 23133) for V2 API config lookup
+    const syncVariantCandidates = [
         line.printfulCatalogVariantId,  // Sync variant ID - correct for orders
         line.printful?.catalogVariantId, // Sync variant ID from printful object
         line.catalogVariantId,           // Legacy/fallback
         line.metadata?.printfulCatalogVariantId
     ].map(parsePositiveNumber).filter(Boolean);
 
-    const catalogVariantId = candidateIds[0];
+    const catalogVariantCandidates = [
+        line.printfulVariantId,          // Catalog variant ID for V2 API
+        line.printful?.variantId,        // Catalog variant ID from printful object
+        line.metadata?.printfulVariantId
+    ].map(parsePositiveNumber).filter(Boolean);
+
+    const catalogVariantId = syncVariantCandidates[0];
+    const printfulVariantId = catalogVariantCandidates[0];
     
     console.log('📦 Extracting Printful item for order:', {
         title: line.title,
-        printfulCatalogVariantId: line.printfulCatalogVariantId,
-        'printful.catalogVariantId': line.printful?.catalogVariantId,
-        catalogVariantId: line.catalogVariantId,
-        selectedId: catalogVariantId
+        syncVariantId: catalogVariantId,
+        catalogVariantId: printfulVariantId,
+        line: {
+            printfulCatalogVariantId: line.printfulCatalogVariantId,
+            printfulVariantId: line.printfulVariantId,
+            'printful.catalogVariantId': line.printful?.catalogVariantId,
+            'printful.variantId': line.printful?.variantId
+        }
     });
 
     if (!catalogVariantId) {
@@ -1443,6 +1455,7 @@ function extractPrintfulItemFromLine(line, currency) {
     const item = {
         source: 'catalog',
         catalog_variant_id: catalogVariantId,
+        printfulVariantId: printfulVariantId,  // Add catalog ID for V2 API lookup
         quantity,
         external_id: line.id || undefined,
         name: line.title || undefined

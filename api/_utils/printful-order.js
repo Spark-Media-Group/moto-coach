@@ -736,15 +736,16 @@ export async function prepareOrderItems(orderItems, { apiKey, storeId } = {}) {
             continue;
         }
 
-        const variantCandidates = [
-            item.catalog_variant_id,
-            item.catalogVariantId,
-            item.variant_id,
-            item.variantId,
-            item.printfulCatalogVariantId
+        // For fetching variant config, we need the CATALOG variant ID (e.g., 23133)
+        // NOT the sync variant ID (e.g., 5008952970)
+        // printfulVariantId contains the catalog ID
+        const configVariantCandidates = [
+            item.printfulVariantId,      // Catalog variant ID - correct for V2 API
+            item.variant_id,             // Fallback
+            item.variantId               // Fallback
         ];
 
-        const variantId = variantCandidates
+        const configVariantId = configVariantCandidates
             .map(value => {
                 if (value == null) {
                     return null;
@@ -755,12 +756,12 @@ export async function prepareOrderItems(orderItems, { apiKey, storeId } = {}) {
             .find(Boolean);
 
         let config = null;
-        if (variantId && apiKey) {
-            const cacheKey = `${storeId || 'default'}:${variantId}`;
+        if (configVariantId && apiKey) {
+            const cacheKey = `${storeId || 'default'}:${configVariantId}`;
             if (localCache.has(cacheKey)) {
                 config = localCache.get(cacheKey);
             } else {
-                config = await fetchVariantConfig(variantId, apiKey, storeId);
+                config = await fetchVariantConfig(configVariantId, apiKey, storeId);
                 localCache.set(cacheKey, config);
             }
         }
@@ -768,7 +769,7 @@ export async function prepareOrderItems(orderItems, { apiKey, storeId } = {}) {
         try {
             preparedItems.push(processOrderItem(item, config));
         } catch (error) {
-            const wrapped = new Error(`Failed to prepare Printful order item${variantId ? ` for variant ${variantId}` : ''}: ${error.message}`);
+            const wrapped = new Error(`Failed to prepare Printful order item${configVariantId ? ` for variant ${configVariantId}` : ''}: ${error.message}`);
             wrapped.cause = error;
             throw wrapped;
         }
