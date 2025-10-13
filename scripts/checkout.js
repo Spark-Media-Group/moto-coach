@@ -1050,9 +1050,23 @@ async function fetchPrintfulShippingRates(recipient) {
     }
 
     // Build items array from checkout cart
-    // Use printfulVariantId if available, otherwise fall back to catalogVariantId or id
+    // For shipping rates API, we need the actual Printful product variant ID (not sync variant ID)
+    // This is stored in printfulVariantId field
     const items = checkoutData.lines.map(line => {
-        const variantId = line.printful?.variantId || line.printfulVariantId || line.catalogVariantId || line.id;
+        // Priority order: printfulVariantId > printful.variantId > fallback to catalogVariantId
+        const variantId = line.printfulVariantId 
+            || line.printful?.variantId 
+            || line.catalogVariantId;
+        
+        console.log('📦 Line item for shipping:', {
+            title: line.title,
+            printfulVariantId: line.printfulVariantId,
+            'printful.variantId': line.printful?.variantId,
+            catalogVariantId: line.catalogVariantId,
+            selectedVariantId: variantId,
+            quantity: line.quantity
+        });
+        
         return {
             variant_id: variantId,
             quantity: line.quantity
