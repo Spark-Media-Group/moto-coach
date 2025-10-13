@@ -6,3 +6,8 @@ node_modules/
 .env.production
 .vercel
 testing/
+test-polling-logic.js
+test-printful-flow.js
+test-product-cost.js
+test-ornament-order.js
+test-order-creation.js
