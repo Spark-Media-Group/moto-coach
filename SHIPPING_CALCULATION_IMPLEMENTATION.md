@@ -73,8 +73,16 @@ Created a new serverless endpoint that:
 
 ### Payment Flow:
 8. User proceeds with payment
-9. Order includes pre-calculated shipping cost
-10. No timeout issues because shipping was already calculated
+9. System checks if shipping is already calculated:
+   - **If yes**: Skips the Printful quote API call (faster checkout)
+   - **If no**: Falls back to quote API (legacy behavior)
+10. Order is submitted with pre-calculated shipping cost
+11. No timeout issues because shipping was calculated earlier
+
+### Resilience:
+- Quote API becomes optional fallback rather than critical requirement
+- Checkout continues even if quote API fails, as long as shipping was pre-calculated
+- Better user experience with faster checkout process
 
 ## Test Results
 

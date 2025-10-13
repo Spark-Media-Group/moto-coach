@@ -1193,6 +1193,14 @@ async function ensurePrintfulQuote(customerDetails) {
 
         if (!response.ok) {
             const errorText = typeof data === 'string' ? data : (data?.error ? data.error : JSON.stringify(data));
+            console.warn('Printful quote request failed:', errorText);
+            
+            // If we already have shipping calculated, don't fail the entire checkout
+            if (checkoutData.cost?.shippingAmount) {
+                console.log('Using pre-calculated shipping amount, continuing checkout');
+                return null;
+            }
+            
             throw new Error(errorText || 'Printful quote request failed');
         }
 
@@ -1205,6 +1213,13 @@ async function ensurePrintfulQuote(customerDetails) {
         return data;
     } catch (error) {
         console.error('Checkout: failed to generate Printful quote', error);
+        
+        // If we already have shipping calculated, don't fail the entire checkout
+        if (checkoutData.cost?.shippingAmount) {
+            console.log('Using pre-calculated shipping amount, continuing checkout');
+            return null;
+        }
+        
         throw new Error(error.message || 'Unable to calculate shipping for your order.');
     }
 }
@@ -1928,8 +1943,13 @@ async function handleFormSubmit(event) {
 
     try {
         if (hasShopLineItems(checkoutData)) {
-            showStatusMessage('Calculating shipping and taxes…');
-            await ensurePrintfulQuote(customerDetails);
+            // Only fetch quote if we don't already have shipping calculated
+            if (!checkoutData.cost?.shippingAmount) {
+                showStatusMessage('Calculating shipping and taxes…');
+                await ensurePrintfulQuote(customerDetails);
+            } else {
+                console.log('Shipping already calculated, skipping quote API call');
+            }
         }
 
         showStatusMessage('Confirming payment…');
