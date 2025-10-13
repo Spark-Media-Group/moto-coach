@@ -9,3 +9,4 @@ testing/
 test-polling-logic.js
 test-printful-flow.js
 test-product-cost.js
+test-*

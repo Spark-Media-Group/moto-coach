@@ -95,6 +95,21 @@ export default async function handler(req, res) {
             orderPayload.source = 'catalog';
         }
 
+        // Debug log the prepared order items
+        console.log('[printfulOrder] Prepared order items:', JSON.stringify(orderPayload.items?.map(item => ({
+            sync_variant_id: item.sync_variant_id,
+            quantity: item.quantity,
+            hasFiles: !!item.files,
+            fileCount: item.files?.length || 0,
+            hasPlacements: !!item.placements,
+            placementCount: item.placements?.length || 0,
+            placements: item.placements?.map(p => ({
+                placement: p.placement,
+                technique: p.technique,
+                layerCount: p.layers?.length || 0
+            }))
+        })), null, 2));
+
         const createResponse = await callPrintful(createUrl.toString(), {
             method: 'POST',
             apiKey,

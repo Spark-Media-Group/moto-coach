@@ -718,7 +718,14 @@ function processOrderItem(item, config) {
     }
 
     processed.placements = preparedPlacements;
-    processed.files = files;
+    
+    // Don't send both 'files' and 'placements' - Printful only allows one
+    // If we have placements with layers, remove the top-level files array
+    if (preparedPlacements.length > 0 && preparedPlacements.some(p => p.layers && p.layers.length > 0)) {
+        delete processed.files;
+    } else {
+        processed.files = files;
+    }
 
     return processed;
 }

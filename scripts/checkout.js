@@ -1586,10 +1586,16 @@ function extractPrintfulItemFromLine(line, currency) {
         item.placements = applyPlacementTechniques(sanitiseOrderPlacements(line.printful.placements));
     }
 
-    if (Array.isArray(line.files)) {
-        item.files = sanitiseOrderFiles(line.files);
-    } else if (Array.isArray(line.printful?.files)) {
-        item.files = sanitiseOrderFiles(line.printful.files);
+    // Only include files if we don't have placements
+    // Printful API error: "There can only be one file for each placement"
+    const hasValidPlacements = item.placements && item.placements.length > 0;
+    
+    if (!hasValidPlacements) {
+        if (Array.isArray(line.files)) {
+            item.files = sanitiseOrderFiles(line.files);
+        } else if (Array.isArray(line.printful?.files)) {
+            item.files = sanitiseOrderFiles(line.printful.files);
+        }
     }
 
     if ((!item.placements || item.placements.length === 0) && item.files?.length) {
