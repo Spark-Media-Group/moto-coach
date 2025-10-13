@@ -341,13 +341,17 @@ function setupShippingCalculation() {
             // Show loading indicator in the shipping line
             const summaryEl = document.getElementById('checkout-summary');
             if (summaryEl) {
-                const shippingRow = summaryEl.querySelector('.checkout-total-row:has(span:first-child:contains("Shipping"))');
-                if (shippingRow) {
-                    const amountSpan = shippingRow.querySelector('span:last-child');
-                    if (amountSpan) {
-                        amountSpan.innerHTML = '<span style="color: #ff6b35;">Calculating...</span>';
+                // Find the shipping row by iterating through total rows
+                const totalRows = summaryEl.querySelectorAll('.checkout-total-row');
+                totalRows.forEach(row => {
+                    const firstSpan = row.querySelector('span:first-child');
+                    if (firstSpan && firstSpan.textContent.trim() === 'Shipping') {
+                        const amountSpan = row.querySelector('span:last-child');
+                        if (amountSpan) {
+                            amountSpan.innerHTML = '<span style="color: #ff6b35;">Calculating...</span>';
+                        }
                     }
-                }
+                });
             }
             
             // Fetch shipping rates
