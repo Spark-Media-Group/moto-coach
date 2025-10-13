@@ -10,8 +10,8 @@
     --us-concrete: #3a3a3a;
     --us-white: #f8f8f8;
     --us-grey: rgba(248, 248, 248, 0.65);
-    --us-red: #d32f2f;
-    --us-red-glow: rgba(211, 47, 47, 0.25);
+    --us-orange: #ff6b35;
+    --us-orange-glow: rgba(255, 107, 53, 0.25);
     --us-max-width: 1280px;
 }
 
@@ -96,7 +96,7 @@ html {
     font-size: clamp(0.7rem, 1.5vw, 0.85rem);
     letter-spacing: 0.4em;
     text-transform: uppercase;
-    color: var(--us-red);
+    color: var(--us-orange);
     margin-bottom: 0.75rem;
     font-weight: 600;
 }
@@ -105,8 +105,8 @@ html {
 .us-opening {
     padding: clamp(6rem, 12vw, 10rem) 0 clamp(3rem, 8vw, 6rem);
     position: relative;
-    background: radial-gradient(ellipse at top left, rgba(211, 47, 47, 0.08), transparent 60%),
-                radial-gradient(ellipse at bottom right, rgba(211, 47, 47, 0.05), transparent 50%),
+    background: radial-gradient(ellipse at top left, rgba(255, 107, 53, 0.08), transparent 60%),
+                radial-gradient(ellipse at bottom right, rgba(255, 107, 53, 0.05), transparent 50%),
                 linear-gradient(135deg, var(--us-black) 0%, var(--us-charcoal) 50%, var(--us-steel) 100%);
 }
 
@@ -193,14 +193,14 @@ html {
 }
 
 .us-btn-primary {
-    background: var(--us-red);
-    border-color: var(--us-red);
+    background: var(--us-orange);
+    border-color: var(--us-orange);
     color: var(--us-white);
 }
 
 .us-btn-primary:hover {
     background: transparent;
-    box-shadow: 0 0 30px var(--us-red-glow);
+    box-shadow: 0 0 30px var(--us-orange-glow);
 }
 
 .us-btn-secondary {
@@ -334,7 +334,7 @@ html {
     gap: 0.5rem;
     padding: 1.75rem;
     border: 1px solid rgba(248, 248, 248, 0.1);
-    background: linear-gradient(135deg, rgba(211, 47, 47, 0.05), transparent);
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.05), transparent);
     position: relative;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -348,7 +348,7 @@ html {
     left: 0;
     width: 100%;
     height: 2px;
-    background: var(--us-red);
+    background: var(--us-orange);
     transform: translateX(-100%);
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -360,15 +360,15 @@ html {
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(135deg, rgba(211, 47, 47, 0.1), transparent);
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), transparent);
     opacity: 0;
     transition: opacity 0.4s ease;
 }
 
 .stat-block:hover {
     transform: translateY(-8px);
-    border-color: rgba(211, 47, 47, 0.4);
-    box-shadow: 0 12px 32px rgba(211, 47, 47, 0.2);
+    border-color: rgba(255, 107, 53, 0.4);
+    box-shadow: 0 12px 32px rgba(255, 107, 53, 0.2);
 }
 
 .stat-block:hover::before {
@@ -381,14 +381,14 @@ html {
 
 .stat-block:hover .stat-number {
     transform: scale(1.1);
-    text-shadow: 0 0 20px rgba(211, 47, 47, 0.5);
+    text-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
 }
 
 .stat-number {
     font-family: 'Oswald', sans-serif;
     font-size: clamp(2.5rem, 5vw, 3.5rem);
     font-weight: 700;
-    color: var(--us-red);
+    color: var(--us-orange);
     line-height: 1;
     position: relative;
     z-index: 1;
@@ -442,14 +442,14 @@ html {
 }
 
 .package-card:hover {
-    border-color: rgba(211, 47, 47, 0.4);
+    border-color: rgba(255, 107, 53, 0.4);
 }
 
 .package-tag {
     position: absolute;
     top: 0;
     right: 0;
-    background: var(--us-red);
+    background: var(--us-orange);
     color: var(--us-white);
     padding: 0.5rem 1.5rem;
     font-family: 'Oswald', sans-serif;
@@ -481,7 +481,7 @@ html {
     font-family: 'Oswald', sans-serif;
     font-size: clamp(2.5rem, 5vw, 3.5rem);
     font-weight: 700;
-    color: var(--us-red);
+    color: var(--us-orange);
 }
 
 .price-currency {
@@ -526,12 +526,12 @@ html {
     top: 0.6em;
     width: 6px;
     height: 2px;
-    background: var(--us-red);
+    background: var(--us-orange);
 }
 
 .package-note {
-    background: rgba(211, 47, 47, 0.08);
-    border-left: 2px solid var(--us-red);
+    background: rgba(255, 107, 53, 0.08);
+    border-left: 2px solid var(--us-orange);
     padding: 1rem 1.25rem;
     font-family: 'Roboto Condensed', sans-serif;
     font-size: 0.9rem;
@@ -593,13 +593,13 @@ html {
     text-decoration: none;
     padding: 1rem;
     background: transparent;
-    border: 2px solid var(--us-red);
-    color: var(--us-red);
+    border: 2px solid var(--us-orange);
+    color: var(--us-orange);
     transition: all 0.3s ease;
 }
 
 .package-btn:hover {
-    background: var(--us-red);
+    background: var(--us-orange);
     color: var(--us-white);
 }
 
@@ -632,7 +632,7 @@ html {
     left: 0;
     width: 3px;
     height: 0;
-    background: var(--us-red);
+    background: var(--us-orange);
     transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -650,9 +650,9 @@ html {
 
 .facility-item:hover {
     transform: translateX(8px);
-    border-color: rgba(211, 47, 47, 0.3);
-    background: linear-gradient(135deg, rgba(211, 47, 47, 0.05), transparent);
-    box-shadow: -4px 0 20px rgba(211, 47, 47, 0.15);
+    border-color: rgba(255, 107, 53, 0.3);
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.05), transparent);
+    box-shadow: -4px 0 20px rgba(255, 107, 53, 0.15);
 }
 
 .facility-item:hover::before {
@@ -664,7 +664,7 @@ html {
 }
 
 .facility-item:hover h4 {
-    color: var(--us-red);
+    color: var(--us-orange);
     transform: translateX(4px);
 }
 
@@ -775,7 +775,7 @@ html {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(211, 47, 47, 0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.1), transparent);
     transition: left 0.6s ease;
 }
 
@@ -786,14 +786,14 @@ html {
     left: 0;
     width: 0;
     height: 2px;
-    background: linear-gradient(90deg, var(--us-red), transparent);
+    background: linear-gradient(90deg, var(--us-orange), transparent);
     transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .info-block:hover {
     transform: translateY(-6px);
-    border-color: rgba(211, 47, 47, 0.4);
-    background: rgba(211, 47, 47, 0.05);
+    border-color: rgba(255, 107, 53, 0.4);
+    background: rgba(255, 107, 53, 0.05);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
@@ -806,7 +806,7 @@ html {
 }
 
 .info-block:hover h5 {
-    text-shadow: 0 0 20px rgba(211, 47, 47, 0.6);
+    text-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
     transform: translateX(4px);
 }
 
@@ -816,7 +816,7 @@ html {
     font-weight: 600;
     text-transform: uppercase;
     margin-bottom: 0.75rem;
-    color: var(--us-red);
+    color: var(--us-orange);
     position: relative;
     z-index: 1;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
