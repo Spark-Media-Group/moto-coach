@@ -129,26 +129,48 @@ export default async function handler(req, res) {
             });
         }
 
-        console.log(`[printfulOrder] Extracted order ID: ${orderId}, waiting for cost calculation...`);
+        // Check if the creation response already has costs calculated
+        const createdOrder = extractOrderData(createResponse) || {};
+        const hasCosts = createdOrder.costs && 
+                        (createdOrder.costs.total != null || createdOrder.costs.subtotal != null);
+        const hasRetailCosts = createdOrder.retail_costs && 
+                              (createdOrder.retail_costs.total != null || createdOrder.retail_costs.subtotal != null);
 
-        let calculatedOrder;
-        try {
-            const { order } = await waitForOrderCosts(orderId, apiKey, { storeId });
-            calculatedOrder = order;
-            console.log('[printfulOrder] Cost calculation completed successfully');
-        } catch (pollError) {
-            console.error('[printfulOrder] Cost calculation error:', pollError);
-            if (pollError.status) {
-                return res.status(pollError.status).json({
-                    error: 'Printful cost calculation did not complete',
-                    details: pollError.body || pollError.message
-                });
+        let calculatedOrder = createdOrder;
+
+        // Only poll for costs if they weren't included in the creation response
+        if (!hasCosts || !hasRetailCosts) {
+            console.log(`[printfulOrder] Order ID: ${orderId}, waiting for cost calculation... (hasCosts: ${hasCosts}, hasRetailCosts: ${hasRetailCosts})`);
+            
+            try {
+                const { order } = await waitForOrderCosts(orderId, apiKey, { storeId });
+                calculatedOrder = order;
+                console.log('[printfulOrder] Cost calculation completed successfully');
+            } catch (pollError) {
+                console.error('[printfulOrder] Cost calculation error:', pollError);
+                
+                // If we have costs from creation, use them even if polling failed
+                if (hasCosts) {
+                    console.log('[printfulOrder] Using costs from creation response despite polling error');
+                    calculatedOrder = createdOrder;
+                } else {
+                    if (pollError.status) {
+                        return res.status(pollError.status).json({
+                            error: 'Printful cost calculation did not complete',
+                            details: pollError.body || pollError.message
+                        });
+                    }
+
+                    return res.status(504).json({
+                        error: 'Printful cost calculation did not complete',
+                        details: pollError.message
+                    });
+                }
             }
-
-            return res.status(504).json({
-                error: 'Printful cost calculation did not complete',
-                details: pollError.message
-            });
+        } else {
+            console.log('[printfulOrder] Costs already included in creation response, skipping polling');
+            console.log('[printfulOrder] Costs:', JSON.stringify(createdOrder.costs));
+            console.log('[printfulOrder] Retail costs:', JSON.stringify(createdOrder.retail_costs));
         }
 
         const confirmEndpoint = createResponse?._links?.order_confirmation?.href
