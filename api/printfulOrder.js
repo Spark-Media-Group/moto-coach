@@ -102,20 +102,27 @@ export default async function handler(req, res) {
             storeId
         });
 
+        console.log('[printfulOrder] Draft order created successfully');
+
         const orderId = extractOrderId(createResponse);
 
         if (!orderId) {
+            console.error('[printfulOrder] Could not extract order ID from response:', createResponse);
             return res.status(502).json({
                 error: 'Unable to determine Printful order ID from response',
                 details: createResponse
             });
         }
 
+        console.log(`[printfulOrder] Extracted order ID: ${orderId}, waiting for cost calculation...`);
+
         let calculatedOrder;
         try {
             const { order } = await waitForOrderCosts(orderId, apiKey, { storeId });
             calculatedOrder = order;
+            console.log('[printfulOrder] Cost calculation completed successfully');
         } catch (pollError) {
+            console.error('[printfulOrder] Cost calculation error:', pollError);
             if (pollError.status) {
                 return res.status(pollError.status).json({
                     error: 'Printful cost calculation did not complete',

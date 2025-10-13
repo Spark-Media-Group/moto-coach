@@ -203,39 +203,59 @@ function getCalculationStatus(costBlock) {
     return status.toLowerCase();
 }
 
-export async function waitForOrderCosts(orderId, apiKey, { storeId, intervalMs = 1500, timeoutMs = 45000 } = {}) {
+export async function waitForOrderCosts(orderId, apiKey, { storeId, intervalMs = 2000, timeoutMs = 90000 } = {}) {
     if (!orderId) {
         throw new Error('Order ID is required to poll Printful costs');
     }
 
     const resolvedStoreId = resolveStoreId(storeId);
     const startedAt = Date.now();
+    let attempts = 0;
 
     while (Date.now() - startedAt < timeoutMs) {
-        const orderResponse = await callPrintful(`${PRINTFUL_ORDERS_ENDPOINT}/${encodeURIComponent(orderId)}`, {
-            apiKey,
-            storeId: resolvedStoreId
-        });
+        attempts++;
+        
+        try {
+            const orderResponse = await callPrintful(`${PRINTFUL_ORDERS_ENDPOINT}/${encodeURIComponent(orderId)}`, {
+                apiKey,
+                storeId: resolvedStoreId
+            });
 
-        const order = extractOrderData(orderResponse) || {};
-        const costStatus = getCalculationStatus(order.costs) || 'unknown';
-        const retailStatus = getCalculationStatus(order.retail_costs) || costStatus;
+            const order = extractOrderData(orderResponse) || {};
+            const costStatus = getCalculationStatus(order.costs) || 'unknown';
+            const retailStatus = getCalculationStatus(order.retail_costs) || costStatus;
 
-        if (costStatus === 'failed' || retailStatus === 'failed') {
-            const error = new Error('Printful cost calculation failed');
-            error.status = 502;
-            error.body = orderResponse;
-            throw error;
-        }
+            console.log(`[waitForOrderCosts] Attempt ${attempts}: costStatus=${costStatus}, retailStatus=${retailStatus}`);
 
-        if (costStatus === 'calculated' && retailStatus === 'calculated') {
-            return { order, raw: orderResponse };
+            if (costStatus === 'failed' || retailStatus === 'failed') {
+                const error = new Error('Printful cost calculation failed');
+                error.status = 502;
+                error.body = orderResponse;
+                throw error;
+            }
+
+            if (costStatus === 'calculated' && retailStatus === 'calculated') {
+                console.log(`[waitForOrderCosts] Success after ${attempts} attempts, ${Date.now() - startedAt}ms`);
+                return { order, raw: orderResponse };
+            }
+
+            // If we have costs but not retail_costs, accept it
+            if (costStatus === 'calculated' && order.costs) {
+                console.log(`[waitForOrderCosts] Accepting order with calculated costs (retail status: ${retailStatus})`);
+                return { order, raw: orderResponse };
+            }
+        } catch (pollError) {
+            console.error(`[waitForOrderCosts] Polling error on attempt ${attempts}:`, pollError);
+            // If it's a 404, the order might not exist yet, keep trying
+            if (pollError.status !== 404) {
+                throw pollError;
+            }
         }
 
         await new Promise(resolve => setTimeout(resolve, intervalMs));
     }
 
-    const timeoutError = new Error('Timed out waiting for Printful cost calculations');
+    const timeoutError = new Error(`Timed out waiting for Printful cost calculations after ${attempts} attempts`);
     timeoutError.status = 504;
     throw timeoutError;
 }

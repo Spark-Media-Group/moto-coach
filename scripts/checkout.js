@@ -274,6 +274,97 @@ function calculateOrderTotal(summary) {
     };
 }
 
+let shippingCalculationTimeout = null;
+
+function isValidAddress(address) {
+    // Check if all required fields are present and non-empty
+    if (!address.address1 || address.address1.trim().length < 3) return false;
+    if (!address.city || address.city.trim().length < 2) return false;
+    if (!address.countryCode) return false;
+    if (!address.postalCode || address.postalCode.trim().length < 3) return false;
+    
+    // For US, Canada, Australia, require state
+    const requiresState = ['US', 'CA', 'AU'];
+    if (requiresState.includes(address.countryCode)) {
+        if (!address.stateCode) return false;
+    }
+    
+    return true;
+}
+
+function getCountryCode(countryName) {
+    const countryMap = {
+        'Australia': 'AU',
+        'United States': 'US',
+        'New Zealand': 'NZ',
+        'Canada': 'CA'
+    };
+    return countryMap[countryName] || countryName;
+}
+
+function setupShippingCalculation() {
+    const address1Input = document.querySelector('input[name="address1"]');
+    const cityInput = document.querySelector('input[name="city"]');
+    const countrySelect = document.getElementById('country-select');
+    const stateSelect = document.getElementById('state-select');
+    const postalCodeInput = document.querySelector('input[name="postalCode"]');
+    
+    if (!address1Input || !cityInput || !countrySelect || !stateSelect || !postalCodeInput) {
+        console.warn('Shipping address fields not found, skipping automatic calculation');
+        return;
+    }
+    
+    const attemptShippingCalculation = () => {
+        // Clear any pending calculation
+        if (shippingCalculationTimeout) {
+            clearTimeout(shippingCalculationTimeout);
+        }
+        
+        // Debounce: wait 1 second after user stops typing
+        shippingCalculationTimeout = setTimeout(async () => {
+            const recipient = {
+                address1: address1Input.value.trim(),
+                city: cityInput.value.trim(),
+                countryCode: getCountryCode(countrySelect.value),
+                stateCode: stateSelect.value,
+                postalCode: postalCodeInput.value.trim()
+            };
+            
+            // Validate address completeness
+            if (!isValidAddress(recipient)) {
+                console.log('Address incomplete, waiting for more fields...');
+                return;
+            }
+            
+            console.log('Valid address detected, calculating shipping...', recipient);
+            
+            // Show loading indicator in the shipping line
+            const summaryEl = document.getElementById('checkout-summary');
+            if (summaryEl) {
+                const shippingRow = summaryEl.querySelector('.checkout-total-row:has(span:first-child:contains("Shipping"))');
+                if (shippingRow) {
+                    const amountSpan = shippingRow.querySelector('span:last-child');
+                    if (amountSpan) {
+                        amountSpan.innerHTML = '<span style="color: #ff6b35;">Calculating...</span>';
+                    }
+                }
+            }
+            
+            // Fetch shipping rates
+            await fetchPrintfulShippingRates(recipient);
+        }, 1000); // 1 second debounce
+    };
+    
+    // Add event listeners to all address fields
+    address1Input.addEventListener('input', attemptShippingCalculation);
+    cityInput.addEventListener('input', attemptShippingCalculation);
+    countrySelect.addEventListener('change', attemptShippingCalculation);
+    stateSelect.addEventListener('change', attemptShippingCalculation);
+    postalCodeInput.addEventListener('input', attemptShippingCalculation);
+    
+    console.log('Shipping calculation listeners attached');
+}
+
 function setupRegionField() {
     const countrySelect = document.getElementById('country-select');
     const stateSelect = document.getElementById('state-select');
@@ -337,6 +428,117 @@ function setupRegionField() {
     });
 
     updateStateOptions(countrySelect.value, true);
+}
+
+function setupShippingCalculation() {
+    if (!hasShopLineItems(checkoutData)) {
+        return; // No shop items, no shipping needed
+    }
+
+    const address1Input = document.querySelector('input[name="address1"]');
+    const cityInput = document.querySelector('input[name="city"]');
+    const countrySelect = document.getElementById('country-select');
+    const stateSelect = document.getElementById('state-select');
+    const postalCodeInput = document.querySelector('input[name="postalCode"]');
+
+    if (!address1Input || !cityInput || !countrySelect || !stateSelect || !postalCodeInput) {
+        console.warn('Shipping address fields not found');
+        return;
+    }
+
+    let shippingCalculationTimeout = null;
+
+    const calculateShippingIfComplete = () => {
+        // Clear any pending calculation
+        if (shippingCalculationTimeout) {
+            clearTimeout(shippingCalculationTimeout);
+        }
+
+        // Debounce the calculation by 800ms
+        shippingCalculationTimeout = setTimeout(async () => {
+            const address1 = address1Input.value.trim();
+            const city = cityInput.value.trim();
+            const country = countrySelect.value;
+            const state = stateSelect.value;
+            const postalCode = postalCodeInput.value.trim();
+
+            // Check if all required fields are filled
+            if (!address1 || !city || !country || !postalCode) {
+                return; // Not all fields filled yet
+            }
+
+            // Map country names to country codes
+            const countryCodeMap = {
+                'Australia': 'AU',
+                'New Zealand': 'NZ',
+                'United States': 'US'
+            };
+
+            const countryCode = countryCodeMap[country];
+            if (!countryCode) {
+                console.warn('Unsupported country for shipping calculation:', country);
+                return;
+            }
+
+            // Map state names to state codes for US
+            const usStateCodes = {
+                'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR',
+                'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
+                'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID',
+                'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS',
+                'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+                'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+                'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+                'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+                'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+                'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+                'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
+                'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV',
+                'Wisconsin': 'WI', 'Wyoming': 'WY'
+            };
+
+            const auStateCodes = {
+                'Australian Capital Territory': 'ACT', 'New South Wales': 'NSW',
+                'Northern Territory': 'NT', 'Queensland': 'QLD', 'South Australia': 'SA',
+                'Tasmania': 'TAS', 'Victoria': 'VIC', 'Western Australia': 'WA'
+            };
+
+            let stateCode = state;
+            if (countryCode === 'US' && usStateCodes[state]) {
+                stateCode = usStateCodes[state];
+            } else if (countryCode === 'AU' && auStateCodes[state]) {
+                stateCode = auStateCodes[state];
+            }
+
+            const recipient = {
+                address1,
+                city,
+                countryCode,
+                stateCode,
+                postalCode
+            };
+
+            console.log('Calculating shipping for:', { city, stateCode, countryCode, postalCode });
+            
+            // Fetch shipping rates
+            await fetchPrintfulShippingRates(recipient);
+        }, 800);
+    };
+
+    // Add event listeners to all address fields
+    address1Input.addEventListener('input', calculateShippingIfComplete);
+    address1Input.addEventListener('blur', calculateShippingIfComplete);
+    
+    cityInput.addEventListener('input', calculateShippingIfComplete);
+    cityInput.addEventListener('blur', calculateShippingIfComplete);
+    
+    countrySelect.addEventListener('change', calculateShippingIfComplete);
+    stateSelect.addEventListener('change', calculateShippingIfComplete);
+    
+    postalCodeInput.addEventListener('input', calculateShippingIfComplete);
+    postalCodeInput.addEventListener('blur', calculateShippingIfComplete);
+
+    console.log('Shipping calculation listeners initialized');
 }
 
 function setShippingSectionVisibility(requireShipping) {
@@ -947,6 +1149,112 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
             total: computedTotal
         }
     };
+}
+
+async function fetchPrintfulShippingRates(recipient) {
+    if (!hasShopLineItems(checkoutData)) {
+        return null;
+    }
+
+    // Build items array from checkout cart
+    // Use printfulVariantId if available, otherwise fall back to catalogVariantId or id
+    const items = checkoutData.lines.map(line => {
+        const variantId = line.printful?.variantId || line.printfulVariantId || line.catalogVariantId || line.id;
+        return {
+            variant_id: variantId,
+            quantity: line.quantity
+        };
+    });
+
+    const payload = {
+        recipient: {
+            address1: recipient.address1,
+            city: recipient.city,
+            country_code: recipient.countryCode,
+            state_code: recipient.stateCode || undefined,
+            zip: recipient.postalCode
+        },
+        items,
+        currency: checkoutData.lines[0]?.price?.currencyCode || 'USD',
+        locale: 'en_US'
+    };
+
+    console.log('Fetching shipping rates with payload:', {
+        recipient: payload.recipient,
+        items: payload.items,
+        currency: payload.currency
+    });
+
+    try {
+        const response = await fetch('/api/printfulShippingRates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Failed to fetch shipping rates:', error);
+            
+            // Update UI to show error
+            const summaryEl = document.getElementById('checkout-summary');
+            if (summaryEl) {
+                renderSummary(checkoutData);
+            }
+            return null;
+        }
+
+        const data = await response.json();
+        
+        if (data.success && data.cheapestOption) {
+            // Update checkout data with shipping cost
+            const shippingAmount = parseFloat(data.cheapestOption.rate);
+            const currency = data.cheapestOption.currency;
+            
+            checkoutData.cost = checkoutData.cost || {};
+            checkoutData.cost.shippingAmount = {
+                amount: shippingAmount.toFixed(2),
+                currencyCode: currency
+            };
+            
+            // Store shipping method details
+            checkoutData.shippingMethod = {
+                id: data.cheapestOption.id,
+                name: data.cheapestOption.name,
+                rate: shippingAmount,
+                currency: currency,
+                deliveryDays: `${data.cheapestOption.minDeliveryDays}-${data.cheapestOption.maxDeliveryDays}`,
+                deliveryDate: `${data.cheapestOption.minDeliveryDate} to ${data.cheapestOption.maxDeliveryDate}`
+            };
+            
+            // Update total to include shipping
+            const subtotal = parseFloat(checkoutData.cost.subtotalAmount?.amount || 0);
+            const tax = parseFloat(checkoutData.cost.taxAmount?.amount || 0);
+            const total = subtotal + shippingAmount + tax;
+            
+            checkoutData.cost.totalAmount = {
+                amount: total.toFixed(2),
+                currencyCode: currency
+            };
+            
+            // Save and re-render
+            saveCheckoutData(checkoutData);
+            renderSummary(checkoutData);
+            
+            console.log(`✅ Shipping calculated: $${shippingAmount} (${data.cheapestOption.name})`);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error fetching shipping rates:', error);
+        
+        // Re-render to clear "Calculating..." state
+        const summaryEl = document.getElementById('checkout-summary');
+        if (summaryEl) {
+            renderSummary(checkoutData);
+        }
+        return null;
+    }
 }
 
 async function ensurePrintfulQuote(customerDetails) {
@@ -1792,6 +2100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSummary(checkoutData);
     initialiseStripe();
     setupRegionField();
+    setupShippingCalculation(); // Calculate shipping when address is entered
 
     const summaryEl = document.getElementById('checkout-summary');
     if (summaryEl) {
