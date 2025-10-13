@@ -1453,9 +1453,8 @@ function extractPrintfulItemFromLine(line, currency) {
     const retailPrice = parsePositiveNumber(line.price?.amount);
 
     const item = {
-        source: 'catalog',
-        catalog_variant_id: catalogVariantId,
-        printfulVariantId: printfulVariantId,  // Add catalog ID for V2 API lookup
+        sync_variant_id: catalogVariantId,  // Sync variant ID for /store/orders API
+        printfulVariantId: printfulVariantId,  // Catalog variant ID for V2 API lookup
         quantity,
         external_id: line.id || undefined,
         name: line.title || undefined

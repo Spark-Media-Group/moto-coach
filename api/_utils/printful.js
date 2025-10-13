@@ -1,5 +1,5 @@
 export const PRINTFUL_API_BASE = 'https://api.printful.com';
-export const PRINTFUL_ORDERS_ENDPOINT = `${PRINTFUL_API_BASE}/v2/orders`;
+export const PRINTFUL_ORDERS_ENDPOINT = `${PRINTFUL_API_BASE}/orders`;
 export const PRINTFUL_ORDER_ESTIMATION_ENDPOINT = `${PRINTFUL_API_BASE}/v2/order-estimation-tasks`;
 
 function resolveStoreId(explicit) {

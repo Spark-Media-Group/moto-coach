@@ -7,94 +7,118 @@ Variant with ID: 5008952970 does not exist.
 ```
 
 ## Root Cause
-Printful uses **TWO different variant ID types** that must be used in different contexts:
+**The code was using the WRONG API ENDPOINT!**
 
-### 1. **Sync Variant ID** (e.g., 5008952970)
-- Retrieved from: `variant.id` in `/store/products/{id}` API response
-- Used for: Creating orders via the Sync Product API (`/store/orders`)
-- Example: Circle ornament sync ID = **5008952970**
+The application was calling **`/v2/orders`** (V2 API) but should have been calling **`/orders`** (V1 API).
 
-### 2. **Catalog Variant ID** (e.g., 23133)
-- Retrieved from: `variant.variant_id` in `/store/products/{id}` API response  
-- Used for: V2 Catalog API lookups (`/v2/catalog-variants/{id}`)
-- Example: Circle ornament catalog ID = **23133**
+### Why This Caused the Error:
+1. **V2 Orders API** expects `catalog_variant_id` (catalog variant IDs like 23133)
+2. **V1 Orders API** expects `sync_variant_id` (sync variant IDs like 5008952970)
+3. Our code was sending `sync_variant_id: 5008952970` to the **V2 endpoint**
+4. V2 API couldn't find a **catalog variant** with ID 5008952970 → "Variant does not exist" error
 
-## The Bug
-The code had **variable name mismatches** in `api/_utils/printful-order.js`:
+### The Secondary Issues:
+Additionally, there were variable name bugs in the order preparation code that prevented variant config lookup from working correctly.
 
-```javascript
-// Line 746: Defined configVariantId
-const configVariantId = configVariantCandidates...
+## The Fixes
 
-// Line 759: Used WRONG variable name (variantId doesn't exist!)
-if (variantId && apiKey) {  // ❌ UNDEFINED - should be configVariantId
-```
+### 1. **PRIMARY FIX**: Change API endpoint from V2 to V1
+**File: `api/_utils/printful.js`** (Line 2)
 
-This caused:
-1. The variant config lookup to be skipped (since `variantId` was undefined)
-2. The order creation to use **sync variant ID (5008952970)** with the **V2 Catalog API**
-3. Printful rejected it because V2 API expects **catalog variant ID (23133)**
-
-## The Fix
-
-### 1. Fixed variable name in `api/_utils/printful-order.js`
-**Lines 759-766:**
 ```javascript
 // BEFORE (WRONG)
-if (variantId && apiKey) {
-    const cacheKey = `${storeId || 'default'}:${variantId}`;
-    ...
-    config = await fetchVariantConfig(variantId, apiKey, storeId);
-}
+export const PRINTFUL_ORDERS_ENDPOINT = `${PRINTFUL_API_BASE}/v2/orders`;
 
 // AFTER (CORRECT)
-if (configVariantId && apiKey) {
-    const cacheKey = `${storeId || 'default'}:${configVariantId}`;
-    ...
-    config = await fetchVariantConfig(configVariantId, apiKey, storeId);
-}
+export const PRINTFUL_ORDERS_ENDPOINT = `${PRINTFUL_API_BASE}/orders`;
 ```
 
-**Line 772:**
+### 2. Use `sync_variant_id` field name for V1 API
+**File: `scripts/checkout.js`** (Lines ~1455-1461)
+
 ```javascript
-// BEFORE (WRONG)
-const wrapped = new Error(`Failed to prepare Printful order item${variantId ? ` for variant ${variantId}` : ''}: ${error.message}`);
-
-// AFTER (CORRECT)
-const wrapped = new Error(`Failed to prepare Printful order item${configVariantId ? ` for variant ${configVariantId}` : ''}: ${error.message}`);
-```
-
-### 2. Pass both IDs from checkout in `scripts/checkout.js`
-**Lines 1415-1456:**
-```javascript
-// Extract BOTH variant IDs from cart line item
-const syncVariantCandidates = [
-    line.printfulCatalogVariantId,  // Sync ID (5008952970)
-    line.printful?.catalogVariantId,
-    line.catalogVariantId,
-    line.metadata?.printfulCatalogVariantId
-].map(parsePositiveNumber).filter(Boolean);
-
-const catalogVariantCandidates = [
-    line.printfulVariantId,          // Catalog ID (23133)
-    line.printful?.variantId,
-    line.metadata?.printfulVariantId
-].map(parsePositiveNumber).filter(Boolean);
-
-const catalogVariantId = syncVariantCandidates[0];  // For order creation
-const printfulVariantId = catalogVariantCandidates[0];  // For V2 API lookup
-
-// Include BOTH in the item payload
+// BEFORE (WRONG - used catalog_variant_id with V2)
 const item = {
     source: 'catalog',
-    catalog_variant_id: catalogVariantId,     // 5008952970 (sync ID)
-    printfulVariantId: printfulVariantId,     // 23133 (catalog ID)
+    catalog_variant_id: catalogVariantId,
+    quantity,
+    // ...
+};
+
+// AFTER (CORRECT - use sync_variant_id with V1)
+const item = {
+    sync_variant_id: catalogVariantId,  // Sync variant ID for V1 /orders API
+    printfulVariantId: printfulVariantId,  // Catalog variant ID for config lookup
     quantity,
     // ...
 };
 ```
 
-## Verification
+### 3. Fixed variable name bugs in order preparation
+**File: `api/_utils/printful-order.js`** (Lines 759-766, 772)
+
+```javascript
+// BEFORE (WRONG)
+const configVariantId = configVariantCandidates...
+// ... later:
+if (variantId && apiKey) {  // ❌ variantId is undefined!
+    config = await fetchVariantConfig(variantId, apiKey, storeId);
+}
+
+// AFTER (CORRECT)
+const configVariantId = configVariantCandidates...
+// ... later:
+if (configVariantId && apiKey) {  // ✅ Use correct variable
+    config = await fetchVariantConfig(configVariantId, apiKey, storeId);
+}
+```
+
+### 4. Pass both IDs from checkout
+**File: `scripts/checkout.js`** (Lines ~1415-1442)
+
+Now extracts BOTH variant ID types:
+- `catalogVariantId` → Sync ID (5008952970) for order submission
+- `printfulVariantId` → Catalog ID (23133) for V2 config API lookups
+
+## Verification - Test Order Created Successfully! ✅
+
+### Response:
+```json
+{
+  "code": 200,
+  "result": {
+    "id": 131247299,
+    "status": "draft",
+    "items": [
+      {
+        "id": 117515959,
+        "variant_id": 23133,
+        "sync_variant_id": 5008952970,
+        "quantity": 1,
+        "price": 7.58,
+        "retail_price": "10.00",
+        "name": "Double-sided ceramic ornaments / Circle"
+      }
+    ],
+    "costs": {
+      "currency": "USD",
+      "subtotal": 7.58,
+      "shipping": 5.69,
+      "tax": 0.93,
+      "total": 14.20
+    }
+  }
+}
+```
+
+**✅ Order created successfully!** The sync variant ID (5008952970) was accepted by the V1 API.
+
+## Understanding Printful's Two Variant ID Types
+
+| ID Type | Example | Source API | Used For |
+|---------|---------|------------|----------|
+| **Sync Variant ID** | 5008952970 | `variant.id` from `/store/products` | V1 `/orders` API order creation |
+| **Catalog Variant ID** | 23133 | `variant.variant_id` from `/store/products` | V2 `/catalog-variants` config lookups |
 
 ### Ornament Variant IDs (Product ID: 395875939)
 From Printful API `/store/products/395875939`:
