@@ -1415,16 +1415,24 @@ function extractPrintfulItemFromLine(line, currency) {
         return null;
     }
 
+    // For Printful orders, we need the sync variant ID (printfulCatalogVariantId)
+    // NOT the product catalog variant ID (printfulVariantId)
     const candidateIds = [
-        line.printfulCatalogVariantId,
-        line.catalogVariantId,
-        line.printfulVariantId,
-        line.printful?.catalogVariantId,
-        line.printful?.variantId,
+        line.printfulCatalogVariantId,  // Sync variant ID - correct for orders
+        line.printful?.catalogVariantId, // Sync variant ID from printful object
+        line.catalogVariantId,           // Legacy/fallback
         line.metadata?.printfulCatalogVariantId
     ].map(parsePositiveNumber).filter(Boolean);
 
     const catalogVariantId = candidateIds[0];
+    
+    console.log('📦 Extracting Printful item for order:', {
+        title: line.title,
+        printfulCatalogVariantId: line.printfulCatalogVariantId,
+        'printful.catalogVariantId': line.printful?.catalogVariantId,
+        catalogVariantId: line.catalogVariantId,
+        selectedId: catalogVariantId
+    });
 
     if (!catalogVariantId) {
         return null;
