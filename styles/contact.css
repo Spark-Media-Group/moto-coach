@@ -1,0 +1,1201 @@
+/* ===================================
+   CONTACT PAGE STYLES
+   Simple, functional, elite design
+   =================================== */
+
+:root {
+    --contact-black: #0a0a0a;
+    --contact-charcoal: #1a1a1a;
+    --contact-steel: #2a2a2a;
+    --contact-concrete: #3a3a3a;
+    --contact-white: #f8f8f8;
+    --contact-grey: rgba(248, 248, 248, 0.65);
+    --contact-orange: #ff6b35;
+    --contact-orange-glow: rgba(255, 107, 53, 0.25);
+    --contact-max-width: 1400px;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* ===================================
+   SCROLL ANIMATIONS
+   =================================== */
+
+/* Start elements visible, only hide them when page is ready */
+.fade-in-up,
+.fade-in-left,
+.fade-in-right,
+.fade-in-scale,
+.stagger-item {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Only hide and prepare for animation when JS is loaded */
+.animations-ready .fade-in-up {
+    opacity: 0;
+    transform: translateY(40px);
+}
+
+.animations-ready .fade-in-left {
+    opacity: 0;
+    transform: translateX(-40px);
+}
+
+.animations-ready .fade-in-right {
+    opacity: 0;
+    transform: translateX(40px);
+}
+
+.animations-ready .fade-in-scale {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.animations-ready .stagger-item {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.fade-in-up.is-visible,
+.fade-in-left.is-visible,
+.fade-in-right.is-visible,
+.fade-in-scale.is-visible,
+.stagger-item.is-visible {
+    opacity: 1;
+    transform: translate(0) scale(1);
+}
+
+/* Stagger delays for info cards */
+.stagger-container .stagger-item:nth-child(1) { transition-delay: 0.1s; }
+.stagger-container .stagger-item:nth-child(2) { transition-delay: 0.2s; }
+.stagger-container .stagger-item:nth-child(3) { transition-delay: 0.3s; }
+
+@media (prefers-reduced-motion: reduce) {
+    .fade-in-up,
+    .fade-in-left,
+    .fade-in-right,
+    .fade-in-scale,
+    .stagger-item {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+/* ===================================
+   BASE LAYOUT
+   =================================== */
+
+.contact-page {
+    background: var(--contact-black);
+    color: var(--contact-white);
+    position: relative;
+    min-height: 100vh;
+}
+
+.contact-shell {
+    max-width: var(--contact-max-width);
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 4vw, 3rem);
+}
+
+/* ===================================
+   CONTACT SECTION
+   =================================== */
+
+.contact-section {
+    padding: clamp(6rem, 12vw, 10rem) 0 clamp(5rem, 10vw, 8rem);
+    position: relative;
+    background: 
+        linear-gradient(135deg, rgba(255, 107, 53, 0.03) 0%, transparent 50%),
+        linear-gradient(to bottom, var(--contact-black), var(--contact-charcoal));
+}
+
+/* Add subtle texture overlay */
+.contact-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.contact-header {
+    margin-bottom: clamp(3rem, 6vw, 5rem);
+    position: relative;
+}
+
+.contact-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.01em; /* Tighter, like US CSS */
+    color: var(--contact-white);
+    position: relative;
+    display: inline-block;
+    line-height: 1;
+}
+
+.contact-header h1::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 0;
+    width: 80px;
+    height: 3px;
+    background: var(--contact-orange);
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
+    animation: glowPulse 3s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(255, 107, 53, 0.6);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(255, 107, 53, 0.9);
+    }
+}
+
+/* ===================================
+   LAYOUT GRID
+   =================================== */
+
+.contact-layout {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: clamp(3rem, 6vw, 5rem);
+    align-items: start;
+}
+
+/* ===================================
+   CONTACT FORM (LEFT SIDE)
+   =================================== */
+
+.contact-form-wrapper {
+    position: relative;
+}
+
+/* Remove the box-within-box, make form blend into page */
+.contact-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+}
+
+/* Add diagonal stripe pattern in background */
+.contact-form::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    right: -20px;
+    bottom: -20px;
+    background: 
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 10px,
+            rgba(255, 107, 53, 0.02) 10px,
+            rgba(255, 107, 53, 0.02) 20px
+        );
+    pointer-events: none;
+    z-index: 0;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.form-group label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--contact-orange);
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(42, 42, 42, 0.6);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    border-left: 3px solid rgba(255, 107, 53, 0.3);
+    color: var(--contact-white);
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--contact-orange);
+    border-left-color: var(--contact-orange);
+    box-shadow: 
+        inset 0 1px 3px rgba(0, 0, 0, 0.3),
+        0 0 0 3px rgba(255, 107, 53, 0.15),
+        0 0 20px rgba(255, 107, 53, 0.2);
+    background: rgba(42, 42, 42, 0.9);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: rgba(248, 248, 248, 0.3);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 180px;
+}
+
+.contact-submit-btn {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.95rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 1.25rem 3rem;
+    background: linear-gradient(135deg, var(--contact-orange), #e55a28);
+    border: 2px solid var(--contact-orange);
+    color: var(--contact-white);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 0.5rem;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+    overflow: hidden;
+    box-shadow: 
+        0 4px 15px rgba(255, 107, 53, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.contact-submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.contact-submit-btn:hover {
+    background: linear-gradient(135deg, #e55a28, var(--contact-orange));
+    box-shadow: 
+        0 6px 25px rgba(255, 107, 53, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    border-color: #ff8c5f;
+}
+
+.contact-submit-btn:hover::before {
+    left: 100%;
+}
+
+.contact-submit-btn:active {
+    transform: translateY(0);
+    box-shadow: 
+        0 2px 10px rgba(255, 107, 53, 0.4),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ===================================
+   CONTACT INFO CARDS (RIGHT SIDE)
+   =================================== */
+
+.contact-info-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.info-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.info-card {
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.8), rgba(26, 26, 26, 0.8));
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(248, 248, 248, 0.08);
+    border-left: 3px solid rgba(255, 107, 53, 0.4);
+    padding: clamp(2rem, 4vw, 2.5rem);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* Diagonal stripe texture */
+.info-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 15px,
+            rgba(255, 107, 53, 0.02) 15px,
+            rgba(255, 107, 53, 0.02) 30px
+        );
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+/* Animated accent line */
+.info-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--contact-orange), #ff8c5f);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+}
+
+.info-card:hover {
+    transform: translateX(8px);
+    border-left-color: var(--contact-orange);
+    border-left-width: 4px;
+    box-shadow: 
+        0 8px 30px rgba(255, 107, 53, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.95), rgba(26, 26, 26, 0.95));
+}
+
+.info-card:hover::after {
+    transform: scaleX(1);
+}
+
+.info-card:hover .info-icon svg {
+    transform: scale(1.15) rotate(5deg);
+    filter: drop-shadow(0 0 10px rgba(255, 107, 53, 0.8));
+}
+
+.info-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 107, 53, 0.1);
+    border-radius: 2px;
+    border: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+.info-icon svg {
+    width: 26px;
+    height: 26px;
+    color: var(--contact-orange);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    filter: drop-shadow(0 0 8px rgba(255, 107, 53, 0.4));
+}
+
+.info-card h3 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.info-card p {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.85rem;
+    color: var(--contact-grey);
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-link {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.1rem);
+    color: var(--contact-white);
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+a.info-link:hover {
+    color: var(--contact-orange);
+    text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+}
+
+/* ===================================
+   FORM ALERTS
+   =================================== */
+
+.alert {
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-left: 4px solid;
+    background: var(--contact-steel);
+    border-radius: 0;
+    display: flex;
+    gap: 1rem;
+    animation: slideInDown 0.4s ease;
+    transition: opacity 0.25s ease;
+}
+
+.alert-hide {
+    opacity: 0;
+}
+
+.alert-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.alert-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    fill: currentColor;
+}
+
+.alert-text {
+    flex: 1;
+}
+
+.alert-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.35rem;
+}
+
+.alert-message {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.95rem;
+    color: var(--contact-grey);
+    margin: 0;
+}
+
+.alert-success {
+    border-left-color: #10b981;
+    color: #10b981;
+}
+
+.alert-error {
+    border-left-color: var(--contact-orange);
+    color: var(--contact-orange);
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+@media (max-width: 1024px) {
+    .contact-layout {
+        grid-template-columns: 1fr;
+        gap: 4rem;
+    }
+
+    .contact-info-wrapper {
+        order: -1; /* Move info cards above form on tablet/mobile */
+    }
+
+    .info-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+    }
+
+    .info-card {
+        padding: 1.75rem 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .contact-section {
+        padding: clamp(5rem, 8vw, 6rem) 0 clamp(4rem, 8vw, 5rem);
+    }
+
+    .contact-header {
+        margin-bottom: 2.5rem;
+    }
+
+    .contact-header h1 {
+        font-size: clamp(2rem, 5vw, 2.5rem);
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .info-cards {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .info-card {
+        padding: 1.75rem;
+    }
+
+    .contact-submit-btn {
+        padding: 1.1rem 2rem;
+    }
+}
+
+@media (max-width: 520px) {
+    .contact-section {
+        padding: 4rem 0 3rem;
+    }
+
+    .contact-section::before {
+        opacity: 0.3; /* Reduce texture on small screens */
+    }
+
+    .contact-header h1 {
+        font-size: 1.8rem;
+    }
+
+    .contact-form::before {
+        display: none; /* Remove diagonal stripes on small screens for clarity */
+    }
+
+    .info-card {
+        padding: 1.5rem;
+    }
+
+    .info-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .info-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* ===================================
+   SCROLL ANIMATIONS
+   =================================== */
+
+/* Start elements visible, only hide them when page is ready */
+.fade-in-up,
+.fade-in-left,
+.fade-in-right,
+.fade-in-scale,
+.stagger-item {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Only hide and prepare for animation when JS is loaded */
+.animations-ready .fade-in-up {
+    opacity: 0;
+    transform: translateY(40px);
+}
+
+.animations-ready .fade-in-left {
+    opacity: 0;
+    transform: translateX(-40px);
+}
+
+.animations-ready .fade-in-right {
+    opacity: 0;
+    transform: translateX(40px);
+}
+
+.animations-ready .fade-in-scale {
+    opacity: 0;
+    transform: scale(0.95);
+}
+
+.animations-ready .stagger-item {
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.fade-in-up.is-visible,
+.fade-in-left.is-visible,
+.fade-in-right.is-visible,
+.fade-in-scale.is-visible,
+.stagger-item.is-visible {
+    opacity: 1;
+    transform: translate(0) scale(1);
+}
+
+/* Stagger delays for grid items */
+.stagger-container .stagger-item:nth-child(1) { transition-delay: 0.1s; }
+.stagger-container .stagger-item:nth-child(2) { transition-delay: 0.2s; }
+.stagger-container .stagger-item:nth-child(3) { transition-delay: 0.3s; }
+.stagger-container .stagger-item:nth-child(4) { transition-delay: 0.4s; }
+
+@media (prefers-reduced-motion: reduce) {
+    .fade-in-up,
+    .fade-in-left,
+    .fade-in-right,
+    .fade-in-scale,
+    .stagger-item {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+/* ===================================
+   BASE LAYOUT
+   =================================== */
+
+.contact-page {
+    background: var(--contact-black);
+    color: var(--contact-white);
+    position: relative;
+    min-height: 100vh;
+}
+
+.contact-shell {
+    max-width: var(--contact-max-width);
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 4vw, 3rem);
+}
+
+/* ===================================
+   HERO SECTION
+   =================================== */
+
+.contact-hero {
+    padding: clamp(8rem, 14vw, 12rem) 0 clamp(4rem, 8vw, 6rem);
+    position: relative;
+    background: radial-gradient(ellipse at top center, rgba(255, 107, 53, 0.12), transparent 70%),
+                linear-gradient(180deg, var(--contact-charcoal), var(--contact-black));
+    border-bottom: 1px solid rgba(248, 248, 248, 0.08);
+    margin-top: 80px; /* Account for fixed header */
+}
+
+.contact-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(248, 248, 248, 0.15), transparent);
+}
+
+.hero-eyebrow {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--contact-orange);
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.hero-headline {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(3.5rem, 8vw, 6.5rem);
+    line-height: 0.92;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: clamp(1.5rem, 3vw, 2rem);
+    letter-spacing: -0.02em;
+    max-width: 900px;
+}
+
+.hero-lede {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+    line-height: 1.6;
+    color: var(--contact-grey);
+    max-width: 720px;
+}
+
+/* ===================================
+   CONTACT METHODS GRID
+   =================================== */
+
+.contact-methods {
+    padding: clamp(4rem, 8vw, 6rem) 0;
+    background: var(--contact-black);
+}
+
+.methods-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.method-card {
+    background: var(--contact-steel);
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    padding: clamp(2rem, 4vw, 3rem) clamp(1.75rem, 3vw, 2.5rem);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.method-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--contact-orange);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.method-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.08), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.method-card:hover {
+    transform: translateY(-8px);
+    border-color: rgba(255, 107, 53, 0.4);
+    box-shadow: 0 16px 40px rgba(255, 107, 53, 0.2);
+}
+
+.method-card:hover::before {
+    transform: scaleX(1);
+}
+
+.method-card:hover::after {
+    opacity: 1;
+}
+
+.method-card:hover .method-icon svg {
+    transform: scale(1.1);
+    color: var(--contact-orange);
+}
+
+.method-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+
+.method-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.method-icon svg {
+    width: 100%;
+    height: 100%;
+    color: var(--contact-orange);
+    transition: all 0.3s ease;
+}
+
+.method-header h3 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.1rem, 2vw, 1.3rem);
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.method-body {
+    position: relative;
+    z-index: 1;
+}
+
+.method-body p {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.95rem;
+    color: var(--contact-grey);
+    margin-bottom: 0.75rem;
+}
+
+.method-link {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.1rem);
+    color: var(--contact-white);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.method-link:hover {
+    color: var(--contact-orange);
+}
+
+.location-text {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.1rem);
+    color: var(--contact-white);
+    font-weight: 500;
+}
+
+/* ===================================
+   CONTACT FORM SECTION
+   =================================== */
+
+.contact-form-section {
+    padding: clamp(4rem, 8vw, 6rem) 0 clamp(5rem, 10vw, 8rem);
+    background: var(--contact-charcoal);
+    position: relative;
+}
+
+.contact-form-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(248, 248, 248, 0.1), transparent);
+}
+
+.form-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.form-intro {
+    text-align: center;
+    margin-bottom: clamp(3rem, 6vw, 4rem);
+}
+
+.form-eyebrow {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(0.7rem, 1.5vw, 0.85rem);
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: var(--contact-orange);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.form-intro h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    line-height: 1;
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    letter-spacing: -0.01em;
+}
+
+.form-intro p {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: clamp(1rem, 2vw, 1.15rem);
+    color: var(--contact-grey);
+}
+
+.contact-form {
+    background: var(--contact-steel);
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    padding: clamp(2.5rem, 5vw, 4rem);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--contact-white);
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    padding: 0.9rem 1.25rem;
+    background: var(--contact-concrete);
+    border: 1px solid rgba(248, 248, 248, 0.15);
+    color: var(--contact-white);
+    transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--contact-orange);
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.15);
+    background: var(--contact-steel);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: rgba(248, 248, 248, 0.3);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 150px;
+}
+
+.contact-submit-btn {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 1.15rem 3rem;
+    background: var(--contact-orange);
+    border: 2px solid var(--contact-orange);
+    color: var(--contact-white);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 1rem;
+    font-weight: 600;
+}
+
+.contact-submit-btn:hover {
+    background: transparent;
+    box-shadow: 0 0 30px var(--contact-orange-glow);
+    transform: translateY(-2px);
+}
+
+.contact-submit-btn:active {
+    transform: translateY(0);
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+/* Form Alert Messages */
+.alert {
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-left: 4px solid;
+    background: var(--contact-steel);
+    border-radius: 0;
+    display: flex;
+    gap: 1rem;
+    animation: slideInDown 0.4s ease;
+    transition: opacity 0.25s ease;
+}
+
+.alert-hide {
+    opacity: 0;
+}
+
+.alert-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.alert-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    fill: currentColor;
+}
+
+.alert-text {
+    flex: 1;
+}
+
+.alert-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.35rem;
+}
+
+.alert-message {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.95rem;
+    color: var(--contact-grey);
+    margin: 0;
+}
+
+.alert-success {
+    border-left-color: #10b981;
+    color: #10b981;
+}
+
+.alert-error {
+    border-left-color: var(--contact-orange);
+    color: var(--contact-orange);
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 1024px) {
+    .methods-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .method-card {
+        padding: 2rem 1.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .contact-hero {
+        padding: clamp(6rem, 10vw, 8rem) 0 clamp(3rem, 6vw, 4rem);
+    }
+
+    .hero-headline {
+        font-size: clamp(2.5rem, 6vw, 3.5rem);
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .contact-form {
+        padding: 2rem 1.5rem;
+    }
+
+    .contact-submit-btn {
+        padding: 1rem 2rem;
+    }
+}
+
+@media (max-width: 520px) {
+    .contact-hero {
+        padding: 5rem 0 2.5rem;
+    }
+
+    .hero-headline {
+        font-size: 2.2rem;
+    }
+
+    .hero-lede {
+        font-size: 1rem;
+    }
+
+    .method-card {
+        padding: 1.75rem 1.5rem;
+    }
+
+    .method-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .contact-form {
+        padding: 1.75rem 1.25rem;
+    }
+
+    .form-intro h2 {
+        font-size: 2rem;
+    }
+}

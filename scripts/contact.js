@@ -4,6 +4,9 @@ import { ensureBotIdClient } from './botid-client.js';
 let botProtectionEnabled = true;
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Initialize scroll animations
+    initScrollAnimations();
+
     const contactForm = document.querySelector('.contact-form');
     if (!contactForm) {
         return;
@@ -97,8 +100,8 @@ function showErrorMessage(message) {
 function renderAlert(type, message) {
     removeExistingMessages();
 
-    const formContainer = document.querySelector('.contact-form-container');
-    if (!formContainer) {
+    const formWrapper = document.querySelector('.contact-form-wrapper');
+    if (!formWrapper) {
         return;
     }
 
@@ -133,7 +136,13 @@ function renderAlert(type, message) {
         </div>
     `;
 
-    formContainer.insertBefore(messageDiv, formContainer.firstChild);
+    // Insert before the form
+    const form = formWrapper.querySelector('.contact-form');
+    if (form) {
+        formWrapper.insertBefore(messageDiv, form);
+    } else {
+        formWrapper.insertBefore(messageDiv, formWrapper.firstChild);
+    }
 
     try {
         messageDiv.focus({ preventScroll: true });
@@ -154,4 +163,46 @@ function renderAlert(type, message) {
 function removeExistingMessages() {
     const existingMessages = document.querySelectorAll('.alert');
     existingMessages.forEach(msg => msg.remove());
+}
+
+// ===================================
+// SCROLL ANIMATIONS
+// ===================================
+function initScrollAnimations() {
+    // Add class to enable animations (content is visible by default)
+    document.documentElement.classList.add('animations-ready');
+    
+    const animatedElements = document.querySelectorAll(
+        '.fade-in-up, .fade-in-left, .fade-in-right, .fade-in-scale, .stagger-item'
+    );
+
+    // Small delay to allow CSS to apply hidden state before triggering animations
+    setTimeout(() => {
+        // Immediately show elements that are already in viewport on page load
+        animatedElements.forEach(element => {
+            const rect = element.getBoundingClientRect();
+            const isInViewport = rect.top < window.innerHeight && rect.bottom > 0;
+            if (isInViewport) {
+                element.classList.add('is-visible');
+            }
+        });
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px 0px -100px 0px',
+            threshold: 0.15
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, observerOptions);
+
+        animatedElements.forEach(element => {
+            observer.observe(element);
+        });
+    }, 50);
 }
