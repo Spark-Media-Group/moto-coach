@@ -771,7 +771,17 @@ async function sendConfirmationEmails(riders, formData) {
                 isRider: false
             });
         }
-        
+
+        const adminNotificationEmail = process.env.TO_EMAIL || 'inquiries@motocoach.com.au';
+
+        if (adminNotificationEmail && !emailRecipients.has(adminNotificationEmail)) {
+            emailRecipients.set(adminNotificationEmail, {
+                email: adminNotificationEmail,
+                name: 'Moto Coach Team',
+                isRider: false
+            });
+        }
+
         // Convert Map to Array for processing
         const recipients = Array.from(emailRecipients.values());
         console.log(`Sending ${recipients.length} confirmation email(s)`);
@@ -955,7 +965,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
             return lines.join('\n');
         }).join('\n\n');
 
-        const baseSubject = 'Moto Coach Track Reservation Confirmation';
+        const baseSubject = 'Moto Coach Event Reservation Confirmation';
         const subjectContext = normalizedEvents.length > 1
             ? `${normalizedEvents.length} Events`
             : (normalizedEvents[0]?.titleText || '');
@@ -970,7 +980,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
                                 <td style="padding:36px 24px 28px; text-align:center; background:linear-gradient(135deg, #fef3ec 0%, #ffffff 100%); border-bottom:1px solid #f5d0c5;">
                                     <img src="${LOGO_URL}" alt="Moto Coach" style="width:72px; height:auto; display:block; margin:0 auto 12px;" />
                                     <p style="margin:0; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#ff6b35;">Moto Coach</p>
-                                    <h1 style="margin:12px 0 0; font-size:24px; font-weight:700; color:#111827;">Track Reservation Confirmed</h1>
+                                    <h1 style="margin:12px 0 0; font-size:24px; font-weight:700; color:#111827;">Event Reservation Confirmed</h1>
                                 </td>
                             </tr>
                             <tr>
@@ -1014,7 +1024,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
                             <tr>
                                 <td style="padding:20px 24px 28px; text-align:center; background-color:#111827; color:#f9fafb;">
                                     <p style="margin:0 0 8px; font-size:14px;">Questions? Email <a href="mailto:inquiries@motocoach.com.au" style="color:#f97316; text-decoration:none;">inquiries@motocoach.com.au</a></p>
-                                    <p style="margin:0; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:rgba(249, 250, 251, 0.7);">Moto Coach Track Reservation</p>
+                                    <p style="margin:0; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:rgba(249, 250, 251, 0.7);">Moto Coach Event Reservation</p>
                                 </td>
                             </tr>
                         </table>
@@ -1025,7 +1035,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
 
 
         const plainTextLines = [
-            'Moto Coach Track Reservation Confirmation',
+            'Moto Coach Event Reservation Confirmation',
             '',
             `Hi ${recipientNameText},`,
             '',
@@ -1057,13 +1067,13 @@ ${commentsPlain}` : '',
             'Questions? Email inquiries@motocoach.com.au',
             '',
             '---',
-            'Moto Coach Track Reservation'
+            'Moto Coach Event Reservation'
         ].filter(Boolean);
 
         const plainTextMessage = plainTextLines.join('\n');
 
         const { error } = await resend.emails.send({
-            from: process.env.FROM_EMAIL || 'Moto Coach <inquiries@motocoach.com.au>',
+            from: 'Moto Coach <registrations@motocoach.com.au>',
             to: [recipient.email],
             subject: subjectLine,
             html: htmlEmail,
