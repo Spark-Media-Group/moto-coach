@@ -853,6 +853,31 @@
     transition: opacity 0.3s ease;
 }
 
+/* Selected Variant Label */
+.selected-variant-label {
+    margin-top: 12px;
+    padding: 8px 14px;
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.05) 100%);
+    border-left: 3px solid #ff6b35;
+    border-radius: 6px;
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    color: #333;
+    font-weight: 600;
+}
+
+.selected-variant-label strong {
+    color: #ff6b35;
+    font-weight: 700;
+}
+
+.variant-label-text {
+    color: #555;
+    font-weight: 500;
+}
+
 /* Gallery Navigation Arrows */
 .gallery-nav {
     position: absolute;

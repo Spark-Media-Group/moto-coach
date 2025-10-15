@@ -256,32 +256,40 @@
     }
 
     function buildImageGallery(product, variant = null) {
-        // Build images array - prioritize variant images if variant is provided
+        // Build images array - show ALL variants as clickable thumbnails
+        const variants = product.variants || [];
         let images = [];
         
-        if (variant) {
-            // If variant has specific images, use those first
-            if (variant.imageUrls && variant.imageUrls.length > 0) {
-                images = variant.imageUrls.map(url => ({
-                    url,
-                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
-                }));
-            } else if (variant.imageUrl) {
+        // Collect images from ALL variants
+        variants.forEach(v => {
+            if (v.imageUrl) {
+                // Check if this image URL already exists to avoid duplicates
+                const exists = images.some(img => img.url === v.imageUrl);
+                if (!exists) {
+                    images.push({
+                        url: v.imageUrl,
+                        altText: `${product.name} - ${v.optionLabel || v.name || 'Variant'}`,
+                        variantId: v.id,
+                        variantName: v.optionLabel || v.name || 'Variant',
+                        variant: v
+                    });
+                }
+            }
+        });
+        
+        // Fallback to product-level images if no variant images
+        if (images.length === 0) {
+            if (product.images && product.images.length > 0) {
+                images = product.images.map(img => ({...img, variantId: null, variantName: null, variant: null}));
+            } else if (product.thumbnailUrl) {
                 images.push({
-                    url: variant.imageUrl,
-                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
+                    url: product.thumbnailUrl,
+                    altText: product.name,
+                    variantId: null,
+                    variantName: null,
+                    variant: null
                 });
             }
-        }
-        
-        // Add product-level images if no variant images or to supplement variant images
-        if (images.length === 0 && product.images && product.images.length > 0) {
-            images = [...product.images];
-        } else if (images.length === 0 && product.thumbnailUrl) {
-            images.push({
-                url: product.thumbnailUrl,
-                altText: product.name
-            });
         }
         
         // Filter out any invalid images
@@ -291,14 +299,37 @@
             return '<div class="no-image">No image available</div>';
         }
 
+        // Find the index of the current variant's image
+        let mainImageIndex = 0;
+        if (variant && variant.imageUrl) {
+            const foundIndex = images.findIndex(img => img.variantId === variant.id);
+            if (foundIndex >= 0) {
+                mainImageIndex = foundIndex;
+            }
+        }
+
+        const mainImage = images[mainImageIndex];
+        const variantLabel = mainImage.variantName ? `
+            <div class="selected-variant-label">
+                <span class="variant-label-text">${mainImage.variantName}</span>
+            </div>
+        ` : '';
+
         if (images.length === 1) {
             return `
-                <img id="modal-main-image" src="${images[0].url}" alt="${images[0].altText || product.name}" loading="lazy">
+                <div class="modal-gallery-single">
+                    <img id="modal-main-image" src="${images[0].url}" alt="${images[0].altText || product.name}" loading="lazy">
+                    ${variantLabel}
+                </div>
             `;
         }
 
         const thumbnails = images.map((image, index) => `
-            <button class="thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}" type="button">
+            <button class="thumbnail ${index === mainImageIndex ? 'active' : ''}" 
+                    data-index="${index}" 
+                    data-variant-id="${image.variantId || ''}" 
+                    type="button"
+                    aria-label="Select ${image.variantName || 'variant'}">
                 <img src="${image.url}" alt="${image.altText || product.name}" loading="lazy">
             </button>
         `).join('');
@@ -306,24 +337,27 @@
         return `
             <div class="modal-gallery">
                 <div class="main-image-container">
-                    <button class="gallery-nav gallery-prev" data-direction="-1" type="button" aria-label="Previous image">
+                    <button class="gallery-nav gallery-prev" data-direction="-1" type="button" aria-label="Previous variant">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
                         </svg>
                     </button>
-                    <img id="modal-main-image" src="${images[0].url}" alt="${images[0].altText || product.name}" loading="lazy">
-                    <button class="gallery-nav gallery-next" data-direction="1" type="button" aria-label="Next image">
+                    <img id="modal-main-image" src="${mainImage.url}" alt="${mainImage.altText || product.name}" loading="lazy" data-variant-id="${mainImage.variantId || ''}">
+                    <button class="gallery-nav gallery-next" data-direction="1" type="button" aria-label="Next variant">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
                         </svg>
                     </button>
                 </div>
+                ${variantLabel}
                 <div class="image-thumbnails">${thumbnails}</div>
             </div>
         `;
     }
 
     function buildVariantSelection(product, variants) {
+        // We're now using thumbnail selection instead of a dropdown
+        // Only show dropdown if there are variants with no images (edge case)
         const availableVariants = variants.filter(variant => variant.isEnabled !== false && variant.catalogVariantId);
 
         if (availableVariants.length <= 1) {
@@ -331,6 +365,13 @@
             return '';
         }
 
+        // Check if all variants have images - if so, no need for dropdown
+        const allVariantsHaveImages = availableVariants.every(v => v.imageUrl);
+        if (allVariantsHaveImages) {
+            return ''; // Thumbnails will handle variant selection
+        }
+
+        // Fallback: show dropdown only if some variants don't have images
         const options = availableVariants.map(variant => `
             <option value="${variant.id}">${variant.optionLabel || variant.name || 'Variant'}</option>
         `).join('');
@@ -444,7 +485,28 @@
         thumbnailButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const index = parseInt(button.getAttribute('data-index'), 10);
+                const variantId = button.getAttribute('data-variant-id');
+                
+                // Update the active image
                 setActiveImage(index);
+                
+                // If this thumbnail has a variant ID, switch to that variant
+                if (variantId && currentModalProduct) {
+                    const variants = currentModalProduct.variants || [];
+                    const selectedVariant = variants.find(v => v.id === variantId);
+                    if (selectedVariant) {
+                        currentVariant = selectedVariant;
+                        updateModalPrice();
+                        updateVariantAvailability();
+                        updateVariantLabel();
+                        
+                        // Update dropdown if it exists
+                        const variantSelect = modalBody.querySelector('#variant-select');
+                        if (variantSelect) {
+                            variantSelect.value = variantId;
+                        }
+                    }
+                }
             });
         });
 
@@ -536,6 +598,13 @@
         addToCartButton.disabled = false;
     }
 
+    function updateVariantLabel() {
+        const variantLabel = modalBody.querySelector('.variant-label-text');
+        if (variantLabel && currentVariant) {
+            variantLabel.textContent = currentVariant.optionLabel || currentVariant.name || 'Variant';
+        }
+    }
+
     function updateModalGallery() {
         if (!currentModalProduct || !currentVariant) {
             return;
@@ -576,23 +645,29 @@
             return;
         }
 
-        // Get images for current variant or fallback to product images
+        // Get ALL variant images (same logic as buildImageGallery)
+        const variants = currentModalProduct.variants || [];
         let images = [];
-        if (currentVariant) {
-            if (currentVariant.imageUrls && currentVariant.imageUrls.length > 0) {
-                images = currentVariant.imageUrls.map(url => ({
-                    url,
-                    altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}`
-                }));
-            } else if (currentVariant.imageUrl) {
-                images = [{ url: currentVariant.imageUrl, altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}` }];
+        
+        variants.forEach(v => {
+            if (v.imageUrl) {
+                const exists = images.some(img => img.url === v.imageUrl);
+                if (!exists) {
+                    images.push({
+                        url: v.imageUrl,
+                        altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+                        variantId: v.id,
+                        variantName: v.optionLabel || v.name || 'Variant',
+                        variant: v
+                    });
+                }
             }
-        }
+        });
         
         if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
-            images = currentModalProduct.images;
+            images = currentModalProduct.images.map(img => ({...img, variantId: null, variantName: null, variant: null}));
         } else if (images.length === 0 && currentModalProduct.thumbnailUrl) {
-            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }];
+            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name, variantId: null, variantName: null, variant: null }];
         }
         
         images = images.filter(image => image.url);
@@ -608,6 +683,15 @@
             currentImageIndex = 0;
         }
 
+        // Update current variant if navigating to a different variant
+        const newImage = images[currentImageIndex];
+        if (newImage.variant) {
+            currentVariant = newImage.variant;
+            updateModalPrice();
+            updateVariantAvailability();
+            updateVariantLabel();
+        }
+
         updateGalleryDisplay(images);
     }
 
@@ -616,23 +700,29 @@
             return;
         }
 
-        // Get images for current variant or fallback to product images
+        // Get ALL variant images (same logic as buildImageGallery)
+        const variants = currentModalProduct.variants || [];
         let images = [];
-        if (currentVariant) {
-            if (currentVariant.imageUrls && currentVariant.imageUrls.length > 0) {
-                images = currentVariant.imageUrls.map(url => ({
-                    url,
-                    altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}`
-                }));
-            } else if (currentVariant.imageUrl) {
-                images = [{ url: currentVariant.imageUrl, altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}` }];
+        
+        variants.forEach(v => {
+            if (v.imageUrl) {
+                const exists = images.some(img => img.url === v.imageUrl);
+                if (!exists) {
+                    images.push({
+                        url: v.imageUrl,
+                        altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+                        variantId: v.id,
+                        variantName: v.optionLabel || v.name || 'Variant',
+                        variant: v
+                    });
+                }
             }
-        }
+        });
         
         if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
-            images = currentModalProduct.images;
+            images = currentModalProduct.images.map(img => ({...img, variantId: null, variantName: null, variant: null}));
         } else if (images.length === 0 && currentModalProduct.thumbnailUrl) {
-            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }];
+            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name, variantId: null, variantName: null, variant: null }];
         }
         
         images = images.filter(image => image.url);
@@ -642,6 +732,16 @@
         }
 
         currentImageIndex = index;
+        
+        // Update current variant if switching to a different variant
+        const newImage = images[currentImageIndex];
+        if (newImage.variant) {
+            currentVariant = newImage.variant;
+            updateModalPrice();
+            updateVariantAvailability();
+            updateVariantLabel();
+        }
+        
         updateGalleryDisplay(images);
     }
 
