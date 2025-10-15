@@ -1,4 +1,22 @@
-# Carousel-Based Variant Selection Implementation
+# ⚠️ DEPRECATED - See VARIANT_SELECTION_CORRECTED.md
+
+This implementation was based on a misunderstanding of requirements.
+
+## What This Tried To Do (INCORRECT)
+- Show ALL variant images as thumbnails
+- Click thumbnail to SELECT that variant
+- Hide dropdown menu
+
+## What We Actually Need (CORRECT)
+- Show SELECTED variant's images in carousel
+- Use dropdown for variant selection (Color / Size combinations)
+- Gallery updates when dropdown changes
+
+**See `VARIANT_SELECTION_CORRECTED.md` for the correct implementation.**
+
+---
+
+# ~~Carousel-Based Variant Selection Implementation~~ (DEPRECATED)
 
 ## Overview
 Complete redesign of the product modal to use an image carousel for variant selection instead of a traditional dropdown menu.
