@@ -404,8 +404,8 @@
         }
 
         // Build size-only dropdown
-        let html = '<div class="modal-variant-selection">';
-        html += '<label for="size-select">Choose Size:</label>';
+        let html = '<div class="size-section">';
+        html += '<label for="size-select">Choose Size</label>';
         html += '<select id="size-select" class="size-select">';
 
         sizesForCurrentColor.forEach((variant) => {
@@ -477,8 +477,10 @@
                         <span class="price-current">${formatCurrency(price, priceCurrency)}</span>
                     </div>
                     <div class="product-description">${description}</div>
-                    ${variantSelect}
-                    ${quantitySection}
+                    <div class="size-quantity-container">
+                        ${variantSelect}
+                        ${quantitySection}
+                    </div>
                     <div class="availability-info">
                         <span class="spec-label">Availability:</span>
                         <span class="spec-value" id="availability-status">${currentVariant?.isEnabled === false ? 'Unavailable' : 'In Stock'}</span>
