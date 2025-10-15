@@ -7,6 +7,80 @@ import { checkBotProtection } from './_utils/botid';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+const LOGO_URL = 'https://motocoach.com.au/images/tall-logo-black.png';
+
+const HTML_ESCAPE_LOOKUP = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+};
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    return String(value).replace(/[&<>"']/g, (char) => HTML_ESCAPE_LOOKUP[char] || char);
+}
+
+function toSafeString(value) {
+    return escapeHtml(String(value ?? '').trim());
+}
+
+function toPlainText(value) {
+    return String(value ?? '').replace(/\r?\n/g, '\n').trim();
+}
+
+function toSafeMultilineString(value) {
+    return toSafeString(value).replace(/\r?\n/g, '<br>');
+}
+
+function formatCurrency(value) {
+    if (value === null || value === undefined || value === '') {
+        return '';
+    }
+
+    const numericValue = typeof value === 'number' ? value : Number.parseFloat(String(value).replace(/[^0-9.-]/g, ''));
+
+    if (!Number.isFinite(numericValue)) {
+        return '';
+    }
+
+    return new Intl.NumberFormat('en-AU', {
+        style: 'currency',
+        currency: 'AUD'
+    }).format(numericValue);
+}
+
+function formatPhoneHref(value) {
+    if (!value) {
+        return '';
+    }
+
+    return String(value).replace(/[^+\d]/g, '');
+}
+
+function renderDetailRows(rows = []) {
+    return rows
+        .map((row, index) => {
+            const isLastRow = index === rows.length - 1;
+            const borderBottom = isLastRow ? '' : 'border-bottom: 1px solid #e5e7eb;';
+            return `
+                <tr>
+                    <td style="padding: 12px 16px; background-color: #f9fafb; font-weight: 600; font-size: 14px; color: #111827; border-right: 1px solid #e5e7eb; ${borderBottom}">
+                        ${toSafeString(row.label)}
+                    </td>
+                    <td style="padding: 12px 16px; font-size: 14px; color: #374151; ${borderBottom}">
+                        ${row.value || 'N/A'}
+                    </td>
+                </tr>
+            `;
+        })
+        .join('');
+}
+
 function parseDateInput(value) {
     if (!value) {
         return null;
@@ -697,17 +771,26 @@ async function sendConfirmationEmails(riders, formData) {
                 isRider: false
             });
         }
-        
+
+        const adminNotificationEmail = process.env.TO_EMAIL || 'inquiries@motocoach.com.au';
+
+        if (adminNotificationEmail && !emailRecipients.has(adminNotificationEmail)) {
+            emailRecipients.set(adminNotificationEmail, {
+                email: adminNotificationEmail,
+                name: 'Moto Coach Team',
+                isRider: false
+            });
+        }
+
         // Convert Map to Array for processing
         const recipients = Array.from(emailRecipients.values());
         console.log(`Sending ${recipients.length} confirmation email(s)`);
         
         // Create rider names list for email
-        const riderNames = riders.map(rider => `${rider.firstName} ${rider.lastName}`).join(', ');
         
         // Send one email per unique recipient
         const emailPromises = recipients.map(recipient => 
-            sendIndividualConfirmationEmail(recipient, formData, riderNames, riders)
+            sendIndividualConfirmationEmail(recipient, formData, riders)
         );
         
         await Promise.all(emailPromises);
@@ -720,125 +803,281 @@ async function sendConfirmationEmails(riders, formData) {
 }
 
 // Function to send individual confirmation email
-async function sendIndividualConfirmationEmail(recipient, formData, riderNames, riders) {
+
+async function sendIndividualConfirmationEmail(recipient, formData, riders) {
     try {
         console.log('Sending confirmation email to recipient (address redacted)');
-        
-        // Create a subject line that indicates multi-event if applicable
-        const subjectLine = formData.multiEventRegistration && formData.events && formData.events.length > 1 
-            ? `Track Reservation Confirmation - ${formData.events.length} Events` 
-            : `Track Reservation Confirmation - ${formData.eventName || formData.events?.[0]?.title || 'Event'}`;
-        
-        const { data, error } = await resend.emails.send({
-            from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
+
+        const multiEventRegistration = Boolean(formData.multiEventRegistration && Array.isArray(formData.events));
+        const eventsSource = multiEventRegistration && Array.isArray(formData.events) && formData.events.length > 0
+            ? formData.events
+            : (Array.isArray(formData.events) && formData.events.length > 0
+                ? formData.events
+                : [{
+                    title: formData.eventName,
+                    dateString: formData.eventDate,
+                    time: formData.eventTime,
+                    location: formData.eventLocation
+                }]);
+
+        const normalizedEvents = eventsSource.map((event) => {
+            const eventTitleRaw = event.title || formData.eventName || 'Track Session';
+            const eventDateRaw = formatAustralianDate(event.dateString || event.date || formData.eventDate);
+            const eventTimeRaw = event.time || formData.eventTime || '';
+            const eventLocationRaw = event.location || formData.eventLocation || '';
+
+            return {
+                titleHtml: toSafeString(eventTitleRaw || 'Track Session'),
+                titleText: toPlainText(eventTitleRaw || 'Track Session') || 'Track Session',
+                dateHtml: toSafeString(eventDateRaw),
+                dateText: toPlainText(eventDateRaw),
+                timeHtml: toSafeString(eventTimeRaw),
+                timeText: toPlainText(eventTimeRaw),
+                locationHtml: toSafeString(eventLocationRaw),
+                locationText: toPlainText(eventLocationRaw)
+            };
+        });
+
+        const normalizedRiders = riders.map((rider, index) => {
+            const safeFirstName = toSafeString(rider.firstName || '');
+            const safeLastName = toSafeString(rider.lastName || '');
+            const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim() || toSafeString(`Rider ${index + 1}`);
+            const plainFullName = toPlainText(`${rider.firstName || ''} ${rider.lastName || ''}`) || `Rider ${index + 1}`;
+            const safeBikeSize = toSafeString(rider.bikeSize || '');
+            const safeBikeNumber = rider.bikeNumber ? toSafeString(rider.bikeNumber) : '';
+            const plainBikeSize = toPlainText(rider.bikeSize || '');
+            const plainBikeNumber = rider.bikeNumber ? `#${toPlainText(rider.bikeNumber)}` : '';
+            const riderEmail = (rider.email || '').trim();
+            const riderPhone = (rider.phone || '').trim();
+            const safeRiderEmail = riderEmail ? toSafeString(riderEmail) : '';
+            const safeRiderPhone = riderPhone ? toSafeString(riderPhone) : '';
+
+            return {
+                label: `Rider ${index + 1}`,
+                nameHtml: safeFullName,
+                nameText: plainFullName,
+                bikeHtml: [safeBikeSize, rider.bikeNumber ? `#${safeBikeNumber}` : ''].filter(Boolean).join(' • '),
+                bikeText: [plainBikeSize, plainBikeNumber].filter(Boolean).join(' • '),
+                emailHtml: riderEmail ? `<a href="mailto:${encodeURIComponent(riderEmail)}" style="color:#ff6b35; text-decoration:none;">${safeRiderEmail}</a>` : '',
+                emailText: riderEmail ? riderEmail : '',
+                phoneHtml: riderPhone ? `<a href="tel:${formatPhoneHref(riderPhone)}" style="color:#ff6b35; text-decoration:none;">${safeRiderPhone}</a>` : '',
+                phoneText: riderPhone ? riderPhone : ''
+            };
+        });
+
+        const recipientNameHtml = toSafeString(recipient.name || '') || toSafeString(recipient.isRider ? 'Rider' : 'Moto Coach Family');
+        const recipientNameText = toPlainText(recipient.name || '') || (recipient.isRider ? 'Rider' : 'Moto Coach Family');
+
+        const contactFullNameRaw = `${formData.contactFirstName || ''} ${formData.contactLastName || ''}`.trim();
+        const contactFullNameHtml = toSafeString(contactFullNameRaw);
+        const contactFullNameText = toPlainText(contactFullNameRaw);
+
+        const contactEmail = (formData.contactEmail || '').trim();
+        const contactEmailHtml = contactEmail ? toSafeString(contactEmail) : '';
+        const contactEmailHref = contactEmail ? `mailto:${encodeURIComponent(contactEmail)}` : '';
+        const contactPhone = (formData.contactPhone || '').trim();
+        const contactPhoneHtml = contactPhone ? toSafeString(contactPhone) : '';
+        const contactPhoneHref = contactPhone ? `tel:${formatPhoneHref(contactPhone)}` : '';
+
+        const riderCount = riders.length;
+        const safeRiderCount = toSafeString(String(riderCount));
+
+        const totalAmountFormatted = formatCurrency(formData.totalAmount);
+        const totalAmountHtml = totalAmountFormatted ? toSafeString(totalAmountFormatted) : '';
+        const totalAmountText = totalAmountFormatted || '';
+
+        const bookingSummaryRows = [
+            { label: 'Primary Contact', value: contactFullNameHtml || 'N/A' },
+            {
+                label: 'Email',
+                value: contactEmail && contactEmailHref
+                    ? `<a href="${contactEmailHref}" style="color:#ff6b35; text-decoration:none;">${contactEmailHtml}</a>`
+                    : 'N/A'
+            },
+            {
+                label: 'Phone',
+                value: contactPhone && contactPhoneHref
+                    ? `<a href="${contactPhoneHref}" style="color:#ff6b35; text-decoration:none;">${contactPhoneHtml}</a>`
+                    : 'N/A'
+            },
+            { label: 'Riders Registered', value: safeRiderCount || '0' },
+            { label: 'Total Paid', value: totalAmountHtml || 'See payment receipt for details' }
+        ];
+
+        const bookingSummaryHtml = renderDetailRows(bookingSummaryRows);
+
+        const eventsHtml = normalizedEvents.map((event, index) => {
+            const scheduleParts = [event.dateHtml, event.timeHtml].filter(Boolean).join(' at ');
+            return `
+                <div style="padding: 16px 20px; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 12px; background-color: #f9fafb;">
+                    <div style="font-size: 16px; font-weight: 600; color: #111827;">${event.titleHtml}</div>
+                    ${scheduleParts ? `<div style="margin-top: 6px; font-size: 14px; color: #374151;">${scheduleParts}</div>` : ''}
+                    ${event.locationHtml ? `<div style="margin-top: 6px; font-size: 14px; color: #6b7280;">${event.locationHtml}</div>` : ''}
+                    <div style="margin-top: 10px; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: #9ca3af;">${toSafeString(`Event ${index + 1}`)}</div>
+                </div>
+            `;
+        }).join('');
+
+        const ridersHtml = normalizedRiders.length > 0
+            ? `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+                ${normalizedRiders.map((rider) => `
+                    <tr>
+                        <td style="width:140px; padding: 14px 16px; background-color:#f9fafb; font-weight:600; font-size:13px; color:#111827; border-right:1px solid #e5e7eb;">${toSafeString(rider.label)}</td>
+                        <td style="padding:14px 18px; font-size:14px; color:#374151;">
+                            <div style="font-weight:600; font-size:15px; color:#111827;">${rider.nameHtml}</div>
+                            ${rider.bikeHtml ? `<div style="margin-top:6px; color:#6b7280; font-size:13px;">${rider.bikeHtml}</div>` : ''}
+                            ${rider.emailHtml ? `<div style="margin-top:8px; font-size:13px;"><strong style="color:#111827;">Email:</strong> ${rider.emailHtml}</div>` : ''}
+                            ${rider.phoneHtml ? `<div style="margin-top:4px; font-size:13px;"><strong style="color:#111827;">Phone:</strong> ${rider.phoneHtml}</div>` : ''}
+                        </td>
+                    </tr>
+                `).join('')}
+            </table>`
+            : '<p style="margin:0; font-size:14px; color:#6b7280;">Rider information will be finalised shortly.</p>';
+
+        const commentsPlain = toPlainText(formData.comments || '');
+        const commentsHtml = commentsPlain
+            ? `<div style="margin-top:24px; border:1px solid #e5e7eb; border-radius:12px; padding:20px; background-color:#fdfdfd;">
+                    <p style="margin:0 0 12px; font-size:15px; font-weight:600; color:#111827;">Additional Notes</p>
+                    <p style="margin:0; font-size:14px; line-height:1.7; color:#374151;">${toSafeMultilineString(formData.comments)}</p>
+               </div>`
+            : '';
+
+
+
+        const eventsPlain = normalizedEvents.map((event, index) => {
+            const scheduleParts = [event.dateText, event.timeText].filter(Boolean).join(' at ');
+            const locationPart = event.locationText ? ` - ${event.locationText}` : '';
+            const summary = scheduleParts ? `${scheduleParts}${locationPart}` : (event.locationText ? event.locationText : '');
+            return [`Event ${index + 1}: ${event.titleText}`, summary].filter(Boolean).join('\n');
+        }).join('\n\n');
+
+        const ridersPlain = normalizedRiders.map((rider) => {
+            const lines = [rider.nameText];
+            if (rider.bikeText) {
+                lines.push(rider.bikeText);
+            }
+            if (rider.emailText) {
+                lines.push(`Email: ${rider.emailText}`);
+            }
+            if (rider.phoneText) {
+                lines.push(`Phone: ${rider.phoneText}`);
+            }
+            return lines.join('\n');
+        }).join('\n\n');
+
+        const baseSubject = 'Moto Coach Event Reservation Confirmation';
+        const subjectContext = normalizedEvents.length > 1
+            ? `${normalizedEvents.length} Events`
+            : (normalizedEvents[0]?.titleText || '');
+        const subjectLine = subjectContext ? `${baseSubject} - ${subjectContext}` : baseSubject;
+
+        const htmlEmail = `
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color:#f4f5f7; padding:32px 0; font-family: 'Helvetica Neue', Arial, sans-serif;">
+                <tr>
+                    <td align="center" style="padding:0 16px;">
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px; width:100%; background-color:#ffffff; border-radius:24px; overflow:hidden; border:1px solid #f2f4f7; box-shadow:0 18px 38px rgba(15, 23, 42, 0.12);">
+                            <tr>
+                                <td style="padding:36px 24px 28px; text-align:center; background:linear-gradient(135deg, #fef3ec 0%, #ffffff 100%); border-bottom:1px solid #f5d0c5;">
+                                    <img src="${LOGO_URL}" alt="Moto Coach" style="width:72px; height:auto; display:block; margin:0 auto 12px;" />
+                                    <p style="margin:0; font-size:13px; letter-spacing:2px; text-transform:uppercase; color:#ff6b35;">Moto Coach</p>
+                                    <h1 style="margin:12px 0 0; font-size:24px; font-weight:700; color:#111827;">Event Reservation Confirmed</h1>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:32px 28px;">
+                                    <p style="margin:0 0 20px; font-size:15px; color:#374151; line-height:1.6;">
+                                        Hi ${recipientNameHtml},
+                                    </p>
+                                    <p style="margin:0 0 24px; font-size:15px; color:#374151; line-height:1.7;">
+                                        Thank you for reserving your track time with Moto Coach. We've received your booking ${normalizedEvents.length > 1 ? 'for the events listed below.' : 'and locked in the details for your upcoming session.'}
+                                    </p>
+                                    <div style="margin:24px 0 0;">
+                                        <p style="margin:0 0 8px; font-size:16px; font-weight:600; color:#111827;">Booking Summary</p>
+                                        <div style="border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+                                            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">
+                                                ${bookingSummaryHtml}
+                                            </table>
+                                        </div>
+                                    </div>
+                                    <div style="margin-top:28px;">
+                                        <p style="margin:0 0 8px; font-size:16px; font-weight:600; color:#111827;">Event Schedule</p>
+                                        ${eventsHtml || '<p style="margin:0; font-size:14px; color:#6b7280;">Event details will be shared soon.</p>'}
+                                    </div>
+                                    <div style="margin-top:28px;">
+                                        <p style="margin:0 0 8px; font-size:16px; font-weight:600; color:#111827;">Registered Riders</p>
+                                        ${ridersHtml}
+                                    </div>
+                                    ${commentsHtml}
+                                    <div style="margin-top:32px; padding:18px 20px; background-color:#f9fafb; border-radius:12px;">
+                                        <p style="margin:0 0 12px; font-size:16px; font-weight:600; color:#111827;">What's Next?</p>
+                                        <ul style="margin:0; padding-left:20px; color:#374151; line-height:1.6; font-size:14px;">
+                                            <li>We'll confirm availability and send session details.</li>
+                                            <li>Please arrive 15 minutes early for rider check-in.</li>
+                                            <li>Bring full safety gear (helmet, boots, gloves).</li>
+                                        </ul>
+                                    </div>
+                                    <div style="margin-top:28px; padding:16px 20px; background-color:#fef3ec; border-radius:12px;">
+                                        <p style="margin:0; font-size:13px; color:#b45309;">Need to make a change? Reply directly to this email or contact us via <a href="https://motocoach.com.au/contact" style="color:#ff6b35; text-decoration:none;">motocoach.com.au/contact</a>.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:20px 24px 28px; text-align:center; background-color:#111827; color:#f9fafb;">
+                                    <p style="margin:0 0 8px; font-size:14px;">Questions? Email <a href="mailto:inquiries@motocoach.com.au" style="color:#f97316; text-decoration:none;">inquiries@motocoach.com.au</a></p>
+                                    <p style="margin:0; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:rgba(249, 250, 251, 0.7);">Moto Coach Event Reservation</p>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        `;
+
+
+        const plainTextLines = [
+            'Moto Coach Event Reservation Confirmation',
+            '',
+            `Hi ${recipientNameText},`,
+            '',
+            normalizedEvents.length > 1
+                ? 'Thank you for reserving your spot for the following Moto Coach events:'
+                : 'Thank you for reserving your Moto Coach track session.',
+            '',
+            'Booking Summary:',
+            `Contact: ${contactFullNameText || 'N/A'}`,
+            `Email: ${contactEmail || 'N/A'}`,
+            `Phone: ${contactPhone || 'N/A'}`,
+            `Riders: ${riderCount}`,
+            totalAmountText ? `Total Paid: ${totalAmountText}` : '',
+            '',
+            'Event Schedule:',
+            eventsPlain || 'Event details will be confirmed shortly.',
+            '',
+            'Registered Riders:',
+            ridersPlain || 'Rider information is being finalised.',
+            '',
+            commentsPlain ? `Additional Notes:
+${commentsPlain}` : '',
+            commentsPlain ? '' : null,
+            "What's Next?",
+            "• We'll confirm availability and send session details",
+            '• Arrive 15 minutes early for check-in',
+            '• Bring full safety gear (helmet, boots, gloves)',
+            '',
+            'Questions? Email inquiries@motocoach.com.au',
+            '',
+            '---',
+            'Moto Coach Event Reservation'
+        ].filter(Boolean);
+
+        const plainTextMessage = plainTextLines.join('\n');
+
+        const { error } = await resend.emails.send({
+            from: 'Moto Coach <registrations@motocoach.com.au>',
             to: [recipient.email],
             subject: subjectLine,
-            html: `
-                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-                    <!-- Header -->
-                    <div style="background: linear-gradient(135deg, #ff6b35 0%, #ff8a5c 100%); padding: 40px 30px; text-align: center;">
-                        <img src="cid:moto-coach-logo" alt="Moto Coach" style="max-width: 250px; height: auto; margin-bottom: 20px;" />
-                        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 300; letter-spacing: 1px;">Registration Confirmed</h1>
-                    </div>
-                    
-                    <!-- Main Content -->
-                    <div style="padding: 40px 30px;">
-                        <p style="font-size: 18px; color: #333; margin: 0 0 30px 0; line-height: 1.6;">
-                            Hi ${recipient.name},<br><br>
-                            Your registration is confirmed! We're excited to see ${riderNames} on the track.
-                        </p>
-                        
-                        <!-- Event Details -->
-                        <h3 style="color: #ff6b35; margin: 30px 0 20px 0; font-size: 20px; border-bottom: 2px solid #ff6b35; padding-bottom: 8px;">
-                            ${formData.multiEventRegistration && formData.events && formData.events.length > 1 ? 'Your Events' : 'Event Details'}
-                        </h3>
-                        ${formData.multiEventRegistration && formData.events ? 
-                            // Multi-event registration - simple list
-                            formData.events.map(event => `
-                                <div style="margin: 20px 0; padding: 15px 0; border-bottom: 1px solid #eee;">
-                                    <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">${event.title}</div>
-                                    <div style="color: #666; font-size: 16px;">
-                                        ${event.date}${event.time ? ` at ${event.time}` : ''}
-                                        ${event.location ? `<br>${event.location}` : ''}
-                                    </div>
-                                </div>
-                            `).join('')
-                            :
-                            // Single event registration - simple layout
-                            `<div style="margin: 20px 0;">
-                                <div style="font-size: 18px; font-weight: 600; color: #333; margin-bottom: 8px;">${formData.eventName}</div>
-                                <div style="color: #666; font-size: 16px; line-height: 1.6;">
-                                    ${formData.eventDate}${formData.eventTime ? ` at ${formData.eventTime}` : ''}
-                                    ${formData.eventLocation ? `<br>${formData.eventLocation}` : ''}
-                                </div>
-                            </div>`
-                        }
-                        
-                        <!-- Riders -->
-                        <h3 style="color: #333; margin: 40px 0 20px 0; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 8px;">Registered Riders</h3>
-                        ${riders.map(rider => `
-                            <div style="margin: 15px 0; padding: 10px 0;">
-                                <span style="font-weight: 600; color: #333; font-size: 16px;">${rider.firstName} ${rider.lastName}</span>
-                                <span style="color: #666; font-size: 14px; margin-left: 15px;">${rider.bikeSize}${rider.bikeNumber ? ` • #${rider.bikeNumber}` : ''}</span>
-                            </div>
-                        `).join('')}
-                        
-                        <!-- Next Steps -->
-                        <h3 style="color: #333; margin: 40px 0 20px 0; font-size: 18px; border-bottom: 1px solid #ddd; padding-bottom: 8px;">What's Next?</h3>
-                        <div style="color: #333; line-height: 1.8; font-size: 15px; margin: 20px 0;">
-                            • We'll confirm availability and send session details<br>
-                            • Arrive 15 minutes early for check-in<br>
-                            • Bring safety gear (helmet, boots, gloves)
-                        </div>
-                    </div>
-                    
-                    <!-- Footer -->
-                    <div style="background-color: #2c3e50; padding: 30px; text-align: center; color: #95a5a6;">
-                        <div style="font-size: 16px; margin-bottom: 10px;">
-                            Questions? <a href="mailto:leigh@motocoach.com.au" style="color: #ff6b35; text-decoration: none;">leigh@motocoach.com.au</a>
-                        </div>
-                        <div style="font-size: 13px; opacity: 0.8;">
-                            Moto Coach Track Reservation System
-                        </div>
-                    </div>
-                </div>
-            `,
-            text: `
-MOTO COACH - REGISTRATION CONFIRMED
-
-Hi ${recipient.name},
-
-Your registration is confirmed! We're excited to see ${riderNames} on the track.
-
-EVENT DETAILS:
-${formData.multiEventRegistration && formData.events ? 
-    formData.events.map(event => `${event.title}
-${event.date}${event.time ? ` at ${event.time}` : ''}${event.location ? ` - ${event.location}` : ''}`).join('\n\n')
-    :
-    `${formData.eventName}
-${formData.eventDate}${formData.eventTime ? ` at ${formData.eventTime}` : ''}${formData.eventLocation ? ` - ${formData.eventLocation}` : ''}`
-}
-
-REGISTERED RIDERS:
-${riders.map(rider => `${rider.firstName} ${rider.lastName} (${rider.bikeSize}${rider.bikeNumber ? `, #${rider.bikeNumber}` : ''})`).join('\n')}
-
-WHAT'S NEXT?
-• We'll confirm availability and send session details
-• Arrive 15 minutes early for check-in
-• Bring safety gear (helmet, boots, gloves)
-
-Questions? Contact us at leigh@motocoach.com.au
-
----
-Moto Coach Track Reservation System
-            `,
-            attachments: [
-                {
-                    path: 'https://motocoach.com.au/images/long%20logo.png',
-                    filename: 'moto-coach-logo.png',
-                    contentId: 'moto-coach-logo',
-                }
-            ]
+            html: htmlEmail,
+            text: plainTextMessage
         });
 
         if (error) {
@@ -851,3 +1090,4 @@ Moto Coach Track Reservation System
         console.error('Error sending individual email:', error);
     }
 }
+
