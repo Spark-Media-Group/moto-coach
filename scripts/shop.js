@@ -332,6 +332,13 @@
                         <button class="gallery-nav gallery-next" aria-label="Next color">›</button>
                     ` : ''}
                 </div>
+                
+                ${images.length > 1 ? `
+                    <div class="selected-variant-label">
+                        <strong>CHOOSE YOUR VARIANT</strong>
+                        <span class="variant-label-text" id="selected-color-name">${mainImage.baseVariant?.optionLabel || mainImage.baseVariant?.name || 'Select Color'}</span>
+                    </div>
+                ` : ''}
         `;
 
         if (images.length > 1) {
@@ -521,6 +528,16 @@
                 
                 // Update main image
                 setActiveImage(index);
+                
+                // Update the variant label text
+                const colorNameElement = document.getElementById('selected-color-name');
+                if (colorNameElement && currentModalProduct) {
+                    const variants = currentModalProduct.variants || [];
+                    const clickedVariant = variants.find(v => v.id === variantId);
+                    if (clickedVariant) {
+                        colorNameElement.textContent = clickedVariant.optionLabel || clickedVariant.name || 'Variant';
+                    }
+                }
                 
                 // CRITICAL: If clicking a color thumbnail, switch to a variant with that color
                 if (variantId && currentModalProduct) {
