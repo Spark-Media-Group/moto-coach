@@ -994,14 +994,12 @@ function normaliseVariant(variant, productName, options = {}) {
         .filter(Boolean)
         .map(url => ({ preview_url: url }));
 
-    // CRITICAL FIX: Use variant.product.image (color-specific product photo)
-    // This is the actual product photo for this specific color variant
-    const productImages = [];
-    if (variant.product && variant.product.image) {
-        productImages.push({ preview_url: variant.product.image });
-    }
+    // CRITICAL FIX: Prioritize 'preview' type mockup (has logo printed on product)
+    // Each color variant has unique mockup in files array with type='preview'
+    const previewMockups = fileCandidates.filter(f => f.type === 'preview');
+    const otherFiles = fileCandidates.filter(f => f.type !== 'preview');
 
-    // ALSO: Try catalog_variant mockup if available
+    // Also get catalog variant mockup if available
     const catalogVariantImages = [];
     if (variant.catalog_variant) {
         const cv = variant.catalog_variant;
@@ -1016,19 +1014,18 @@ function normaliseVariant(variant, productName, options = {}) {
         }
     }
 
-    // Priority: product photo > catalog mockup > sync files > other images
-    const imageCandidates = [...productImages, ...catalogVariantImages, ...fileCandidates, ...imageArray, ...singleImages];
+    // Priority: mockup with logo (preview) > catalog mockup > other files > other images
+    const imageCandidates = [...previewMockups, ...catalogVariantImages, ...otherFiles, ...imageArray, ...singleImages];
     
     // DEBUG: Log what we're finding for images
     if (productName && productName.includes('Trucker')) {
         console.log('[DEBUG normalizeVariant] Trucker Cap variant:', {
             name: variant.name,
-            hasProductImage: productImages.length > 0,
-            productImageUrl: productImages[0]?.preview_url,
+            previewMockups: previewMockups.length,
+            firstPreviewUrl: previewMockups[0]?.preview_url?.substring(previewMockups[0].preview_url.lastIndexOf('/')+1),
             catalogVariantId: variant.catalog_variant?.id,
             hasCatalogImages: catalogVariantImages.length > 0,
-            hasFiles: fileCandidates.length > 0,
-            firstFileUrl: fileCandidates[0]?.preview_url
+            totalFiles: fileCandidates.length
         });
     }
     
