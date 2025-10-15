@@ -1,25 +1,54 @@
 /* ===== SHOP PAGE STYLES ===== */
 
-/* Shop Hero Section */
+/* Shop Hero Section - Cutting Edge Motocross Aesthetic */
 .shop-hero {
-    background: #f8f9fa;
-    padding: 120px 2rem 60px 2rem;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+    padding: 140px 2rem 80px 2rem;
     text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.shop-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #ff6b35 50%, transparent 100%);
 }
 
 .hero-content {
     max-width: 1200px;
     margin: 0 auto;
+    position: relative;
+    z-index: 1;
 }
 
 .shop-hero h1 {
     font-family: 'Oswald', sans-serif;
-    font-size: clamp(2.5rem, 6vw, 4.5rem);
-    font-weight: 700;
-    color: #333;
-    margin-bottom: 1.5rem;
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0;
     text-transform: uppercase;
-    letter-spacing: 3px;
+    letter-spacing: 8px;
+    text-shadow: 0 2px 30px rgba(255, 107, 53, 0.4);
+    position: relative;
+    display: inline-block;
+}
+
+.shop-hero h1::after {
+    content: '';
+    position: absolute;
+    bottom: -15px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 3px;
+    background: linear-gradient(90deg, #ff6b35 0%, #ffa500 100%);
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
 }
 
 /* Shop Controls */
@@ -371,11 +400,11 @@
     font-weight: 500;
 }
 
-/* Main Shop Content */
+/* Main Shop Content - Dark Premium Background */
 .shop-main {
-    background: #f8f9fa;
+    background: linear-gradient(180deg, #0f0f0f 0%, #1a1a1a 100%);
     min-height: 60vh;
-    padding: 2rem 0 4rem 0;
+    padding: 3rem 0 5rem 0;
 }
 
 .shop-container {
@@ -495,11 +524,11 @@
     letter-spacing: 0.5px;
 }
 
-/* Products Grid */
+/* Products Grid - Premium Dark Cards */
 .products-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 2.5rem;
     margin-top: 0.5rem;
 }
 
@@ -518,38 +547,58 @@
 }
 
 .product-card {
-    background: white;
-    border-radius: 15px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(26, 26, 26, 0.6) 100%);
+    border-radius: 0;
     overflow: hidden;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
     position: relative;
-    border: 1px solid rgba(255, 107, 53, 0.05);
+    border: 1px solid rgba(255, 107, 53, 0.1);
+    backdrop-filter: blur(10px);
+}
+
+.product-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #ff6b35 50%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
 }
 
 .product-card:hover {
-    transform: translateY(-12px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 25px rgba(255, 107, 53, 0.1);
-    border-color: rgba(255, 107, 53, 0.15);
+    transform: translateY(-8px);
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255, 107, 53, 0.2);
+    border-color: rgba(255, 107, 53, 0.3);
+}
+
+.product-card:hover::before {
+    opacity: 1;
 }
 
 .product-image {
     position: relative;
     width: 100%;
-    height: 250px;
+    height: 280px;
     overflow: hidden;
+    background: #0a0a0a;
 }
 
 .product-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1), filter 0.5s ease;
+    filter: brightness(0.95) contrast(1.05);
 }
 
 .product-card:hover .product-image img {
-    transform: scale(1.08);
+    transform: scale(1.1);
+    filter: brightness(1) contrast(1.1);
 }
 
 /* No Image Placeholder */
@@ -602,20 +651,21 @@
     box-shadow: 0 4px 15px rgba(46, 213, 115, 0.4);
 }
 
-/* Product Info */
+/* Product Info - Premium Dark Style */
 .product-info {
-    padding: 1.5rem;
+    padding: 1.75rem;
+    background: rgba(10, 10, 10, 0.4);
 }
 
 .product-title {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: 700;
-    color: #333;
+    color: #ffffff;
     margin-bottom: 0.5rem;
     line-height: 1.3;
     font-family: 'Oswald', sans-serif;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.5px;
     transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -624,7 +674,7 @@
 }
 
 .product-description {
-    color: #666;
+    color: rgba(255, 255, 255, 0.6);
     font-size: 0.9rem;
     line-height: 1.5;
     margin-bottom: 1rem;
@@ -635,40 +685,40 @@
 }
 
 .product-type {
-    color: #888;
-    font-size: 0.8rem;
+    color: #ff6b35;
+    font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    font-weight: 500;
+    letter-spacing: 1px;
+    font-weight: 600;
     margin-bottom: 1rem;
-    padding: 0.25rem 0.5rem;
-    background: #f0f0f0;
-    border-radius: 12px;
+    padding: 0.35rem 0.85rem;
+    background: rgba(255, 107, 53, 0.1);
+    border-left: 2px solid #ff6b35;
     display: inline-block;
 }
 
 .product-price {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: baseline;
+    gap: 0.75rem;
     margin-bottom: 1rem;
 }
 
 .price-current {
-    font-size: 1.4rem;
+    font-size: 1.6rem;
     font-weight: 700;
-    color: #ff6b35;
+    color: #ffffff;
     font-family: 'Oswald', sans-serif;
-    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: color 0.3s ease;
 }
 
 .product-card:hover .price-current {
-    transform: scale(1.05);
+    color: #ff6b35;
 }
 
 .price-original {
-    font-size: 1rem;
-    color: #999;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.4);
     text-decoration: line-through;
     text-decoration-color: #ff4757;
     text-decoration-thickness: 2px;
@@ -733,7 +783,7 @@
     box-shadow: 0 4px 15px rgba(255, 107, 53, 0.25);
 }
 
-/* Product Modal */
+/* Product Modal - Epic Cutting-Edge Design */
 .modal {
     position: fixed;
     top: 0;
@@ -755,40 +805,51 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(8px);
+    background: rgba(0, 0, 0, 0.92);
+    backdrop-filter: blur(12px);
     z-index: 1001;
 }
 
 .modal-content {
     position: relative;
-    background: white;
-    border-radius: 20px;
-    max-width: 1100px;
+    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+    border-radius: 0;
+    max-width: 1200px;
     width: 100%;
     max-height: 95vh;
     overflow-y: auto;
     overflow-x: hidden;
     z-index: 1002;
-    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.9), 0 0 1px rgba(255, 107, 53, 0.3);
+    border: 1px solid rgba(255, 107, 53, 0.15);
     margin: auto;
-    transform: translateZ(0); /* Force hardware acceleration for smooth rendering */
+    transform: translateZ(0);
     display: flex;
     flex-direction: column;
 }
 
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #ff6b35 50%, transparent 100%);
+    z-index: 1;
+}
+
 .modal-close {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(0, 0, 0, 0.05);
-    border: none;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    font-size: 1.8rem;
-    color: #666;
+    top: 25px;
+    right: 25px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    width: 48px;
+    height: 48px;
+    border-radius: 0;
+    font-size: 1.5rem;
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
     transition: all 0.3s ease;
     z-index: 1003;
@@ -796,16 +857,17 @@
     align-items: center;
     justify-content: center;
     line-height: 1;
+    font-weight: 300;
 }
 
 .modal-close:hover {
-    background: rgba(255, 107, 53, 0.1);
+    background: rgba(255, 107, 53, 0.15);
     color: #ff6b35;
-    transform: scale(1.1);
+    border-color: #ff6b35;
 }
 
 #modal-body {
-    padding: 2rem;
+    padding: 3rem;
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
@@ -813,8 +875,8 @@
 
 .modal-product {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2.5rem;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 3.5rem;
     align-items: start;
     width: 100%;
     box-sizing: border-box;
@@ -836,35 +898,37 @@
 .main-image-container {
     position: relative;
     overflow: hidden;
-    border-radius: 15px;
-    background: #f8f9fa;
+    border-radius: 0;
+    background: #000000;
     aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
+    border: 1px solid rgba(255, 107, 53, 0.2);
 }
 
 .main-image-container img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: 15px;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-    transition: opacity 0.3s ease;
+    border-radius: 0;
+    box-shadow: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-/* Selected Variant Label */
+/* Selected Variant Label - Positioned Above Thumbnails */
 .selected-variant-label {
-    margin-top: 12px;
-    padding: 8px 14px;
-    background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(255, 107, 53, 0.05) 100%);
+    margin-top: 15px;
+    margin-bottom: 10px;
+    padding: 10px 16px;
+    background: rgba(255, 107, 53, 0.08);
     border-left: 3px solid #ff6b35;
-    border-radius: 6px;
+    border-radius: 0;
     font-family: 'Oswald', sans-serif;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.2px;
     font-size: clamp(0.85rem, 2vw, 0.95rem);
-    color: #333;
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
 }
 
@@ -874,7 +938,7 @@
 }
 
 .variant-label-text {
-    color: #555;
+    color: rgba(255, 255, 255, 0.7);
     font-weight: 500;
 }
 
@@ -883,12 +947,12 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    border: none;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
+    background: rgba(255, 107, 53, 0.15);
+    color: #ff6b35;
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    width: 45px;
+    height: 45px;
+    border-radius: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -916,67 +980,77 @@
     background: rgba(255, 107, 53, 0.9);
 }
 
-/* Image Thumbnails */
+/* Image Thumbnails - Cutting Edge Style */
 .image-thumbnails {
     display: flex;
-    gap: 10px;
+    gap: 12px;
     margin-top: 15px;
     overflow-x: auto;
-    padding: 5px;
+    padding: 8px 0;
 }
 
 .image-thumbnails::-webkit-scrollbar {
-    height: 4px;
+    height: 6px;
 }
 
 .image-thumbnails::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0;
 }
 
 .image-thumbnails::-webkit-scrollbar-thumb {
     background: #ff6b35;
-    border-radius: 2px;
+    border-radius: 0;
 }
 
 .image-thumbnails::-webkit-scrollbar-thumb:hover {
-    background: #e55a2b;
+    background: #ffa500;
 }
 
 .thumbnail {
     flex-shrink: 0;
-    width: 80px;
-    height: 80px;
-    border: 3px solid transparent;
-    border-radius: 8px;
+    width: 90px;
+    height: 90px;
+    border: 2px solid rgba(255, 107, 53, 0.2);
+    border-radius: 0;
     overflow: hidden;
     cursor: pointer;
-    background: none;
+    background: #000;
     padding: 0;
     transition: all 0.3s ease;
     position: relative;
 }
 
 .thumbnail:hover {
-    border-color: rgba(255, 107, 53, 0.5);
+    border-color: rgba(255, 107, 53, 0.6);
+    transform: translateY(-2px);
 }
 
 .thumbnail.active {
     border-color: #ff6b35;
-    box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.3), 0 6px 20px rgba(255, 107, 53, 0.4);
 }
 
 .thumbnail img {
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+    filter: brightness(0.9);
+}
+
+.thumbnail:hover img {
+    filter: brightness(1.1);
+}
+
+.thumbnail.active img {
+    filter: brightness(1);
 }
 
 .modal-image img {
     width: 100%;
-    border-radius: 15px;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+    border-radius: 0;
+    box-shadow: none;
     transition: transform 0.3s ease;
 }
 
@@ -989,35 +1063,38 @@
     box-sizing: border-box;
     max-width: 100%;
     overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-info h2 {
     font-family: 'Oswald', sans-serif;
-    font-size: clamp(1.8rem, 4vw, 2.5rem);
-    color: #333;
-    margin-bottom: 1rem;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    color: #ffffff;
+    margin-bottom: 1.5rem;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
     line-height: 1.2;
     word-break: break-word;
+    font-weight: 800;
 }
 
 .modal-info .product-price {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 2px solid #f0f0f0;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid rgba(255, 107, 53, 0.15);
 }
 
 .modal-info .price-current {
-    font-size: 2rem;
+    font-size: 2.4rem;
     font-weight: 700;
     color: #ff6b35;
     font-family: 'Oswald', sans-serif;
 }
 
 .modal-info .price-original {
-    font-size: 1.4rem;
-    color: #999;
+    font-size: 1.6rem;
+    color: rgba(255, 255, 255, 0.3);
     text-decoration: line-through;
     text-decoration-color: #ff4757;
     text-decoration-thickness: 2px;
@@ -1026,35 +1103,58 @@
 }
 
 .modal-info .product-description {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     line-height: 1.7;
-    color: #666;
+    color: rgba(255, 255, 255, 0.7);
     margin-bottom: 2.5rem;
     -webkit-line-clamp: unset;
     overflow: visible;
     display: block;
 }
 
-/* Variant Selection Styles */
+/* Variant Selection Styles - Numbered Steps */
 .variant-selection {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 12px;
+    background: rgba(255, 107, 53, 0.05);
+    padding: 0;
+    border-radius: 0;
     margin-bottom: 2rem;
-    border: 1px solid #e9ecef;
+    border-left: 2px solid #ff6b35;
+    position: relative;
 }
 
 .variant-selection h4 {
     font-family: 'Oswald', sans-serif;
-    font-size: 1.2rem;
-    color: #333;
-    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+    color: #ff6b35;
+    margin-bottom: 1.2rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
+    padding: 1.2rem 1.5rem;
+    position: relative;
+}
+
+.variant-selection h4::before {
+    content: attr(data-step);
+    position: absolute;
+    left: -2rem;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    background: #ff6b35;
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 800;
 }
 
 .variant-option {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0;
+    padding: 1.5rem;
 }
 
 .variant-option:last-child {
@@ -1064,83 +1164,106 @@
 .variant-option label {
     display: block;
     font-weight: 600;
-    color: #333;
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
 }
 
 .variant-select {
     width: 100%;
-    padding: 0.75rem 1rem;
-    border: 2px solid #dee2e6;
-    border-radius: 8px;
-    background: white;
-    font-size: 0.95rem;
-    color: #333;
+    padding: 1rem 1.25rem;
+    border: 1px solid rgba(255, 107, 53, 0.2);
+    border-radius: 0;
+    background: rgba(0, 0, 0, 0.3);
+    font-size: 1rem;
+    color: #ffffff;
     cursor: pointer;
     transition: all 0.3s ease;
     appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff6b35' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
     background-repeat: no-repeat;
-    background-position: right 0.75rem center;
-    background-size: 1rem;
-    padding-right: 2.5rem;
+    background-position: right 1rem center;
+    background-size: 1.2rem;
+    padding-right: 3rem;
+    font-weight: 500;
 }
 
 .variant-select:focus {
     outline: none;
     border-color: #ff6b35;
-    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
+    background: rgba(255, 107, 53, 0.05);
 }
 
 .variant-select:hover {
     border-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.08);
 }
 
 .variant-select option {
-    padding: 0.5rem;
-    color: #333;
-    background: white;
+    padding: 0.75rem;
+    color: #ffffff;
+    background: #1a1a1a;
 }
 
-/* Quantity Section Styles */
+/* Quantity Section Styles - Step 3 */
 .quantity-section {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid #e9ecef;
+    margin-top: 0;
+    padding: 1.5rem;
+    border-top: 1px solid rgba(255, 107, 53, 0.15);
+    background: rgba(255, 107, 53, 0.05);
+    border-left: 2px solid #ff6b35;
+    position: relative;
+}
+
+.quantity-section::before {
+    content: '3';
+    position: absolute;
+    left: -2rem;
+    top: 2rem;
+    width: 32px;
+    height: 32px;
+    background: #ff6b35;
+    color: #000;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 800;
 }
 
 .quantity-section label {
     display: block;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: 0.5rem;
-    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ff6b35;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.5px;
 }
 
 .quantity-controls {
     display: flex;
     align-items: center;
     gap: 0;
-    max-width: 120px;
-    border: 1px solid #dee2e6;
-    border-radius: 8px;
+    max-width: 140px;
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    border-radius: 0;
     overflow: hidden;
-    background: white;
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .quantity-btn {
-    width: 36px;
-    height: 44px;
+    width: 42px;
+    height: 50px;
     border: none;
     background: transparent;
-    color: #666;
+    color: rgba(255, 255, 255, 0.7);
     cursor: pointer;
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-weight: 400;
     display: flex;
     align-items: center;
@@ -1150,26 +1273,26 @@
 }
 
 .quantity-btn:hover {
-    background: #f8f9fa;
-    color: #333;
+    background: rgba(255, 107, 53, 0.15);
+    color: #ff6b35;
 }
 
 .quantity-btn:active {
-    background: #e9ecef;
+    background: rgba(255, 107, 53, 0.25);
     color: #ff6b35;
 }
 
 .quantity-input {
-    width: 48px;
-    height: 44px;
+    width: 56px;
+    height: 50px;
     border: none;
-    border-left: 1px solid #dee2e6;
-    border-right: 1px solid #dee2e6;
+    border-left: 1px solid rgba(255, 107, 53, 0.2);
+    border-right: 1px solid rgba(255, 107, 53, 0.2);
     text-align: center;
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #333;
-    background: white;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #ffffff;
+    background: transparent;
     outline: none;
 }
 
@@ -1177,42 +1300,44 @@
 .availability-info {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 2rem;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
+    gap: 0.75rem;
+    margin: 2rem 0;
+    padding: 1.25rem 1.5rem;
+    background: rgba(255, 107, 53, 0.08);
+    border-radius: 0;
+    border-left: 3px solid #ff6b35;
 }
 
 .availability-info .spec-label {
-    font-weight: 600;
-    color: #666;
+    font-weight: 700;
+    color: #ff6b35;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.2px;
     font-size: 0.9rem;
 }
 
 .availability-info .spec-value {
-    color: #333;
+    color: rgba(255, 255, 255, 0.9);
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 1rem;
 }
 
 .modal-product-details {
-    background: #f8f9fa;
-    padding: 1.5rem;
-    border-radius: 12px;
+    background: rgba(255, 107, 53, 0.05);
+    padding: 1.75rem;
+    border-radius: 0;
     margin-bottom: 2rem;
+    border-left: 2px solid rgba(255, 107, 53, 0.3);
 }
 
 .modal-product-details h4 {
     font-family: 'Oswald', sans-serif;
     font-size: 1.2rem;
-    color: #333;
-    margin-bottom: 1rem;
+    color: #ff6b35;
+    margin-bottom: 1.25rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
+    font-weight: 700;
 }
 
 .product-specs {
@@ -1230,12 +1355,15 @@
 
 .spec-label {
     font-weight: 600;
-    color: #666;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
 }
 
 .spec-value {
-    color: #333;
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
 }
 
 .modal-actions {
@@ -1246,27 +1374,45 @@
 
 .modal-actions .btn-add-cart {
     flex: 2;
-    background: linear-gradient(135deg, #ff6b35, #e55a2b);
-    color: white;
+    background: #ff6b35;
+    color: #000000;
     border: none;
-    padding: 1.2rem 2.5rem;
-    border-radius: 12px;
+    padding: 1.4rem 2.5rem;
+    border-radius: 0;
     font-size: 1.1rem;
-    font-weight: 700;
+    font-weight: 800;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+    letter-spacing: 2px;
+    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-actions .btn-add-cart::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.modal-actions .btn-add-cart:hover::before {
+    left: 100%;
 }
 
 .modal-actions .btn-add-cart:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 35px rgba(255, 107, 53, 0.5);
 }
 
 .modal-actions .btn-add-cart:disabled {
-    background: #ccc;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.3);
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -1275,36 +1421,37 @@
 .btn-continue-shopping {
     flex: 1;
     background: transparent;
-    color: #666;
-    border: 2px solid #ddd;
-    padding: 1.2rem 2rem;
-    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    padding: 1.4rem 2rem;
+    border-radius: 0;
     font-size: 1rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.5px;
 }
 
 .btn-continue-shopping:hover {
     border-color: #ff6b35;
     color: #ff6b35;
-    transform: translateY(-2px);
+    background: rgba(255, 107, 53, 0.05);
 }
 
 /* Modal Badge Styling */
 .modal-badge {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    padding: 0.7rem 1.2rem;
-    border-radius: 25px;
-    font-size: 0.9rem;
-    font-weight: 700;
+    top: 25px;
+    left: 25px;
+    padding: 0.7rem 1.4rem;
+    border-radius: 0;
+    font-size: 0.85rem;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1.5px;
     z-index: 2;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
 .modal-badge.sale-badge {
