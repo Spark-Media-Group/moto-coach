@@ -994,7 +994,41 @@ function normaliseVariant(variant, productName, options = {}) {
         .filter(Boolean)
         .map(url => ({ preview_url: url }));
 
-    const imageCandidates = [...fileCandidates, ...imageArray, ...singleImages];
+    // CRITICAL FIX: Prioritize 'preview' type mockup (has logo printed on product)
+    // Each color variant has unique mockup in files array with type='preview'
+    const previewMockups = fileCandidates.filter(f => f.type === 'preview');
+    const otherFiles = fileCandidates.filter(f => f.type !== 'preview');
+
+    // Also get catalog variant mockup if available
+    const catalogVariantImages = [];
+    if (variant.catalog_variant) {
+        const cv = variant.catalog_variant;
+        if (cv.mockup_url) {
+            catalogVariantImages.push({ preview_url: cv.mockup_url });
+        }
+        if (cv.image_url) {
+            catalogVariantImages.push({ preview_url: cv.image_url });
+        }
+        if (cv.image) {
+            catalogVariantImages.push({ preview_url: cv.image });
+        }
+    }
+
+    // Priority: mockup with logo (preview) > catalog mockup > other files > other images
+    const imageCandidates = [...previewMockups, ...catalogVariantImages, ...otherFiles, ...imageArray, ...singleImages];
+    
+    // DEBUG: Log what we're finding for images
+    if (productName && productName.includes('Trucker')) {
+        console.log('[DEBUG normalizeVariant] Trucker Cap variant:', {
+            name: variant.name,
+            previewMockups: previewMockups.length,
+            firstPreviewUrl: previewMockups[0]?.preview_url?.substring(previewMockups[0].preview_url.lastIndexOf('/')+1),
+            catalogVariantId: variant.catalog_variant?.id,
+            hasCatalogImages: catalogVariantImages.length > 0,
+            totalFiles: fileCandidates.length
+        });
+    }
+    
     const primaryImage = imageCandidates.find(file => file?.preview_url)
         || imageCandidates.find(file => file?.thumbnail_url)
         || imageCandidates.find(file => file?.url)

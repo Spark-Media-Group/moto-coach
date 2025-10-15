@@ -256,93 +256,162 @@
     }
 
     function buildImageGallery(product, variant = null) {
-        // Build images array - prioritize variant images if variant is provided
-        let images = [];
+        // DEBUG: Log variant data
+        console.log('[DEBUG buildImageGallery] Product:', product.name);
+        console.log('[DEBUG buildImageGallery] First 3 variants:', product.variants?.slice(0, 3).map(v => ({
+            id: v.id,
+            name: v.optionLabel || v.name,
+            imageUrl: v.imageUrl,
+            hasImageUrl: !!v.imageUrl
+        })));
         
-        if (variant) {
-            // If variant has specific images, use those first
-            if (variant.imageUrls && variant.imageUrls.length > 0) {
-                images = variant.imageUrls.map(url => ({
-                    url,
-                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
-                }));
-            } else if (variant.imageUrl) {
-                images.push({
-                    url: variant.imageUrl,
-                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
-                });
+        // Collect ALL UNIQUE COLOR VARIANT IMAGES (deduplicated by image URL)
+        const variants = product.variants || [];
+        let colorVariants = [];
+        
+        variants.forEach(v => {
+            if (v.imageUrl) {
+                // Check if we already have this image (same color, different size)
+                const exists = colorVariants.some(cv => cv.imageUrl === v.imageUrl);
+                if (!exists) {
+                    colorVariants.push(v);
+                }
             }
-        }
+        });
         
-        // Add product-level images if no variant images or to supplement variant images
+        console.log('[DEBUG buildImageGallery] Found', colorVariants.length, 'unique color variants');
+        
+        // Build images array with variant metadata for color selection
+        let images = colorVariants.map(v => ({
+            url: v.imageUrl,
+            altText: `${product.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            variantId: v.id,
+            baseVariant: v // Store reference to select this color
+        }));
+        
+        // Fallback to product images if no variant images
         if (images.length === 0 && product.images && product.images.length > 0) {
-            images = [...product.images];
+            console.log('[DEBUG buildImageGallery] Using product.images fallback');
+            images = product.images.map(img => ({...img, variantId: null, baseVariant: null}));
         } else if (images.length === 0 && product.thumbnailUrl) {
-            images.push({
-                url: product.thumbnailUrl,
-                altText: product.name
-            });
+            console.log('[DEBUG buildImageGallery] Using product.thumbnailUrl fallback:', product.thumbnailUrl);
+            images = [{ url: product.thumbnailUrl, altText: product.name, variantId: null, baseVariant: null }];
         }
         
-        // Filter out any invalid images
         images = images.filter(image => image.url);
 
         if (images.length === 0) {
-            return '<div class="no-image">No image available</div>';
-        }
-
-        if (images.length === 1) {
             return `
-                <img id="modal-main-image" src="${images[0].url}" alt="${images[0].altText || product.name}" loading="lazy">
+                <div class="modal-gallery">
+                    <div class="main-image-container">
+                        <div style="padding: 60px; text-align: center; color: #999;">No image available</div>
+                    </div>
+                </div>
             `;
         }
 
-        const thumbnails = images.map((image, index) => `
-            <button class="thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}" type="button">
-                <img src="${image.url}" alt="${image.altText || product.name}" loading="lazy">
-            </button>
-        `).join('');
+        // Find active image index based on current variant
+        let activeIndex = 0;
+        if (variant && variant.imageUrl) {
+            const foundIndex = images.findIndex(img => img.url === variant.imageUrl);
+            if (foundIndex >= 0) {
+                activeIndex = foundIndex;
+            }
+        }
+        currentImageIndex = activeIndex;
 
-        return `
+        const mainImage = images[activeIndex];
+        const showNav = images.length > 1;
+
+        let html = `
             <div class="modal-gallery">
                 <div class="main-image-container">
-                    <button class="gallery-nav gallery-prev" data-direction="-1" type="button" aria-label="Previous image">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-                        </svg>
-                    </button>
-                    <img id="modal-main-image" src="${images[0].url}" alt="${images[0].altText || product.name}" loading="lazy">
-                    <button class="gallery-nav gallery-next" data-direction="1" type="button" aria-label="Next image">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
-                        </svg>
-                    </button>
+                    <img id="modal-main-image" src="${mainImage.url}" alt="${mainImage.altText || product.name}">
+                    ${showNav ? `
+                        <button class="gallery-nav gallery-prev" aria-label="Previous color">‹</button>
+                        <button class="gallery-nav gallery-next" aria-label="Next color">›</button>
+                    ` : ''}
                 </div>
-                <div class="image-thumbnails">${thumbnails}</div>
-            </div>
         `;
+
+        if (images.length > 1) {
+            html += '<div class="image-thumbnails">';
+            images.forEach((image, index) => {
+                const isActive = index === activeIndex ? 'active' : '';
+                html += `
+                    <button class="thumbnail ${isActive}" data-index="${index}" data-variant-id="${image.variantId || ''}" aria-label="Select color variant">
+                        <img src="${image.url}" alt="${image.altText || `${product.name} color ${index + 1}`}">
+                    </button>
+                `;
+            });
+            html += '</div>';
+        }
+
+        html += '</div>';
+        return html;
     }
 
     function buildVariantSelection(product, variants) {
-        const availableVariants = variants.filter(variant => variant.isEnabled !== false && variant.catalogVariantId);
-
-        if (availableVariants.length <= 1) {
-            currentVariant = availableVariants[0] || null;
+        if (!variants || variants.length === 0) {
             return '';
         }
 
-        const options = availableVariants.map(variant => `
-            <option value="${variant.id}">${variant.optionLabel || variant.name || 'Variant'}</option>
-        `).join('');
+        const inStock = variants.filter(v => v.availability && v.availability > 0);
+        const availableVariants = inStock.length > 0 ? inStock : variants;
 
-        return `
-            <div class="variant-selection">
-                <label for="variant-select">Select Variant</label>
-                <select id="variant-select" class="variant-select">
-                    ${options}
-                </select>
-            </div>
-        `;
+        if (availableVariants.length === 1) {
+            currentVariant = availableVariants[0];
+            return '';
+        }
+
+        // Group variants by color (imageUrl)
+        const colorGroups = new Map();
+        availableVariants.forEach(v => {
+            const colorKey = v.imageUrl || 'no-image';
+            if (!colorGroups.has(colorKey)) {
+                colorGroups.set(colorKey, []);
+            }
+            colorGroups.get(colorKey).push(v);
+        });
+
+        console.log('[DEBUG buildVariantSelection] Color groups:', colorGroups.size);
+
+        // If only one variant per color = no sizes, just color selection via carousel
+        const hasSizes = Array.from(colorGroups.values()).some(group => group.length > 1);
+        
+        console.log('[DEBUG buildVariantSelection] Has sizes:', hasSizes);
+
+        if (!hasSizes) {
+            // No sizes - carousel handles all selection
+            return '';
+        }
+
+        // Build size dropdown for CURRENT COLOR
+        const currentColorKey = currentVariant ? (currentVariant.imageUrl || 'no-image') : null;
+        const sizesForCurrentColor = currentColorKey ? (colorGroups.get(currentColorKey) || []) : [];
+
+        console.log('[DEBUG buildVariantSelection] Sizes for current color:', sizesForCurrentColor.length);
+
+        if (sizesForCurrentColor.length <= 1) {
+            return ''; // Only one size for this color
+        }
+
+        // Build size-only dropdown
+        let html = '<div class="modal-variant-selection">';
+        html += '<label for="size-select">Choose Size:</label>';
+        html += '<select id="size-select" class="size-select">';
+
+        sizesForCurrentColor.forEach((variant) => {
+            const selected = currentVariant && currentVariant.id === variant.id ? 'selected' : '';
+            // Try to extract size from variant name
+            const label = variant.optionLabel || variant.name || '';
+            // If label has "/", take part after it, otherwise use full label
+            const sizePart = label.includes('/') ? label.split('/').pop().trim() : label;
+            html += `<option value="${variant.id}" ${selected}>${sizePart}</option>`;
+        });
+
+        html += '</select></div>';
+        return html;
     }
 
     function buildQuantitySelector() {
@@ -444,10 +513,71 @@
         thumbnailButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const index = parseInt(button.getAttribute('data-index'), 10);
+                const variantId = button.getAttribute('data-variant-id');
+                
+                // Update the active thumbnail visual
+                thumbnailButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                // Update main image
                 setActiveImage(index);
+                
+                // CRITICAL: If clicking a color thumbnail, switch to a variant with that color
+                if (variantId && currentModalProduct) {
+                    const variants = currentModalProduct.variants || [];
+                    const clickedVariant = variants.find(v => v.id === variantId);
+                    
+                    if (clickedVariant) {
+                        // Find variant with same color (imageUrl) as clicked thumbnail
+                        // Prefer same size as current, or first available size
+                        const sameColorVariants = variants.filter(v => v.imageUrl === clickedVariant.imageUrl);
+                        
+                        let newVariant = clickedVariant;
+                        
+                        // Try to keep the same size if it exists for this color
+                        if (currentVariant && currentVariant.optionLabel && currentVariant.optionLabel.includes('/')) {
+                            const currentSize = currentVariant.optionLabel.split('/').pop().trim();
+                            const matchingSize = sameColorVariants.find(v => {
+                                const label = v.optionLabel || '';
+                                return label.includes('/') && label.split('/').pop().trim() === currentSize;
+                            });
+                            if (matchingSize) {
+                                newVariant = matchingSize;
+                            }
+                        }
+                        
+                        currentVariant = newVariant;
+                        updateModalPrice();
+                        updateVariantAvailability();
+                        
+                        // Rebuild the size dropdown for the new color
+                        updateSizeDropdown();
+                    }
+                }
             });
         });
 
+        // Handle size dropdown changes
+        const handleSizeChange = () => {
+            const sizeSelect = modalBody.querySelector('#size-select');
+            if (sizeSelect) {
+                const selectedId = sizeSelect.value;
+                const variants = currentModalProduct?.variants || [];
+                const selectedVariant = variants.find(variant => variant.id === selectedId);
+                if (selectedVariant) {
+                    currentVariant = selectedVariant;
+                    updateModalPrice();
+                    updateVariantAvailability();
+                }
+            }
+        };
+
+        const sizeSelect = modalBody.querySelector('#size-select');
+        if (sizeSelect) {
+            sizeSelect.addEventListener('change', handleSizeChange);
+        }
+
+        // Keep old variant-select for products without sizes
         const variantSelect = modalBody.querySelector('#variant-select');
         if (variantSelect) {
             variantSelect.addEventListener('change', () => {
@@ -537,38 +667,37 @@
     }
 
     function updateModalGallery() {
-        if (!currentModalProduct || !currentVariant) {
-            return;
+        const galleryContainer = modalBody.querySelector('.modal-left');
+        if (galleryContainer && currentModalProduct) {
+            const galleryHTML = buildImageGallery(currentModalProduct, currentVariant);
+            galleryContainer.innerHTML = galleryHTML;
         }
+    }
 
-        // Build new gallery HTML with variant images
-        const newGallery = buildImageGallery(currentModalProduct, currentVariant);
-        const modalImageContainer = modalBody.querySelector('.modal-image');
-        
-        if (!modalImageContainer) {
-            return;
+    function updateSizeDropdown() {
+        const variantContainer = modalBody.querySelector('.modal-variant-selection');
+        if (variantContainer && currentModalProduct) {
+            const variants = currentModalProduct.variants || [];
+            const variantHTML = buildVariantSelection(currentModalProduct, variants);
+            
+            if (variantHTML) {
+                variantContainer.outerHTML = variantHTML;
+                
+                // Re-attach size dropdown listener
+                const sizeSelect = modalBody.querySelector('#size-select');
+                if (sizeSelect) {
+                    sizeSelect.addEventListener('change', () => {
+                        const selectedId = sizeSelect.value;
+                        const selectedVariant = variants.find(v => v.id === selectedId);
+                        if (selectedVariant) {
+                            currentVariant = selectedVariant;
+                            updateModalPrice();
+                            updateVariantAvailability();
+                        }
+                    });
+                }
+            }
         }
-
-        // Update the gallery
-        modalImageContainer.innerHTML = newGallery;
-        currentImageIndex = 0;
-
-        // Re-attach event listeners for the new gallery
-        const galleryNavButtons = modalBody.querySelectorAll('.gallery-nav');
-        galleryNavButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const direction = parseInt(button.getAttribute('data-direction'), 10);
-                navigateGallery(direction);
-            });
-        });
-
-        const thumbnailButtons = modalBody.querySelectorAll('.thumbnail');
-        thumbnailButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const index = parseInt(button.getAttribute('data-index'), 10);
-                setActiveImage(index);
-            });
-        });
     }
 
     function navigateGallery(direction) {
@@ -576,23 +705,30 @@
             return;
         }
 
-        // Get images for current variant or fallback to product images
-        let images = [];
-        if (currentVariant) {
-            if (currentVariant.imageUrls && currentVariant.imageUrls.length > 0) {
-                images = currentVariant.imageUrls.map(url => ({
-                    url,
-                    altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}`
-                }));
-            } else if (currentVariant.imageUrl) {
-                images = [{ url: currentVariant.imageUrl, altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}` }];
+        // Get all unique color variant images (same as buildImageGallery logic)
+        const variants = currentModalProduct.variants || [];
+        let colorVariants = [];
+        
+        variants.forEach(v => {
+            if (v.imageUrl) {
+                const exists = colorVariants.some(cv => cv.imageUrl === v.imageUrl);
+                if (!exists) {
+                    colorVariants.push(v);
+                }
             }
-        }
+        });
+        
+        let images = colorVariants.map(v => ({
+            url: v.imageUrl,
+            altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            variantId: v.id,
+            baseVariant: v
+        }));
         
         if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
-            images = currentModalProduct.images;
+            images = currentModalProduct.images.map(img => ({...img, variantId: null, baseVariant: null}));
         } else if (images.length === 0 && currentModalProduct.thumbnailUrl) {
-            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }];
+            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name, variantId: null, baseVariant: null }];
         }
         
         images = images.filter(image => image.url);
@@ -608,6 +744,30 @@
             currentImageIndex = 0;
         }
 
+        // Switch to the new color variant
+        const newImage = images[currentImageIndex];
+        if (newImage.baseVariant) {
+            // Find variant with same color, preferring current size
+            const sameColorVariants = variants.filter(v => v.imageUrl === newImage.url);
+            let newVariant = newImage.baseVariant;
+            
+            if (currentVariant && currentVariant.optionLabel && currentVariant.optionLabel.includes('/')) {
+                const currentSize = currentVariant.optionLabel.split('/').pop().trim();
+                const matchingSize = sameColorVariants.find(v => {
+                    const label = v.optionLabel || '';
+                    return label.includes('/') && label.split('/').pop().trim() === currentSize;
+                });
+                if (matchingSize) {
+                    newVariant = matchingSize;
+                }
+            }
+            
+            currentVariant = newVariant;
+            updateModalPrice();
+            updateVariantAvailability();
+            updateSizeDropdown();
+        }
+
         updateGalleryDisplay(images);
     }
 
@@ -616,23 +776,30 @@
             return;
         }
 
-        // Get images for current variant or fallback to product images
-        let images = [];
-        if (currentVariant) {
-            if (currentVariant.imageUrls && currentVariant.imageUrls.length > 0) {
-                images = currentVariant.imageUrls.map(url => ({
-                    url,
-                    altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}`
-                }));
-            } else if (currentVariant.imageUrl) {
-                images = [{ url: currentVariant.imageUrl, altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}` }];
+        // Get all unique color variant images (same as buildImageGallery logic)
+        const variants = currentModalProduct.variants || [];
+        let colorVariants = [];
+        
+        variants.forEach(v => {
+            if (v.imageUrl) {
+                const exists = colorVariants.some(cv => cv.imageUrl === v.imageUrl);
+                if (!exists) {
+                    colorVariants.push(v);
+                }
             }
-        }
+        });
+        
+        let images = colorVariants.map(v => ({
+            url: v.imageUrl,
+            altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            variantId: v.id,
+            baseVariant: v
+        }));
         
         if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
-            images = currentModalProduct.images;
+            images = currentModalProduct.images.map(img => ({...img, variantId: null, baseVariant: null}));
         } else if (images.length === 0 && currentModalProduct.thumbnailUrl) {
-            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }];
+            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name, variantId: null, baseVariant: null }];
         }
         
         images = images.filter(image => image.url);
