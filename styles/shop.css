@@ -871,7 +871,7 @@
 
 .modal-product {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 0.9fr 1.1fr;
     gap: 3rem;
     align-items: start;
     width: 100%;
@@ -894,48 +894,56 @@
 .main-image-container {
     position: relative;
     overflow: hidden;
-    border-radius: 0;
+    border-radius: 12px;
     background: #ffffff;
     aspect-ratio: 1 / 1;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 1px solid #e0e0e0;
+    max-width: 450px;
+    margin: 0 auto;
 }
 
 .main-image-container img {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    border-radius: 0;
+    border-radius: 12px;
     box-shadow: none;
     transition: opacity 0.3s ease;
 }
 
-/* Selected Variant Label - Clean Display */
+/* Choose Variant Label - Between Main Image and Thumbnails */
 .selected-variant-label {
-    margin-top: 15px;
-    margin-bottom: 10px;
-    padding: 12px 18px;
-    background: rgba(255, 107, 53, 0.08);
-    border-left: 3px solid #ff6b35;
-    border-radius: 0;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    text-align: center;
+    padding: 0;
+    background: transparent;
+    border: none;
     font-family: 'Oswald', sans-serif;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
-    font-size: 0.95rem;
-    color: #333;
+    letter-spacing: 1.5px;
+    font-size: 0.9rem;
+    color: #999;
     font-weight: 600;
 }
 
 .selected-variant-label strong {
-    color: #ff6b35;
+    color: #666;
     font-weight: 700;
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 8px;
+    letter-spacing: 1.2px;
 }
 
 .variant-label-text {
-    color: #666;
-    font-weight: 500;
+    color: #ff6b35;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 1.5px;
 }
 
 /* Gallery Navigation Arrows */
@@ -976,13 +984,14 @@
     background: rgba(255, 107, 53, 0.9);
 }
 
-/* Image Thumbnails - Clean Modern Style */
+/* Image Thumbnails - Rounded Corners */
 .image-thumbnails {
     display: flex;
     gap: 10px;
     margin-top: 15px;
     overflow-x: auto;
     padding: 8px 0;
+    justify-content: center;
 }
 
 .image-thumbnails::-webkit-scrollbar {
@@ -1005,10 +1014,10 @@
 
 .thumbnail {
     flex-shrink: 0;
-    width: 85px;
-    height: 85px;
+    width: 75px;
+    height: 75px;
     border: 2px solid #e0e0e0;
-    border-radius: 0;
+    border-radius: 8px;
     overflow: hidden;
     cursor: pointer;
     background: #fff;
@@ -1032,6 +1041,7 @@
     height: 100%;
     object-fit: cover;
     transition: opacity 0.3s ease;
+    border-radius: 6px;
 }
 
 .modal-image img {
@@ -1071,6 +1081,7 @@
     padding-bottom: 1.5rem;
     border-bottom: 1px solid #e0e0e0;
     justify-content: flex-start;
+    align-items: center;
 }
 
 .modal-info .price-current {
@@ -1078,6 +1089,7 @@
     font-weight: 700;
     color: #ff6b35;
     font-family: 'Oswald', sans-serif;
+    line-height: 1;
 }
 
 .modal-info .price-original {
@@ -1225,7 +1237,7 @@
     display: block;
     font-weight: 700;
     color: #ff6b35;
-    margin-bottom: 0.85rem;
+    margin-bottom: 1rem;
     font-size: 1rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
@@ -1234,33 +1246,33 @@
 .quantity-controls {
     display: inline-flex;
     align-items: center;
-    gap: 1rem;
-    border: none;
-    border-radius: 0;
-    overflow: visible;
-    background: transparent;
+    gap: 0;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #ffffff;
 }
 
 .quantity-btn {
-    width: 40px;
-    height: 40px;
-    border: 1px solid #d0d0d0;
-    background: #ffffff;
+    width: 44px;
+    height: 44px;
+    border: none;
+    background: #f8f9fa;
     color: #333;
     cursor: pointer;
-    font-size: 1.2rem;
-    font-weight: 600;
+    font-size: 1.3rem;
+    font-weight: 500;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.25s ease;
     border-radius: 0;
+    line-height: 1;
 }
 
 .quantity-btn:hover {
     background: #ff6b35;
     color: #ffffff;
-    border-color: #ff6b35;
 }
 
 .quantity-btn:active {
@@ -1269,11 +1281,13 @@
 
 .quantity-input {
     width: 60px;
-    height: 40px;
-    border: 1px solid #d0d0d0;
+    height: 44px;
+    border: none;
+    border-left: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
     border-radius: 0;
     text-align: center;
-    font-size: 1rem;
+    font-size: 1.05rem;
     font-weight: 600;
     color: #333;
     background: #ffffff;
