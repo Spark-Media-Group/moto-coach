@@ -364,35 +364,36 @@
             return '';
         }
 
-        // Check if variants have size options (e.g., "Black / S", "Black / M")
-        // by looking for "/" in variant names
-        const hasSizes = availableVariants.some(v => {
-            const label = v.optionLabel || v.name || '';
-            return label.includes('/');
+        // Group variants by color (imageUrl)
+        const colorGroups = new Map();
+        availableVariants.forEach(v => {
+            const colorKey = v.imageUrl || 'no-image';
+            if (!colorGroups.has(colorKey)) {
+                colorGroups.set(colorKey, []);
+            }
+            colorGroups.get(colorKey).push(v);
         });
 
-        // If no sizes, show simple color dropdown
+        console.log('[DEBUG buildVariantSelection] Color groups:', colorGroups.size);
+
+        // If only one variant per color = no sizes, just color selection via carousel
+        const hasSizes = Array.from(colorGroups.values()).some(group => group.length > 1);
+        
+        console.log('[DEBUG buildVariantSelection] Has sizes:', hasSizes);
+
         if (!hasSizes) {
-            let html = '<div class="modal-variant-selection">';
-            html += '<label for="variant-select">Choose Variant:</label>';
-            html += '<select id="variant-select" class="variant-select">';
-
-            availableVariants.forEach((variant, index) => {
-                const selected = currentVariant && currentVariant.id === variant.id ? 'selected' : '';
-                const optionLabel = variant.optionLabel || variant.name || `Variant ${index + 1}`;
-                html += `<option value="${variant.id}" ${selected}>${optionLabel}</option>`;
-            });
-
-            html += '</select></div>';
-            return html;
+            // No sizes - carousel handles all selection
+            return '';
         }
 
-        // Extract sizes for the CURRENT COLOR (selected via image carousel)
-        const currentColor = currentVariant ? currentVariant.imageUrl : null;
-        const sizesForCurrentColor = availableVariants.filter(v => v.imageUrl === currentColor);
+        // Build size dropdown for CURRENT COLOR
+        const currentColorKey = currentVariant ? (currentVariant.imageUrl || 'no-image') : null;
+        const sizesForCurrentColor = currentColorKey ? (colorGroups.get(currentColorKey) || []) : [];
+
+        console.log('[DEBUG buildVariantSelection] Sizes for current color:', sizesForCurrentColor.length);
 
         if (sizesForCurrentColor.length <= 1) {
-            return ''; // Only one size, no need for dropdown
+            return ''; // Only one size for this color
         }
 
         // Build size-only dropdown
@@ -402,8 +403,9 @@
 
         sizesForCurrentColor.forEach((variant) => {
             const selected = currentVariant && currentVariant.id === variant.id ? 'selected' : '';
-            // Extract just the size part (after the "/")
+            // Try to extract size from variant name
             const label = variant.optionLabel || variant.name || '';
+            // If label has "/", take part after it, otherwise use full label
             const sizePart = label.includes('/') ? label.split('/').pop().trim() : label;
             html += `<option value="${variant.id}" ${selected}>${sizePart}</option>`;
         });

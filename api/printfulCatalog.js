@@ -994,17 +994,36 @@ function normaliseVariant(variant, productName, options = {}) {
         .filter(Boolean)
         .map(url => ({ preview_url: url }));
 
-    const imageCandidates = [...fileCandidates, ...imageArray, ...singleImages];
+    // CRITICAL: Prefer catalog_variant mockup image (color-specific) over sync product files (shared)
+    const catalogVariantImages = [];
+    if (variant.catalog_variant) {
+        const cv = variant.catalog_variant;
+        // Catalog variant has color-specific mockup
+        if (cv.mockup_url) {
+            catalogVariantImages.push({ preview_url: cv.mockup_url });
+        }
+        if (cv.image_url) {
+            catalogVariantImages.push({ preview_url: cv.image_url });
+        }
+        if (cv.image) {
+            catalogVariantImages.push({ preview_url: cv.image });
+        }
+    }
+
+    const imageCandidates = [...catalogVariantImages, ...fileCandidates, ...imageArray, ...singleImages];
     
     // DEBUG: Log what we're finding for images
     if (productName && productName.includes('Trucker')) {
         console.log('[DEBUG normalizeVariant] Trucker Cap variant:', {
             name: variant.name,
+            catalogVariantId: variant.catalog_variant?.id,
+            hasCatalogImages: catalogVariantImages.length,
             hasFiles: fileCandidates.length,
             hasImages: imageArray.length,
             hasSingleImages: singleImages.length,
-            firstFile: fileCandidates[0],
-            variantKeys: Object.keys(variant).slice(0, 10)
+            firstCatalogImage: catalogVariantImages[0]?.preview_url,
+            firstFile: fileCandidates[0]?.preview_url,
+            variantKeys: Object.keys(variant).slice(0, 15)
         });
     }
     
