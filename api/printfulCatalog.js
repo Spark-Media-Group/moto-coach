@@ -995,6 +995,19 @@ function normaliseVariant(variant, productName, options = {}) {
         .map(url => ({ preview_url: url }));
 
     const imageCandidates = [...fileCandidates, ...imageArray, ...singleImages];
+    
+    // DEBUG: Log what we're finding for images
+    if (productName && productName.includes('Trucker')) {
+        console.log('[DEBUG normalizeVariant] Trucker Cap variant:', {
+            name: variant.name,
+            hasFiles: fileCandidates.length,
+            hasImages: imageArray.length,
+            hasSingleImages: singleImages.length,
+            firstFile: fileCandidates[0],
+            variantKeys: Object.keys(variant).slice(0, 10)
+        });
+    }
+    
     const primaryImage = imageCandidates.find(file => file?.preview_url)
         || imageCandidates.find(file => file?.thumbnail_url)
         || imageCandidates.find(file => file?.url)

@@ -256,6 +256,15 @@
     }
 
     function buildImageGallery(product, variant = null) {
+        // DEBUG: Log variant data
+        console.log('[DEBUG buildImageGallery] Product:', product.name);
+        console.log('[DEBUG buildImageGallery] First 3 variants:', product.variants?.slice(0, 3).map(v => ({
+            id: v.id,
+            name: v.optionLabel || v.name,
+            imageUrl: v.imageUrl,
+            hasImageUrl: !!v.imageUrl
+        })));
+        
         // Collect ALL UNIQUE COLOR VARIANT IMAGES (deduplicated by image URL)
         const variants = product.variants || [];
         let colorVariants = [];
@@ -270,6 +279,8 @@
             }
         });
         
+        console.log('[DEBUG buildImageGallery] Found', colorVariants.length, 'unique color variants');
+        
         // Build images array with variant metadata for color selection
         let images = colorVariants.map(v => ({
             url: v.imageUrl,
@@ -280,8 +291,10 @@
         
         // Fallback to product images if no variant images
         if (images.length === 0 && product.images && product.images.length > 0) {
+            console.log('[DEBUG buildImageGallery] Using product.images fallback');
             images = product.images.map(img => ({...img, variantId: null, baseVariant: null}));
         } else if (images.length === 0 && product.thumbnailUrl) {
+            console.log('[DEBUG buildImageGallery] Using product.thumbnailUrl fallback:', product.thumbnailUrl);
             images = [{ url: product.thumbnailUrl, altText: product.name, variantId: null, baseVariant: null }];
         }
         
