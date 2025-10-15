@@ -255,10 +255,37 @@
         });
     }
 
-    function buildImageGallery(product) {
-        const images = product.images && product.images.length > 0 ? product.images : [
-            { url: product.thumbnailUrl, altText: product.name }
-        ].filter(image => image.url);
+    function buildImageGallery(product, variant = null) {
+        // Build images array - prioritize variant images if variant is provided
+        let images = [];
+        
+        if (variant) {
+            // If variant has specific images, use those first
+            if (variant.imageUrls && variant.imageUrls.length > 0) {
+                images = variant.imageUrls.map(url => ({
+                    url,
+                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
+                }));
+            } else if (variant.imageUrl) {
+                images.push({
+                    url: variant.imageUrl,
+                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
+                });
+            }
+        }
+        
+        // Add product-level images if no variant images or to supplement variant images
+        if (images.length === 0 && product.images && product.images.length > 0) {
+            images = [...product.images];
+        } else if (images.length === 0 && product.thumbnailUrl) {
+            images.push({
+                url: product.thumbnailUrl,
+                altText: product.name
+            });
+        }
+        
+        // Filter out any invalid images
+        images = images.filter(image => image.url);
 
         if (images.length === 0) {
             return '<div class="no-image">No image available</div>';
@@ -342,7 +369,7 @@
 
         const price = currentVariant?.retailPrice ?? product.priceRange?.min ?? 0;
         const priceCurrency = currentVariant?.currency || product.currency || state.currency;
-        const gallery = buildImageGallery(product);
+        const gallery = buildImageGallery(product, currentVariant);
         const variantSelect = buildVariantSelection(product, variants);
         const quantitySection = buildQuantitySelector();
 
@@ -416,6 +443,7 @@
                     currentVariant = selectedVariant;
                     updateModalPrice();
                     updateVariantAvailability();
+                    updateModalGallery();
                 }
             });
             if (currentVariant) {
@@ -493,16 +521,66 @@
         addToCartButton.disabled = false;
     }
 
+    function updateModalGallery() {
+        if (!currentModalProduct || !currentVariant) {
+            return;
+        }
+
+        // Build new gallery HTML with variant images
+        const newGallery = buildImageGallery(currentModalProduct, currentVariant);
+        const modalImageContainer = modalBody.querySelector('.modal-image');
+        
+        if (!modalImageContainer) {
+            return;
+        }
+
+        // Update the gallery
+        modalImageContainer.innerHTML = newGallery;
+        currentImageIndex = 0;
+
+        // Re-attach event listeners for the new gallery
+        const galleryNavButtons = modalBody.querySelectorAll('.gallery-nav');
+        galleryNavButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const direction = parseInt(button.getAttribute('data-direction'), 10);
+                navigateGallery(direction);
+            });
+        });
+
+        const thumbnailButtons = modalBody.querySelectorAll('.thumbnail');
+        thumbnailButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const index = parseInt(button.getAttribute('data-index'), 10);
+                setActiveImage(index);
+            });
+        });
+    }
+
     function navigateGallery(direction) {
         if (!currentModalProduct) {
             return;
         }
 
-        const images = currentModalProduct.images && currentModalProduct.images.length > 0
-            ? currentModalProduct.images
-            : [
-                { url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }
-            ].filter(image => image.url);
+        // Get images for current variant or fallback to product images
+        let images = [];
+        if (currentVariant) {
+            if (currentVariant.imageUrls && currentVariant.imageUrls.length > 0) {
+                images = currentVariant.imageUrls.map(url => ({
+                    url,
+                    altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}`
+                }));
+            } else if (currentVariant.imageUrl) {
+                images = [{ url: currentVariant.imageUrl, altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}` }];
+            }
+        }
+        
+        if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
+            images = currentModalProduct.images;
+        } else if (images.length === 0 && currentModalProduct.thumbnailUrl) {
+            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }];
+        }
+        
+        images = images.filter(image => image.url);
 
         if (images.length <= 1) {
             return;
@@ -523,11 +601,26 @@
             return;
         }
 
-        const images = currentModalProduct.images && currentModalProduct.images.length > 0
-            ? currentModalProduct.images
-            : [
-                { url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }
-            ].filter(image => image.url);
+        // Get images for current variant or fallback to product images
+        let images = [];
+        if (currentVariant) {
+            if (currentVariant.imageUrls && currentVariant.imageUrls.length > 0) {
+                images = currentVariant.imageUrls.map(url => ({
+                    url,
+                    altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}`
+                }));
+            } else if (currentVariant.imageUrl) {
+                images = [{ url: currentVariant.imageUrl, altText: `${currentModalProduct.name} - ${currentVariant.optionLabel || currentVariant.name || 'Variant'}` }];
+            }
+        }
+        
+        if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
+            images = currentModalProduct.images;
+        } else if (images.length === 0 && currentModalProduct.thumbnailUrl) {
+            images = [{ url: currentModalProduct.thumbnailUrl, altText: currentModalProduct.name }];
+        }
+        
+        images = images.filter(image => image.url);
 
         if (index < 0 || index >= images.length) {
             return;
