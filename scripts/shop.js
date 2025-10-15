@@ -256,26 +256,25 @@
     }
 
     function buildImageGallery(product, variant = null) {
-        // Build images array - show ALL variant images as thumbnails
+        // Build images array - prioritize variant images if variant is provided
         let images = [];
-        const variants = product.variants || [];
         
-        // Collect images from ALL variants to show as thumbnails
-        variants.forEach(v => {
-            if (v.imageUrl) {
-                // Check if this image URL already exists to avoid duplicates
-                const exists = images.some(img => img.url === v.imageUrl);
-                if (!exists) {
-                    images.push({
-                        url: v.imageUrl,
-                        altText: `${product.name} - ${v.optionLabel || v.name || 'Variant'}`,
-                        variantId: v.id
-                    });
-                }
+        if (variant) {
+            // If variant has specific images, use those first
+            if (variant.imageUrls && variant.imageUrls.length > 0) {
+                images = variant.imageUrls.map(url => ({
+                    url,
+                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
+                }));
+            } else if (variant.imageUrl) {
+                images.push({
+                    url: variant.imageUrl,
+                    altText: `${product.name} - ${variant.optionLabel || variant.name || 'Variant'}`
+                });
             }
-        });
+        }
         
-        // If no variant images found, fallback to product-level images
+        // Add product-level images if no variant images or to supplement variant images
         if (images.length === 0 && product.images && product.images.length > 0) {
             images = [...product.images];
         } else if (images.length === 0 && product.thumbnailUrl) {
@@ -292,15 +291,6 @@
             return '<div class="no-image">No image available</div>';
         }
 
-        // Find the index of the current variant's image to set as main
-        let mainImageIndex = 0;
-        if (variant && variant.imageUrl) {
-            const foundIndex = images.findIndex(img => img.url === variant.imageUrl);
-            if (foundIndex >= 0) {
-                mainImageIndex = foundIndex;
-            }
-        }
-
         if (images.length === 1) {
             return `
                 <img id="modal-main-image" src="${images[0].url}" alt="${images[0].altText || product.name}" loading="lazy">
@@ -308,7 +298,7 @@
         }
 
         const thumbnails = images.map((image, index) => `
-            <button class="thumbnail ${index === mainImageIndex ? 'active' : ''}" data-index="${index}" type="button">
+            <button class="thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}" type="button">
                 <img src="${image.url}" alt="${image.altText || product.name}" loading="lazy">
             </button>
         `).join('');
@@ -321,7 +311,7 @@
                             <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
                         </svg>
                     </button>
-                    <img id="modal-main-image" src="${images[mainImageIndex].url}" alt="${images[mainImageIndex].altText || product.name}" loading="lazy">
+                    <img id="modal-main-image" src="${images[0].url}" alt="${images[0].altText || product.name}" loading="lazy">
                     <button class="gallery-nav gallery-next" data-direction="1" type="button" aria-label="Next image">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" />
