@@ -969,7 +969,18 @@ function normaliseVariant(variant, productName, options = {}) {
         || variant.prices?.default?.currency
         || 'AUD';
     const name = variant.name || variant.title || `Variant ${catalogVariantId || printfulVariantId || ''}`.trim();
-    const optionLabel = name || `Variant ${catalogVariantId || printfulVariantId || ''}`.trim();
+    
+    // Create a cleaner option label by removing product name prefix
+    // e.g., "Trucker Cap / Brown/ Khaki" -> "Brown/ Khaki"
+    let optionLabel = name || `Variant ${catalogVariantId || printfulVariantId || ''}`.trim();
+    if (productName && optionLabel.startsWith(productName)) {
+        // Remove product name and any following separator (/, -, |, etc.)
+        optionLabel = optionLabel.substring(productName.length).replace(/^[\s\-\/\|]+/, '').trim();
+    }
+    // If we end up with an empty label after removal, use the full name
+    if (!optionLabel || optionLabel.length === 0) {
+        optionLabel = name || `Variant ${catalogVariantId || printfulVariantId || ''}`.trim();
+    }
 
     const fileCandidates = Array.isArray(variant.files) ? variant.files : [];
     const imageArray = Array.isArray(variant.images)

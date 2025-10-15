@@ -22,19 +22,6 @@
     letter-spacing: 3px;
 }
 
-.shop-intro {
-    max-width: 780px;
-    margin: 0 auto 0.85rem auto;
-    font-size: 1.05rem;
-    line-height: 1.8;
-    color: #555;
-}
-
-.shop-intro.highlight {
-    font-weight: 600;
-    color: #1f1f1f;
-}
-
 /* Shop Controls */
  .shop-controls {
     --chip-radius: 18px;
@@ -79,15 +66,28 @@
     text-transform: uppercase;
     font-weight: 600;
     color: #666;
-    opacity: 0.8;
+    opacity: 0.55;
     transition: opacity .25s ease, color .25s ease;
     white-space: nowrap;
 }
-.results-inline.active { opacity: 1; color: #333; }
+.results-inline.active { opacity: 0.9; color: #333; }
 
 /* Adjust inline sort variant (hide label visually) */
 .sort-controls.inline { margin: 0; }
 .sort-controls.inline label { display: none; }
+
+/* Visually hidden utility */
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
 
 @media (max-width: 768px) {
     .filters-header { align-items: flex-start; }
@@ -503,6 +503,20 @@
     margin-top: 0.5rem;
 }
 
+/* Hide static product cards completely for SEO/structured data only */
+.product-card--static {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    pointer-events: none !important;
+}
+
 .product-card {
     background: white;
     border-radius: 15px;
@@ -536,57 +550,6 @@
 
 .product-card:hover .product-image img {
     transform: scale(1.08);
-}
-
-/* Shop FAQ */
-.shop-faq {
-    background: #f6f7f9;
-    padding: 4rem 1.5rem;
-}
-
-.shop-faq-container {
-    max-width: 1100px;
-    margin: 0 auto;
-}
-
-.shop-faq h2 {
-    text-align: center;
-    font-family: 'Oswald', sans-serif;
-    font-size: clamp(2rem, 4vw, 2.8rem);
-    margin-bottom: 2rem;
-    color: #2c2c2c;
-}
-
-.shop-faq-grid {
-    display: grid;
-    gap: 1.75rem;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-}
-
-.faq-item {
-    background: #fff;
-    padding: 1.75rem;
-    border-radius: 18px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-    border: 1px solid rgba(255, 107, 53, 0.08);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-.faq-item:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.12);
-}
-
-.faq-item h3 {
-    font-family: 'Oswald', sans-serif;
-    font-size: 1.25rem;
-    margin-bottom: 0.75rem;
-    color: #333;
-}
-
-.faq-item p {
-    color: #555;
-    line-height: 1.7;
 }
 
 /* No Image Placeholder */
@@ -781,8 +744,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem;
+    padding: 1rem;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .modal-overlay {
@@ -800,15 +764,18 @@
     position: relative;
     background: white;
     border-radius: 20px;
-    max-width: 1000px;
+    max-width: 1100px;
     width: 100%;
-    max-height: 90vh;
+    max-height: 95vh;
     overflow-y: auto;
+    overflow-x: hidden;
     z-index: 1002;
     box-shadow: 0 25px 80px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(0, 0, 0, 0.1);
     margin: auto;
     transform: translateZ(0); /* Force hardware acceleration for smooth rendering */
+    display: flex;
+    flex-direction: column;
 }
 
 .modal-close {
@@ -838,24 +805,32 @@
 }
 
 #modal-body {
-    padding: 3rem;
+    padding: 2rem;
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .modal-product {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 4rem;
+    gap: 2.5rem;
     align-items: start;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .modal-image {
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* Modal Gallery Styles */
 .modal-gallery {
     position: relative;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .main-image-container {
@@ -863,10 +838,16 @@
     overflow: hidden;
     border-radius: 15px;
     background: #f8f9fa;
+    aspect-ratio: 1 / 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .main-image-container img {
     width: 100%;
+    height: 100%;
+    object-fit: contain;
     border-radius: 15px;
     box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
     transition: opacity 0.3s ease;
@@ -979,17 +960,21 @@
 }
 
 .modal-info {
-    padding-left: 1rem;
+    padding-left: 0;
+    box-sizing: border-box;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .modal-info h2 {
     font-family: 'Oswald', sans-serif;
-    font-size: 2.5rem;
+    font-size: clamp(1.8rem, 4vw, 2.5rem);
     color: #333;
     margin-bottom: 1rem;
     text-transform: uppercase;
     letter-spacing: 2px;
     line-height: 1.2;
+    word-break: break-word;
 }
 
 .modal-info .product-price {
@@ -1322,21 +1307,10 @@
     padding: 0.5rem;
     border-radius: 8px;
     transition: background 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #ffffff;
 }
 
 .cart-icon:hover {
     background: rgba(255, 255, 255, 0.1);
-}
-
-.cart-icon svg {
-    display: block;
-    width: 24px;
-    height: 24px;
-    fill: currentColor;
 }
 
 .cart-count {
@@ -1698,7 +1672,7 @@
     .shop-hero {
         padding: 100px 1rem 40px 1rem;
     }
-
+    
     .shop-controls {
         padding: 1.5rem;
         margin-top: 2rem;
@@ -1716,7 +1690,7 @@
     
     .modal-product {
         grid-template-columns: 1fr;
-        gap: 2rem;
+        gap: 1.5rem;
     }
     
     .modal-info {
@@ -1724,11 +1698,11 @@
     }
     
     #modal-body {
-        padding: 2rem 1.5rem;
+        padding: 1.5rem;
     }
     
     .modal-info h2 {
-        font-size: 2rem;
+        font-size: clamp(1.5rem, 5vw, 2rem);
     }
     
     .modal-actions {
@@ -1832,11 +1806,11 @@
     }
     
     .modal-close {
-        top: 15px;
-        right: 15px;
-        width: 40px;
-        height: 40px;
-        font-size: 1.5rem;
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+        font-size: 1.3rem;
     }
     
     /* Mobile Gallery Adjustments */
@@ -1854,69 +1828,18 @@
     .gallery-next {
         right: 10px;
     }
-
+    
     .thumbnail {
         width: 60px;
         height: 60px;
     }
-
+    
     .image-thumbnails {
         gap: 8px;
     }
-
-    .shop-faq {
-        padding: 3rem 1rem;
-    }
-
-    .shop-faq-grid {
-        gap: 1.25rem;
-    }
-
-    .faq-item {
-        padding: 1.5rem;
-    }
-}
-
-@media (max-width: 640px) {
-    .products-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.9rem;
-        padding: 0 0.75rem;
-    }
-
-    .product-card {
-        border-radius: 12px;
-    }
-
-    .product-image {
-        height: 200px;
-    }
-
-    .product-info {
-        padding: 1.1rem;
-    }
-
-    .product-title {
-        font-size: 1.05rem;
-    }
-
-    .product-price {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-
-    .price-current {
-        font-size: 1.25rem;
-    }
-
-    .price-original {
-        font-size: 0.85rem;
-        line-height: 1.15;
-    }
-
-    .product-type {
-        display: none;
+    
+    .main-image-container {
+        aspect-ratio: 1 / 1;
     }
 }
 
@@ -1924,11 +1847,7 @@
     .shop-hero h1 {
         font-size: 2rem;
     }
-
-    .shop-intro {
-        font-size: 0.95rem;
-    }
-
+    
     .shop-controls {
         padding: 1rem;
     }
@@ -1937,33 +1856,12 @@
         padding: 0.5rem 1rem;
         font-size: 0.8rem;
     }
-
+    
     .products-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 0.75rem;
+        grid-template-columns: 1fr;
         padding: 0 0.5rem;
     }
-
-    .product-image {
-        height: 180px;
-    }
-
-    .product-info {
-        padding: 0.9rem;
-    }
-
-    .product-title {
-        font-size: 0.95rem;
-    }
-
-    .product-type {
-        margin-bottom: 0.6rem;
-    }
-
-    .product-price {
-        margin-bottom: 0.6rem;
-    }
-
+    
     .product-actions {
         flex-direction: column;
     }
@@ -1972,9 +1870,5 @@
         width: 100%;
         height: auto;
         padding: 0.75rem;
-    }
-
-    .faq-item {
-        padding: 1.3rem;
     }
 }

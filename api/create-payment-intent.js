@@ -27,21 +27,31 @@ export default async function handler(req, res) {
             });
         }
 
-        // Create payment intent
+        // Log metadata for debugging (will appear in Vercel logs)
+        console.log('Creating payment intent with metadata:', {
+            amount,
+            currency,
+            payment_source: metadata.payment_source,
+            event_count: metadata.event_count,
+            shop_item_count: metadata.shop_item_count
+        });
+
+        // Create payment intent with comprehensive metadata
         const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(amount * 100), // Convert to cents
             currency: currency.toLowerCase(),
             metadata: {
-                source: 'moto_coach_track_reservation',
+                source: 'moto_coach_website',
+                timestamp: new Date().toISOString(),
                 ...metadata
             },
-            // Option A: Let Stripe surface methods dynamically, including Afterpay
             automatic_payment_methods: {
                 enabled: true,
-                allow_redirects: 'always' // Enable redirects for Afterpay
+                allow_redirects: 'always'
             }
-            // Note: Removed explicit payment_method_types to let Stripe handle dynamically
         });
+
+        console.log('Payment intent created successfully:', paymentIntent.id);
 
         res.status(200).json({
             success: true,

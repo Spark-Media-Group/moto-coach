@@ -829,11 +829,64 @@ function collectFormData(form) {
 async function createPaymentIntent(metadata = {}) {
     const eventRegistration = getEventRegistration(checkoutData);
     const hasShopItems = hasShopLineItems(checkoutData);
-    const baseMetadata = {
-        cartId: hasShopItems ? (checkoutData?.cartId || 'unknown_cart') : 'event_registration',
-        has_event_registration: eventRegistration ? 'true' : 'false',
-        event_count: eventRegistration?.events ? String(eventRegistration.events.length) : '0',
-        rider_count: eventRegistration?.riderCount ? String(eventRegistration.riderCount) : '0'
+    
+    // Determine payment source
+    let paymentSource = 'unknown';
+    if (eventRegistration && hasShopItems) {
+        paymentSource = 'mixed';
+    } else if (eventRegistration) {
+        paymentSource = 'event_registration';
+    } else if (hasShopItems) {
+        paymentSource = 'shop_order';
+    }
+    
+    // Calculate revenue components
+    const eventRevenue = eventRegistration?.totalAmount ? toNumber(eventRegistration.totalAmount) : 0;
+    const shopTotals = hasShopItems ? calculateOrderTotal(checkoutData) : { total: 0, currency: 'AUD' };
+    const shopRevenue = shopTotals.total;
+    
+    // Build comprehensive metadata
+    const enhancedMetadata = {
+        // Core identification
+        payment_source: paymentSource,
+        cart_id: hasShopItems ? (checkoutData?.cartId || 'unknown_cart') : 'event_registration',
+        
+        // Total revenue
+        total_revenue: String((eventRevenue + shopRevenue).toFixed(2)),
+        currency: currencyCode || 'AUD',
+        
+        // Event registration metadata
+        ...(eventRegistration && {
+            event_count: String(eventRegistration.events?.length || 0),
+            rider_count: String(eventRegistration.riderCount || 0),
+            registration_type: eventRegistration.multiEvent ? 'multi_event_bundle' : 'single_event',
+            event_names: (eventRegistration.events?.map(e => e.title || 'Unnamed Event').join(', ') || '').substring(0, 490),
+            event_dates: (eventRegistration.events?.map(e => e.dateString || e.date || 'TBD').join(', ') || '').substring(0, 490),
+            per_rider_rate: String((eventRegistration.perRiderAmount || 0).toFixed(2)),
+            bundle_discount: eventRegistration.pricingInfo?.hasBundleDiscount ? 'true' : 'false',
+            event_revenue: String(eventRevenue.toFixed(2))
+        }),
+        
+        // Shop order metadata
+        ...(hasShopItems && {
+            shop_item_count: String(checkoutData.lines?.length || 0),
+            shop_items: (checkoutData.lines?.map(line => `${line.title} (x${line.quantity})`).join(', ') || '').substring(0, 490),
+            shop_revenue: String(shopRevenue.toFixed(2)),
+            shipping_country: checkoutData.shippingAddress?.country || checkoutData.shippingMethod?.country || 'unknown',
+            shipping_method: checkoutData.shippingMethod?.title || 'unknown'
+        }),
+        
+        // Revenue breakdown for mixed orders
+        ...(eventRegistration && hasShopItems && {
+            event_portion: String(eventRevenue.toFixed(2)),
+            shop_portion: String(shopRevenue.toFixed(2))
+        }),
+        
+        // Customer identification
+        customer_email: metadata.email || 'unknown',
+        
+        // Merge any additional metadata passed in
+        ...metadata
     };
 
     const response = await fetch('/api/create-payment-intent', {
@@ -842,10 +895,7 @@ async function createPaymentIntent(metadata = {}) {
         body: JSON.stringify({
             amount: orderTotal,
             currency: currencyCode,
-            metadata: {
-                ...baseMetadata,
-                ...metadata
-            }
+            metadata: enhancedMetadata
         })
     });
 
