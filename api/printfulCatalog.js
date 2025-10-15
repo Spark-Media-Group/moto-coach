@@ -994,11 +994,17 @@ function normaliseVariant(variant, productName, options = {}) {
         .filter(Boolean)
         .map(url => ({ preview_url: url }));
 
-    // CRITICAL: Prefer catalog_variant mockup image (color-specific) over sync product files (shared)
+    // CRITICAL FIX: Use variant.product.image (color-specific product photo)
+    // This is the actual product photo for this specific color variant
+    const productImages = [];
+    if (variant.product && variant.product.image) {
+        productImages.push({ preview_url: variant.product.image });
+    }
+
+    // ALSO: Try catalog_variant mockup if available
     const catalogVariantImages = [];
     if (variant.catalog_variant) {
         const cv = variant.catalog_variant;
-        // Catalog variant has color-specific mockup
         if (cv.mockup_url) {
             catalogVariantImages.push({ preview_url: cv.mockup_url });
         }
@@ -1010,20 +1016,19 @@ function normaliseVariant(variant, productName, options = {}) {
         }
     }
 
-    const imageCandidates = [...catalogVariantImages, ...fileCandidates, ...imageArray, ...singleImages];
+    // Priority: product photo > catalog mockup > sync files > other images
+    const imageCandidates = [...productImages, ...catalogVariantImages, ...fileCandidates, ...imageArray, ...singleImages];
     
     // DEBUG: Log what we're finding for images
     if (productName && productName.includes('Trucker')) {
         console.log('[DEBUG normalizeVariant] Trucker Cap variant:', {
             name: variant.name,
+            hasProductImage: productImages.length > 0,
+            productImageUrl: productImages[0]?.preview_url,
             catalogVariantId: variant.catalog_variant?.id,
-            hasCatalogImages: catalogVariantImages.length,
-            hasFiles: fileCandidates.length,
-            hasImages: imageArray.length,
-            hasSingleImages: singleImages.length,
-            firstCatalogImage: catalogVariantImages[0]?.preview_url,
-            firstFile: fileCandidates[0]?.preview_url,
-            variantKeys: Object.keys(variant).slice(0, 15)
+            hasCatalogImages: catalogVariantImages.length > 0,
+            hasFiles: fileCandidates.length > 0,
+            firstFileUrl: fileCandidates[0]?.preview_url
         });
     }
     
