@@ -2254,46 +2254,7 @@
 
 @media (max-width: 480px) {
     .modal {
-        padding: 0.5rem;
-    }
-
-    #modal-body {
-        padding: 0.75rem;
-        gap: 0.75rem;
-    }
-
-    .modal-content {
-        border-radius: 16px;
-        max-height: min(100dvh, 560px);
-    }
-
-    .modal-info h2 {
-        font-size: clamp(1.18rem, 6vw, 1.45rem);
-    }
-
-    .modal-info .product-description {
-        -webkit-line-clamp: 3;
-        margin-bottom: 0.55rem;
-    }
-
-    .variant-selection {
-        padding: 0.55rem 0.65rem;
-        margin-bottom: 0.6rem;
-    }
-
-    .variant-option {
-        padding: 0.5rem 0.55rem;
-    }
-
-    .modal-actions .btn-add-cart,
-    .modal-actions .btn-continue-shopping {
-        padding: 0.65rem 0.8rem;
-        font-size: 0.85rem;
-    }
-
-    .availability-info {
-        padding: 0.45rem 0.6rem;
-        margin-bottom: 0.6rem;
+        padding: 0.35rem;
     }
 
     .modal-close {
@@ -2303,13 +2264,178 @@
         right: 8px;
     }
 
+    .modal-content {
+        border-radius: 14px;
+        max-height: 100dvh;
+        height: 100%;
+    }
+
+    #modal-body {
+        padding: 0.65rem 0.75rem 0.8rem;
+        gap: 0.6rem;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        box-sizing: border-box;
+    }
+
+    .modal-product {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .modal-image {
+        flex: none;
+    }
+
     .main-image-container {
-        max-height: clamp(160px, 38dvh, 220px);
+        max-height: clamp(150px, 42dvh, 210px);
+        border-radius: 10px;
+    }
+
+    .image-thumbnails {
+        gap: 0.35rem;
+        grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
     }
 
     .thumbnail {
-        width: 46px;
-        height: 46px;
+        width: 44px;
+        height: 44px;
+        border-radius: 8px;
+    }
+
+    .selected-variant-label {
+        margin: 0.4rem 0 0.45rem;
+        font-size: 0.76rem;
+        letter-spacing: 1.1px;
+    }
+
+    .selected-variant-label strong {
+        font-size: 0.78rem;
+        margin-bottom: 0.3rem;
+    }
+
+    .modal-info {
+        align-items: flex-start;
+        text-align: left;
+        gap: 0.5rem;
+        flex: 1;
+        min-height: 0;
+    }
+
+    .modal-info h2 {
+        font-size: clamp(1.08rem, 5vw, 1.32rem);
+        letter-spacing: 1.1px;
+        margin-bottom: 0.2rem;
+    }
+
+    .modal-info .product-price {
+        margin-bottom: 0.35rem;
+        padding-bottom: 0.45rem;
+        justify-content: flex-start;
+    }
+
+    .modal-info .price-current {
+        font-size: clamp(1.38rem, 5.8vw, 1.55rem);
+    }
+
+    .modal-info .product-description {
+        font-size: 0.82rem;
+        line-height: 1.45;
+        margin-bottom: 0.4rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .variant-selection {
+        padding: 0.5rem 0.6rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .variant-selection h4 {
+        font-size: 0.85rem;
+        padding: 0.35rem 0.55rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .variant-selection h4::before {
+        width: 20px;
+        height: 20px;
+        left: -1rem;
+        font-size: 0.65rem;
+    }
+
+    .variant-option {
+        padding: 0.45rem 0.5rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .size-quantity-container {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.4rem;
+    }
+
+    .size-section,
+    .quantity-section {
+        flex: 1 1 100%;
+    }
+
+    .size-select,
+    .quantity-select {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.85rem;
+        background-size: 0.75rem;
+        padding-right: 1.75rem;
+    }
+
+    .quantity-section {
+        margin-top: 0.25rem;
+        padding-top: 0.25rem;
+    }
+
+    .availability-info {
+        padding: 0.45rem 0.55rem;
+        margin: 0.3rem 0 0.45rem;
+        gap: 0.25rem;
+    }
+
+    .availability-info .spec-label {
+        font-size: 0.68rem;
+        letter-spacing: 1.1px;
+    }
+
+    .availability-info .spec-value {
+        font-size: 0.8rem;
+    }
+
+    .modal-actions {
+        margin-top: auto;
+        padding-top: 0.4rem;
+        gap: 0.45rem;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .modal-actions .btn-add-cart,
+    .modal-actions .btn-continue-shopping {
+        width: 100%;
+        padding: 0.7rem 0.75rem;
+        font-size: 0.82rem;
+        letter-spacing: 1.15px;
+    }
+
+    .modal-actions .btn-add-cart {
+        box-shadow: 0 4px 14px rgba(255, 107, 53, 0.25);
+    }
+
+    .btn-continue-shopping {
+        padding: 0.7rem 0.75rem;
     }
 
     .shop-hero h1 {
@@ -2319,21 +2445,21 @@
     .shop-controls {
         padding: 1rem;
     }
-    
+
     .filter-btn {
         padding: 0.5rem 1rem;
         font-size: 0.8rem;
     }
-    
+
     .products-grid {
         grid-template-columns: 1fr;
         padding: 0 0.5rem;
     }
-    
+
     .product-actions {
         flex-direction: column;
     }
-    
+
     .btn-quick-view {
         width: 100%;
         height: auto;
