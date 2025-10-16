@@ -477,6 +477,12 @@
 
         const modalContent = `
             <div class="modal-product">
+                <div class="modal-mobile-header">
+                    <h2 class="modal-mobile-title">${product.name}</h2>
+                    <div id="modal-price-display-mobile" class="product-price">
+                        <span class="price-current">${formatCurrency(price, priceCurrency)}</span>
+                    </div>
+                </div>
                 <div class="modal-image">${gallery}</div>
                 <div class="modal-info">
                     <h2>${product.name}</h2>
@@ -644,12 +650,18 @@
     }
 
     function updateModalPrice() {
-        const priceDisplay = modalBody.querySelector('#modal-price-display');
-        if (!priceDisplay || !currentVariant) {
+        const priceDisplays = [
+            modalBody.querySelector('#modal-price-display'),
+            modalBody.querySelector('#modal-price-display-mobile')
+        ].filter(Boolean);
+        if (priceDisplays.length === 0 || !currentVariant) {
             return;
         }
         const currency = currentVariant.currency || currentModalProduct?.currency || state.currency;
-        priceDisplay.innerHTML = `<span class="price-current">${formatCurrency(currentVariant.retailPrice, currency)}</span>`;
+        const priceHTML = `<span class="price-current">${formatCurrency(currentVariant.retailPrice, currency)}</span>`;
+        priceDisplays.forEach(display => {
+            display.innerHTML = priceHTML;
+        });
     }
 
     function updateVariantAvailability() {
