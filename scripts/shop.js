@@ -470,6 +470,8 @@
         const gallery = buildImageGallery(product, currentVariant);
         const variantSelect = buildVariantSelection(product, variants);
         const quantitySection = buildQuantitySelector();
+        const hasSizeSelection = typeof variantSelect === 'string' && variantSelect.trim().length > 0;
+        const sizeQuantityClasses = `size-quantity-container${hasSizeSelection ? ' has-sizes' : ''}`;
 
         const description = product.description
             ? product.description.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
@@ -477,6 +479,12 @@
 
         const modalContent = `
             <div class="modal-product">
+                <div class="modal-mobile-header">
+                    <h2 class="modal-mobile-title">${product.name}</h2>
+                    <div id="modal-price-display-mobile" class="product-price">
+                        <span class="price-current">${formatCurrency(price, priceCurrency)}</span>
+                    </div>
+                </div>
                 <div class="modal-image">${gallery}</div>
                 <div class="modal-info">
                     <h2>${product.name}</h2>
@@ -484,8 +492,8 @@
                         <span class="price-current">${formatCurrency(price, priceCurrency)}</span>
                     </div>
                     <div class="product-description">${description}</div>
-                    <div class="size-quantity-container">
-                        ${variantSelect}
+                    <div class="${sizeQuantityClasses}">
+                        ${hasSizeSelection ? variantSelect : ''}
                         ${quantitySection}
                     </div>
                     <div class="availability-info">
@@ -644,12 +652,18 @@
     }
 
     function updateModalPrice() {
-        const priceDisplay = modalBody.querySelector('#modal-price-display');
-        if (!priceDisplay || !currentVariant) {
+        const priceDisplays = [
+            modalBody.querySelector('#modal-price-display'),
+            modalBody.querySelector('#modal-price-display-mobile')
+        ].filter(Boolean);
+        if (priceDisplays.length === 0 || !currentVariant) {
             return;
         }
         const currency = currentVariant.currency || currentModalProduct?.currency || state.currency;
-        priceDisplay.innerHTML = `<span class="price-current">${formatCurrency(currentVariant.retailPrice, currency)}</span>`;
+        const priceHTML = `<span class="price-current">${formatCurrency(currentVariant.retailPrice, currency)}</span>`;
+        priceDisplays.forEach(display => {
+            display.innerHTML = priceHTML;
+        });
     }
 
     function updateVariantAvailability() {
