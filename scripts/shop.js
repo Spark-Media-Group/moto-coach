@@ -470,6 +470,8 @@
         const gallery = buildImageGallery(product, currentVariant);
         const variantSelect = buildVariantSelection(product, variants);
         const quantitySection = buildQuantitySelector();
+        const hasSizeSelection = typeof variantSelect === 'string' && variantSelect.trim().length > 0;
+        const sizeQuantityClasses = `size-quantity-container${hasSizeSelection ? ' has-sizes' : ''}`;
 
         const description = product.description
             ? product.description.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')
@@ -490,8 +492,8 @@
                         <span class="price-current">${formatCurrency(price, priceCurrency)}</span>
                     </div>
                     <div class="product-description">${description}</div>
-                    <div class="size-quantity-container">
-                        ${variantSelect}
+                    <div class="${sizeQuantityClasses}">
+                        ${hasSizeSelection ? variantSelect : ''}
                         ${quantitySection}
                     </div>
                     <div class="availability-info">
