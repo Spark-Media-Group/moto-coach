@@ -332,13 +332,6 @@
                         <button class="gallery-nav gallery-next" aria-label="Next color">›</button>
                     ` : ''}
                 </div>
-                
-                ${images.length > 1 ? `
-                    <div class="selected-variant-label">
-                        <strong>CHOOSE YOUR VARIANT</strong>
-                        <span class="variant-label-text" id="selected-color-name">${mainImage.baseVariant?.optionLabel || mainImage.baseVariant?.name || 'Select Color'}</span>
-                    </div>
-                ` : ''}
         `;
 
         if (images.length > 1) {
@@ -425,11 +418,18 @@
         return `
             <div class="quantity-section">
                 <label for="product-quantity">Quantity</label>
-                <div class="quantity-controls">
-                    <button type="button" class="quantity-btn" data-quantity="-1">-</button>
-                    <input type="number" id="product-quantity" class="quantity-input" value="1" min="1" max="10">
-                    <button type="button" class="quantity-btn" data-quantity="1">+</button>
-                </div>
+                <select id="product-quantity" class="quantity-select">
+                    <option value="1" selected>1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10">10</option>
+                </select>
             </div>
         `;
     }
@@ -531,16 +531,6 @@
                 // Update main image
                 setActiveImage(index);
                 
-                // Update the variant label text
-                const colorNameElement = document.getElementById('selected-color-name');
-                if (colorNameElement && currentModalProduct) {
-                    const variants = currentModalProduct.variants || [];
-                    const clickedVariant = variants.find(v => v.id === variantId);
-                    if (clickedVariant) {
-                        colorNameElement.textContent = clickedVariant.optionLabel || clickedVariant.name || 'Variant';
-                    }
-                }
-                
                 // CRITICAL: If clicking a color thumbnail, switch to a variant with that color
                 if (variantId && currentModalProduct) {
                     const variants = currentModalProduct.variants || [];
@@ -615,35 +605,12 @@
             }
         }
 
-        const quantityButtons = modalBody.querySelectorAll('.quantity-btn');
-        const quantityInput = modalBody.querySelector('#product-quantity');
-
-        quantityButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const delta = parseInt(button.getAttribute('data-quantity'), 10);
-                const currentValue = parseInt(quantityInput.value, 10) || 1;
-                const min = parseInt(quantityInput.min, 10) || 1;
-                const max = parseInt(quantityInput.max, 10) || 10;
-                const next = Math.min(Math.max(currentValue + delta, min), max);
-                quantityInput.value = String(next);
-            });
-        });
-
-        quantityInput.addEventListener('change', () => {
-            const value = parseInt(quantityInput.value, 10);
-            const min = parseInt(quantityInput.min, 10) || 1;
-            const max = parseInt(quantityInput.max, 10) || 10;
-            if (!Number.isFinite(value) || value < min) {
-                quantityInput.value = String(min);
-            } else if (value > max) {
-                quantityInput.value = String(max);
-            }
-        });
+        const quantitySelect = modalBody.querySelector('#product-quantity');
 
         const addToCartButton = modalBody.querySelector('#modal-add-cart-btn');
         if (addToCartButton) {
             addToCartButton.addEventListener('click', () => {
-                const quantity = parseInt(quantityInput.value, 10) || 1;
+                const quantity = parseInt(quantitySelect.value, 10) || 1;
                 if (!currentVariant || currentVariant.isEnabled === false) {
                     return;
                 }
