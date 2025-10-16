@@ -914,6 +914,38 @@
     transition: opacity 0.3s ease;
 }
 
+/* Choose Variant Label - Between Main Image and Thumbnails */
+.selected-variant-label {
+    margin-top: 15px;
+    margin-bottom: 12px;
+    text-align: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+    font-family: 'Oswald', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 0.9rem;
+    color: #999;
+    font-weight: 600;
+}
+
+.selected-variant-label strong {
+    color: #666;
+    font-weight: 700;
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 8px;
+    letter-spacing: 1.2px;
+}
+
+.variant-label-text {
+    color: #ff6b35;
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: 1.5px;
+}
+
 /* Gallery Navigation Arrows */
 .gallery-nav {
     position: absolute;
@@ -1229,9 +1261,9 @@
     box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
 }
 
-/* Quantity Section Styles - Clean Dropdown */
+/* Quantity Section Styles - Clean Dropdown (Narrower) */
 .quantity-section {
-    flex: 1;
+    flex: 0 0 150px;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
