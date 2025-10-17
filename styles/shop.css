@@ -400,6 +400,61 @@
     font-weight: 500;
 }
 
+/* Currency Selector */
+.currency-selector {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+    margin-right: 1rem;
+}
+
+.currency-selector label {
+    color: #333;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 0.25rem;
+}
+
+.currency-selector select {
+    background: transparent;
+    border: 1px solid rgba(255, 107, 53, 0.3);
+    color: #666;
+    padding: 0.5rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 100px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: none;
+}
+
+.currency-selector select:hover {
+    border-color: rgba(255, 107, 53, 0.6);
+    background: rgba(255, 107, 53, 0.05);
+    color: #333;
+}
+
+.currency-selector select:focus {
+    outline: none;
+    border-color: #ff6b35;
+    background: rgba(255, 107, 53, 0.08);
+    color: #222;
+}
+
+.currency-selector select option {
+    background: white;
+    color: #555;
+    padding: 0.5rem;
+    font-weight: 500;
+}
+
 /* Main Shop Content - Light Clean Background */
 .shop-main {
     background: linear-gradient(180deg, #fafafa 0%, #f5f5f5 100%);

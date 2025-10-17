@@ -11,3 +11,12 @@ test-printful-flow.js
 test-product-cost.js
 test-ornament-order.js
 test-order-creation.js
+test-date-format.js
+test-sydney-timezone.js
+test-stripe-rates.js
+test-exchange-api.js
+test-fx-quotes.js
+test-stripe-check.js
+test-stripe-nested.js
+test-fx-quotes-direct.js
+test-api-endpoint.js
