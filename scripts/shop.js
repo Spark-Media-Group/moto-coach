@@ -1123,8 +1123,12 @@
     function addItemToCart(product, variant, quantity) {
         const variantKey = String(variant.id);
         const existing = state.cart.find(item => String(item.variantId) === variantKey);
-        const price = Number.isFinite(variant.retailPrice) ? variant.retailPrice : product.priceRange?.min || 0;
-        const currency = variant.currency || product.currency || state.currency || DEFAULT_CURRENCY;
+        
+        // Store price in the CURRENT DISPLAY CURRENCY that the customer is shopping in
+        // This currency will be passed to Printful for quote and Stripe for payment
+        const price = Number.isFinite(variant.retailPrice) ? variant.retailPrice : (product.priceRange?.min || 0);
+        const currency = state.currency || DEFAULT_CURRENCY;
+        
         const image = variant.imageUrl || product.thumbnailUrl || (product.images && product.images[0]?.url) || null;
         const placements = sanitisePlacementLayers(variant.placements);
         const orderFiles = sanitiseOrderFiles(variant.orderFiles);
@@ -1157,8 +1161,8 @@
                 variantId: variantKey,
                 catalogVariantId: variant.catalogVariantId,
                 quantity,
-                price,
-                currency,
+                price, // Store in customer's chosen currency
+                currency, // Store customer's chosen currency
                 image,
                 variantName: variant.optionLabel || variant.name || 'Variant',
                 printfulVariantId: variant.printfulVariantId,
@@ -1191,12 +1195,15 @@
     }
 
     function calculateCartTotals() {
-        // Calculate subtotal in AUD first, then convert to selected currency
-        const subtotalAUD = state.cart.reduce((total, item) => total + item.price * item.quantity, 0);
-        const subtotal = convertPrice(subtotalAUD, state.currency);
+        // Cart items are already stored in the customer's chosen currency
+        // Just sum them up directly (no conversion needed)
+        const subtotal = state.cart.reduce((total, item) => total + item.price * item.quantity, 0);
         const totalQuantity = state.cart.reduce((total, item) => total + item.quantity, 0);
+        
+        // Use currency from first cart item, or current state currency
+        const currency = state.cart.length > 0 ? state.cart[0].currency : state.currency;
 
-        return { subtotal, totalQuantity, currency: state.currency };
+        return { subtotal, totalQuantity, currency };
     }
 
     function updateCartUI() {
@@ -1222,8 +1229,9 @@
         cartFooter.style.display = 'block';
 
         cartItemsContainer.innerHTML = state.cart.map(item => {
-            // Convert item price to selected currency
-            const convertedPrice = convertPrice(item.price, state.currency);
+            // Item price is already in the customer's chosen currency (stored when added to cart)
+            // Use item.currency to show the correct currency symbol
+            const itemCurrency = item.currency || state.currency;
             
             return `
             <div class="cart-item" data-variant-id="${item.variantId}">
@@ -1233,7 +1241,7 @@
                 <div class="cart-item-info">
                     <div class="cart-item-title">${item.productName}</div>
                     <div class="variant-title">${item.variantName}</div>
-                    <div class="cart-item-price">${formatCurrency(convertedPrice, state.currency)}</div>
+                    <div class="cart-item-price">${formatCurrency(item.price, itemCurrency)}</div>
                 </div>
                 <div class="cart-item-controls">
                     <div class="quantity-controls">
