@@ -371,6 +371,24 @@
         });
     }
 
+    function extractColorName(label) {
+        if (!label || typeof label !== 'string') {
+            return '';
+        }
+
+        const parts = label.split('/');
+        return parts[0].trim();
+    }
+
+    function getVariantColorName(variant) {
+        if (!variant) {
+            return '';
+        }
+
+        const label = variant.optionLabel || variant.name || '';
+        return extractColorName(label) || label;
+    }
+
     function buildImageGallery(product, variant = null) {
         // DEBUG: Log variant data
         console.log('[DEBUG buildImageGallery] Product:', product.name);
@@ -400,7 +418,7 @@
         // Build images array with variant metadata for color selection
         let images = colorVariants.map(v => ({
             url: v.imageUrl,
-            altText: `${product.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            altText: `${product.name} - ${getVariantColorName(v) || 'Variant'}`,
             variantId: v.id,
             baseVariant: v // Store reference to select this color
         }));
@@ -452,7 +470,7 @@
                 ${images.length > 1 ? `
                     <div class="selected-variant-label">
                         <strong>CHOOSE YOUR VARIANT</strong>
-                        <span class="variant-label-text" id="selected-color-name">${mainImage.baseVariant?.optionLabel || mainImage.baseVariant?.name || 'Select Color'}</span>
+                        <span class="variant-label-text" id="selected-color-name">${getVariantColorName(mainImage.baseVariant) || 'Select Color'}</span>
                     </div>
                 ` : ''}
         `;
@@ -669,7 +687,7 @@
                     const variants = currentModalProduct.variants || [];
                     const clickedVariant = variants.find(v => v.id === variantId);
                     if (clickedVariant) {
-                        colorNameElement.textContent = clickedVariant.optionLabel || clickedVariant.name || 'Variant';
+                        colorNameElement.textContent = getVariantColorName(clickedVariant) || 'Variant';
                     }
                 }
                 
@@ -854,7 +872,7 @@
         
         let images = colorVariants.map(v => ({
             url: v.imageUrl,
-            altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
             variantId: v.id,
             baseVariant: v
         }));
@@ -925,7 +943,7 @@
         
         let images = colorVariants.map(v => ({
             url: v.imageUrl,
-            altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
             variantId: v.id,
             baseVariant: v
         }));
@@ -954,6 +972,13 @@
         if (mainImage && image) {
             mainImage.src = image.url;
             mainImage.alt = image.altText || currentModalProduct?.name || 'Product image';
+        }
+
+        if (image) {
+            const colorNameElement = modalBody.querySelector('#selected-color-name');
+            if (colorNameElement) {
+                colorNameElement.textContent = getVariantColorName(image.baseVariant) || colorNameElement.textContent || 'Variant';
+            }
         }
 
         thumbnails.forEach((thumb, index) => {
