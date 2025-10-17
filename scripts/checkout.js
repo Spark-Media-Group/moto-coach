@@ -1055,6 +1055,8 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         return;
     }
 
+    console.log('📊 Printful Quote Response:', quoteResponse);
+
     const retailCosts = quoteResponse.retail_costs && typeof quoteResponse.retail_costs === 'object'
         ? quoteResponse.retail_costs
         : null;
@@ -1062,9 +1064,15 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         ? quoteResponse.costs
         : null;
 
+    console.log('💰 Costs breakdown:', { retailCosts, costs });
+
     // Get destination country from shipping address
-    const countryCode = checkoutData?.shippingAddress?.country || '';
+    // Normalize country to 2-letter code (e.g., "United States" -> "US")
+    const countryRaw = checkoutData?.shippingAddress?.country || '';
+    const countryCode = normaliseCountryCode(countryRaw) || countryRaw;
     const preferRetail = isTaxInclusiveCountry(countryCode);
+    
+    console.log('🌍 Country & Tax Mode:', { countryRaw, countryCode, preferRetail });
 
     // Choose costs based on destination:
     // - AU/NZ: prefer retail_costs (tax-inclusive, GST included)
@@ -1111,6 +1119,7 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
             amount: taxAmount.toFixed(2),
             currencyCode: currency
         };
+        console.log('✅ Tax amount set:', checkoutData.cost.taxAmount);
     } else if (!preferRetail) {
         // For tax-exclusive countries (US), show placeholder when tax isn't available yet
         checkoutData.cost.taxAmount = {
@@ -1118,9 +1127,11 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
             currencyCode: currency,
             pending: true // Flag to show "calculated at checkout" message
         };
+        console.log('⏳ Tax pending (US address):', checkoutData.cost.taxAmount);
     } else {
         // For tax-inclusive countries (AU/NZ), don't show separate tax line
         delete checkoutData.cost.taxAmount;
+        console.log('🇦🇺 Tax-inclusive country, no separate tax line');
     }
 
     checkoutData.printfulQuote = {
