@@ -3,7 +3,18 @@
 
     const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
     const CART_STORAGE_KEY = 'motocoach_shop_cart';
+    const CURRENCY_STORAGE_KEY = 'motocoach_currency';
     const DEFAULT_CURRENCY = 'AUD';
+
+    // Exchange rates (base: AUD)
+    // These should ideally be fetched from an API, but for now we'll use static rates
+    const EXCHANGE_RATES = {
+        'AUD': 1.0,
+        'USD': 0.65,
+        'NZD': 1.08,
+        'EUR': 0.60,
+        'GBP': 0.51
+    };
 
     const state = {
         products: [],
@@ -57,6 +68,31 @@
         } catch (error) {
             console.warn('Shop: Unable to format currency', error);
             return `${currency} ${numeric.toFixed(2)}`;
+        }
+    }
+
+    // Convert price from AUD to target currency
+    function convertPrice(audPrice, targetCurrency = state.currency) {
+        const rate = EXCHANGE_RATES[targetCurrency] || 1.0;
+        return audPrice * rate;
+    }
+
+    // Save currency preference to localStorage
+    function saveCurrencyPreference(currency) {
+        try {
+            localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+        } catch (e) {
+            console.warn('Unable to save currency preference:', e);
+        }
+    }
+
+    // Load currency preference from localStorage
+    function loadCurrencyPreference() {
+        try {
+            const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
+            return saved || DEFAULT_CURRENCY;
+        } catch (e) {
+            return DEFAULT_CURRENCY;
         }
     }
 
@@ -220,10 +256,15 @@
 
         const cards = state.filteredProducts.map(product => {
             const image = product.images?.[0]?.url || product.thumbnailUrl || 'images/long-logo.png';
-            const priceRange = product.priceRange || { min: 0, max: 0, currency: state.currency };
+            const priceRange = product.priceRange || { min: 0, max: 0, currency: 'AUD' };
+            
+            // Convert price from AUD to selected currency
+            const convertedMinPrice = convertPrice(priceRange.min, state.currency);
+            const convertedMaxPrice = convertPrice(priceRange.max, state.currency);
+            
             const priceLabel = priceRange.hasMultiplePrices
-                ? formatCurrency(priceRange.min, priceRange.currency, { prefixFrom: true })
-                : formatCurrency(priceRange.min, priceRange.currency);
+                ? formatCurrency(convertedMinPrice, state.currency, { prefixFrom: true })
+                : formatCurrency(convertedMinPrice, state.currency);
 
             return `
                 <div class="product-card" data-product-id="${product.id}">
@@ -466,7 +507,8 @@
         }
 
         const price = currentVariant?.retailPrice ?? product.priceRange?.min ?? 0;
-        const priceCurrency = currentVariant?.currency || product.currency || state.currency;
+        // Convert price from AUD to selected currency
+        const convertedPrice = convertPrice(price, state.currency);
         const gallery = buildImageGallery(product, currentVariant);
         const variantSelect = buildVariantSelection(product, variants);
         const quantitySection = buildQuantitySelector();
@@ -482,14 +524,14 @@
                 <div class="modal-mobile-header">
                     <h2 class="modal-mobile-title">${product.name}</h2>
                     <div id="modal-price-display-mobile" class="product-price">
-                        <span class="price-current">${formatCurrency(price, priceCurrency)}</span>
+                        <span class="price-current">${formatCurrency(convertedPrice, state.currency)}</span>
                     </div>
                 </div>
                 <div class="modal-image">${gallery}</div>
                 <div class="modal-info">
                     <h2>${product.name}</h2>
                     <div id="modal-price-display" class="product-price">
-                        <span class="price-current">${formatCurrency(price, priceCurrency)}</span>
+                        <span class="price-current">${formatCurrency(convertedPrice, state.currency)}</span>
                     </div>
                     <div class="product-description">${description}</div>
                     <div class="${sizeQuantityClasses}">
@@ -1015,11 +1057,12 @@
     }
 
     function calculateCartTotals() {
-        const subtotal = state.cart.reduce((total, item) => total + item.price * item.quantity, 0);
+        // Calculate subtotal in AUD first, then convert to selected currency
+        const subtotalAUD = state.cart.reduce((total, item) => total + item.price * item.quantity, 0);
+        const subtotal = convertPrice(subtotalAUD, state.currency);
         const totalQuantity = state.cart.reduce((total, item) => total + item.quantity, 0);
-        const currency = state.cart[0]?.currency || state.currency || DEFAULT_CURRENCY;
 
-        return { subtotal, totalQuantity, currency };
+        return { subtotal, totalQuantity, currency: state.currency };
     }
 
     function updateCartUI() {
@@ -1044,7 +1087,11 @@
         cartEmptyState.style.display = 'none';
         cartFooter.style.display = 'block';
 
-        cartItemsContainer.innerHTML = state.cart.map(item => `
+        cartItemsContainer.innerHTML = state.cart.map(item => {
+            // Convert item price to selected currency
+            const convertedPrice = convertPrice(item.price, state.currency);
+            
+            return `
             <div class="cart-item" data-variant-id="${item.variantId}">
                 <div class="cart-item-image">
                     ${item.image ? `<img src="${item.image}" alt="${item.productName}">` : '<div class="no-image">No Image</div>'}
@@ -1052,7 +1099,7 @@
                 <div class="cart-item-info">
                     <div class="cart-item-title">${item.productName}</div>
                     <div class="variant-title">${item.variantName}</div>
-                    <div class="cart-item-price">${formatCurrency(item.price, item.currency)}</div>
+                    <div class="cart-item-price">${formatCurrency(convertedPrice, state.currency)}</div>
                 </div>
                 <div class="cart-item-controls">
                     <div class="quantity-controls">
@@ -1063,7 +1110,8 @@
                     <button type="button" class="remove-item" data-remove="${item.variantId}">×</button>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
 
         if (cartSubtotal) {
             cartSubtotal.textContent = formatCurrency(subtotal, currency);
@@ -1223,6 +1271,38 @@
         });
     }
 
+    function initialiseCurrencySelector() {
+        const currencySelect = document.getElementById('currency-select');
+        if (!currencySelect) {
+            return;
+        }
+
+        // Load saved currency preference
+        const savedCurrency = loadCurrencyPreference();
+        state.currency = savedCurrency;
+        currencySelect.value = savedCurrency;
+
+        // Handle currency change
+        currencySelect.addEventListener('change', event => {
+            const newCurrency = event.target.value;
+            state.currency = newCurrency;
+            saveCurrencyPreference(newCurrency);
+            
+            // Re-render products with new currency
+            renderProducts(state.filteredProducts);
+            updateCartUI();
+            
+            // Update modal if open
+            if (currentModalProduct && productModal && productModal.classList.contains('active')) {
+                const priceDisplay = document.getElementById('modal-price-display');
+                if (priceDisplay && currentVariant) {
+                    const convertedPrice = convertPrice(currentVariant.retailPrice, newCurrency);
+                    priceDisplay.innerHTML = `<span class="price-current">${formatCurrency(convertedPrice, newCurrency)}</span>`;
+                }
+            }
+        });
+    }
+
     function initialiseShop() {
         showLoadingState();
 
@@ -1232,11 +1312,14 @@
         fetchPrintfulCatalog()
             .then(products => {
                 state.products = products;
-                state.currency = products[0]?.currency || DEFAULT_CURRENCY;
+                // Don't override currency with Printful's currency, use user preference
+                const savedCurrency = loadCurrencyPreference();
+                state.currency = savedCurrency;
                 state.categories = deriveCategories(products);
                 renderCategoryFilters();
                 applyFilters();
                 restoreSortSelection();
+                initialiseCurrencySelector();
             })
             .catch(error => {
                 console.error('Shop: Failed to load catalog', error);
