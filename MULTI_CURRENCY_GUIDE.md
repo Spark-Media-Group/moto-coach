@@ -14,21 +14,18 @@ Your Moto Coach shop now supports multiple currencies! Customers can choose thei
   - EUR € (Euro)
   - GBP £ (British Pound)
 
-### 2. Price Conversion
-- All prices are stored in AUD (Printful's base currency)
-- Prices are converted in real-time when displayed
-- Exchange rates are defined in `shop.js`:
-  ```javascript
-  const EXCHANGE_RATES = {
-      'AUD': 1.0,    // Base currency
-      'USD': 0.65,   // 1 AUD = 0.65 USD
-      'NZD': 1.08,   // 1 AUD = 1.08 NZD
-      'EUR': 0.60,   // 1 AUD = 0.60 EUR
-      'GBP': 0.51    // 1 AUD = 0.51 GBP
-  };
-  ```
+### 2. Live Exchange Rates from Stripe ✨
+- **Real-time rates**: Fetched directly from Stripe's Exchange Rates API
+- **Automatic caching**: Rates cached for 1 hour to reduce API calls
+- **Fallback system**: Uses cached rates (24h max) or static fallback if API fails
+- **localStorage cache**: Rates saved locally for offline fallback
+- Exchange rates are fetched on page load before products display
 
-### 3. Persistent Currency Preference
+### 3. Price Conversion
+- All prices are stored in AUD (Printful's base currency)
+- Prices are converted in real-time using live Stripe rates
+- Conversion happens at display time (products, modal, cart)
+- Stripe's rates ensure accuracy with actual payment processing
 - User's currency choice is saved to `localStorage`
 - Currency preference persists across page refreshes
 - Key: `motocoach_currency`
@@ -103,37 +100,35 @@ const audPrice = paidPrice / EXCHANGE_RATES[selectedCurrency];
 
 ## Updating Exchange Rates
 
-### Option 1: Manual Updates (Current)
-Edit the `EXCHANGE_RATES` object in `shop.js` with current rates.
+### ✅ Current Implementation: Live Stripe Rates
+The system now fetches real-time exchange rates from Stripe's API!
 
-### Option 2: Live Exchange Rates (Recommended)
-Fetch rates from an API on page load:
+**How it works:**
+1. On page load, `fetchExchangeRates()` is called
+2. Requests rates from `/api/stripe-exchange-rates` endpoint
+3. Endpoint calls Stripe's Exchange Rates API: `stripe.exchangeRates.retrieve('aud')`
+4. Rates are cached for 1 hour to reduce API calls
+5. If API fails, falls back to cached rates or static fallback
 
+**Cache Strategy:**
+- Server-side: 1 hour cache in memory
+- Client-side: 24 hour max age in localStorage
+- Automatic refresh when cache expires
+
+**Fallback Rates:**
+If all else fails, static rates are used:
 ```javascript
-async function fetchExchangeRates() {
-  try {
-    const response = await fetch('https://api.exchangerate-api.com/v4/latest/AUD');
-    const data = await response.json();
-    return {
-      'AUD': 1.0,
-      'USD': data.rates.USD,
-      'NZD': data.rates.NZD,
-      'EUR': data.rates.EUR,
-      'GBP': data.rates.GBP
-    };
-  } catch (error) {
-    console.error('Failed to fetch exchange rates:', error);
-    return EXCHANGE_RATES; // Fallback to static rates
-  }
-}
+const FALLBACK_EXCHANGE_RATES = {
+    'AUD': 1.0,
+    'USD': 0.65,
+    'NZD': 1.08,
+    'EUR': 0.60,
+    'GBP': 0.51
+};
 ```
 
-### Option 3: Use Stripe's Dynamic Currency Conversion
-Let Stripe handle the currency conversion automatically. Stripe will:
-- Show prices in customer's local currency
-- Handle conversion at current rates
-- Settle to your account in AUD
-- Charge a small fee for conversion
+### Manual Rate Updates
+To update fallback rates, edit `FALLBACK_EXCHANGE_RATES` in `shop.js`.
 
 ## Testing Multi-Currency
 
@@ -155,13 +150,48 @@ Let Stripe handle the currency conversion automatically. Stripe will:
 
 ## Files Modified
 
-1. `shop.html` - Added currency selector dropdown
-2. `shop.css` - Styled currency selector
-3. `shop.js` - Core multi-currency logic:
+1. **`shop.html`** - Added currency selector dropdown
+2. **`shop.css`** - Styled currency selector
+3. **`shop.js`** - Core multi-currency logic:
    - Exchange rate conversion
    - Currency preference storage
    - Price conversion in all views
    - Currency change event handling
+   - Live rate fetching from API
+   - Intelligent caching system
+4. **`api/stripe-exchange-rates.js`** - NEW: Serverless API endpoint
+   - Fetches live rates from Stripe
+   - Implements 1-hour server-side cache
+   - Provides fallback rates on error
+
+## API Endpoint Details
+
+### `/api/stripe-exchange-rates`
+**Method:** GET  
+**Response:**
+```json
+{
+  "rates": {
+    "AUD": 1.0,
+    "USD": 0.6542,
+    "NZD": 1.0823,
+    "EUR": 0.5987,
+    "GBP": 0.5124
+  },
+  "cached": false,
+  "timestamp": 1697472000000
+}
+```
+
+**Caching:** 
+- Rates cached in memory for 1 hour
+- Reduces Stripe API calls
+- Returns `cached: true` when serving from cache
+
+**Error Handling:**
+- Returns fallback rates on error
+- Includes `fallback: true` flag
+- Never throws errors to client
 
 ## Support
 

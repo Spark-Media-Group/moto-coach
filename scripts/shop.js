@@ -4,17 +4,20 @@
     const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
     const CART_STORAGE_KEY = 'motocoach_shop_cart';
     const CURRENCY_STORAGE_KEY = 'motocoach_currency';
+    const EXCHANGE_RATES_STORAGE_KEY = 'motocoach_exchange_rates';
     const DEFAULT_CURRENCY = 'AUD';
 
-    // Exchange rates (base: AUD)
-    // These should ideally be fetched from an API, but for now we'll use static rates
-    const EXCHANGE_RATES = {
+    // Fallback exchange rates (used if API fails)
+    const FALLBACK_EXCHANGE_RATES = {
         'AUD': 1.0,
         'USD': 0.65,
         'NZD': 1.08,
         'EUR': 0.60,
         'GBP': 0.51
     };
+
+    // Current exchange rates (will be updated from Stripe API)
+    let EXCHANGE_RATES = { ...FALLBACK_EXCHANGE_RATES };
 
     const state = {
         products: [],
@@ -23,7 +26,8 @@
         selectedCategory: 'all',
         sortBy: 'title-asc',
         cart: [],
-        currency: DEFAULT_CURRENCY
+        currency: DEFAULT_CURRENCY,
+        exchangeRatesLoaded: false
     };
 
     const loadingState = document.getElementById('loading-state');
@@ -93,6 +97,77 @@
             return saved || DEFAULT_CURRENCY;
         } catch (e) {
             return DEFAULT_CURRENCY;
+        }
+    }
+
+    // Fetch live exchange rates from Stripe
+    async function fetchExchangeRates() {
+        try {
+            console.log('[Exchange Rates] Fetching live rates from Stripe...');
+            
+            const response = await fetch('/api/stripe-exchange-rates', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch exchange rates: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            if (data.rates) {
+                EXCHANGE_RATES = data.rates;
+                
+                // Cache the rates with timestamp
+                try {
+                    localStorage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify({
+                        rates: data.rates,
+                        timestamp: Date.now()
+                    }));
+                } catch (e) {
+                    console.warn('[Exchange Rates] Unable to cache rates:', e);
+                }
+                
+                console.log('[Exchange Rates] Successfully loaded:', {
+                    cached: data.cached,
+                    rates: EXCHANGE_RATES
+                });
+                
+                state.exchangeRatesLoaded = true;
+                return true;
+            } else {
+                throw new Error('Invalid rates data received');
+            }
+        } catch (error) {
+            console.error('[Exchange Rates] Error fetching rates:', error);
+            
+            // Try to load from cache
+            try {
+                const cached = localStorage.getItem(EXCHANGE_RATES_STORAGE_KEY);
+                if (cached) {
+                    const { rates, timestamp } = JSON.parse(cached);
+                    const age = Date.now() - timestamp;
+                    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+                    
+                    if (age < maxAge) {
+                        EXCHANGE_RATES = rates;
+                        console.log('[Exchange Rates] Using cached rates (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
+                        state.exchangeRatesLoaded = true;
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.warn('[Exchange Rates] Unable to load cached rates:', e);
+            }
+            
+            // Fall back to static rates
+            EXCHANGE_RATES = { ...FALLBACK_EXCHANGE_RATES };
+            console.log('[Exchange Rates] Using fallback rates');
+            state.exchangeRatesLoaded = false;
+            return false;
         }
     }
 
@@ -1309,7 +1384,11 @@
         state.cart = loadCartFromStorage();
         updateCartUI();
 
-        fetchPrintfulCatalog()
+        // Fetch exchange rates first, then load products
+        fetchExchangeRates()
+            .then(() => {
+                return fetchPrintfulCatalog();
+            })
             .then(products => {
                 state.products = products;
                 // Don't override currency with Printful's currency, use user preference
