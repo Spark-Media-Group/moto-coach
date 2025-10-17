@@ -371,6 +371,46 @@
         });
     }
 
+    function extractColorName(label) {
+        if (!label || typeof label !== 'string') {
+            return '';
+        }
+
+        const parts = label.split('/');
+        return parts[0].trim();
+    }
+
+    function getVariantColorName(variant) {
+        if (!variant) {
+            return '';
+        }
+
+        const label = variant.optionLabel || variant.name || '';
+        return extractColorName(label) || label;
+    }
+
+    function areVariantIdsEqual(a, b) {
+        if (a == null || b == null) {
+            return false;
+        }
+
+        return String(a) === String(b);
+    }
+
+    function findVariantById(variantId, variants = null) {
+        if (variantId == null) {
+            return null;
+        }
+
+        const list = Array.isArray(variants) ? variants : (currentModalProduct?.variants || []);
+        if (!list.length) {
+            return null;
+        }
+
+        const target = String(variantId);
+        return list.find(variant => areVariantIdsEqual(variant.id, target)) || null;
+    }
+
     function buildImageGallery(product, variant = null) {
         // DEBUG: Log variant data
         console.log('[DEBUG buildImageGallery] Product:', product.name);
@@ -400,7 +440,7 @@
         // Build images array with variant metadata for color selection
         let images = colorVariants.map(v => ({
             url: v.imageUrl,
-            altText: `${product.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            altText: `${product.name} - ${getVariantColorName(v) || 'Variant'}`,
             variantId: v.id,
             baseVariant: v // Store reference to select this color
         }));
@@ -452,7 +492,7 @@
                 ${images.length > 1 ? `
                     <div class="selected-variant-label">
                         <strong>CHOOSE YOUR VARIANT</strong>
-                        <span class="variant-label-text" id="selected-color-name">${mainImage.baseVariant?.optionLabel || mainImage.baseVariant?.name || 'Select Color'}</span>
+                        <span class="variant-label-text" id="selected-color-name">${getVariantColorName(mainImage.baseVariant) || 'Select Color'}</span>
                     </div>
                 ` : ''}
         `;
@@ -520,12 +560,12 @@
         }
 
         // Build size-only dropdown
-        let html = '<div class="size-section">';
+        let html = '<div class="modal-variant-selection size-section">';
         html += '<label for="size-select">Choose Size</label>';
         html += '<select id="size-select" class="size-select">';
 
         sizesForCurrentColor.forEach((variant) => {
-            const selected = currentVariant && currentVariant.id === variant.id ? 'selected' : '';
+            const selected = currentVariant && areVariantIdsEqual(currentVariant.id, variant.id) ? 'selected' : '';
             // Try to extract size from variant name
             const label = variant.optionLabel || variant.name || '';
             // If label has "/", take part after it, otherwise use full label
@@ -557,10 +597,32 @@
         `;
     }
 
+    function attachSizeSelectListener() {
+        const sizeSelect = modalBody.querySelector('#size-select');
+        if (!sizeSelect) {
+            return;
+        }
+
+        if (currentVariant?.id != null) {
+            sizeSelect.value = String(currentVariant.id);
+        }
+
+        sizeSelect.addEventListener('change', () => {
+            const variants = currentModalProduct?.variants || [];
+            const selectedVariant = findVariantById(sizeSelect.value, variants);
+
+            if (selectedVariant) {
+                currentVariant = selectedVariant;
+                updateModalPrice();
+                updateVariantAvailability();
+            }
+        });
+    }
+
     function openProductModal(product) {
         currentModalProduct = product;
         const variants = product.variants || [];
-        currentVariant = variants.find(variant => variant.id === product.defaultVariantId)
+        currentVariant = variants.find(variant => areVariantIdsEqual(variant.id, product.defaultVariantId))
             || variants.find(variant => variant.isEnabled !== false)
             || variants[0]
             || null;
@@ -669,7 +731,7 @@
                     const variants = currentModalProduct.variants || [];
                     const clickedVariant = variants.find(v => v.id === variantId);
                     if (clickedVariant) {
-                        colorNameElement.textContent = clickedVariant.optionLabel || clickedVariant.name || 'Variant';
+                        colorNameElement.textContent = getVariantColorName(clickedVariant) || 'Variant';
                     }
                 }
                 
@@ -709,24 +771,7 @@
         });
 
         // Handle size dropdown changes
-        const handleSizeChange = () => {
-            const sizeSelect = modalBody.querySelector('#size-select');
-            if (sizeSelect) {
-                const selectedId = sizeSelect.value;
-                const variants = currentModalProduct?.variants || [];
-                const selectedVariant = variants.find(variant => variant.id === selectedId);
-                if (selectedVariant) {
-                    currentVariant = selectedVariant;
-                    updateModalPrice();
-                    updateVariantAvailability();
-                }
-            }
-        };
-
-        const sizeSelect = modalBody.querySelector('#size-select');
-        if (sizeSelect) {
-            sizeSelect.addEventListener('change', handleSizeChange);
-        }
+        attachSizeSelectListener();
 
         // Keep old variant-select for products without sizes
         const variantSelect = modalBody.querySelector('#variant-select');
@@ -734,7 +779,7 @@
             variantSelect.addEventListener('change', () => {
                 const selectedId = variantSelect.value;
                 const variants = currentModalProduct?.variants || [];
-                const selectedVariant = variants.find(variant => variant.id === selectedId);
+                const selectedVariant = findVariantById(selectedId, variants);
                 if (selectedVariant) {
                     currentVariant = selectedVariant;
                     updateModalPrice();
@@ -743,7 +788,7 @@
                 }
             });
             if (currentVariant) {
-                variantSelect.value = currentVariant.id;
+                variantSelect.value = String(currentVariant.id);
             }
         }
 
@@ -809,29 +854,37 @@
     }
 
     function updateSizeDropdown() {
-        const variantContainer = modalBody.querySelector('.modal-variant-selection');
-        if (variantContainer && currentModalProduct) {
-            const variants = currentModalProduct.variants || [];
-            const variantHTML = buildVariantSelection(currentModalProduct, variants);
-            
-            if (variantHTML) {
-                variantContainer.outerHTML = variantHTML;
-                
-                // Re-attach size dropdown listener
-                const sizeSelect = modalBody.querySelector('#size-select');
-                if (sizeSelect) {
-                    sizeSelect.addEventListener('change', () => {
-                        const selectedId = sizeSelect.value;
-                        const selectedVariant = variants.find(v => v.id === selectedId);
-                        if (selectedVariant) {
-                            currentVariant = selectedVariant;
-                            updateModalPrice();
-                            updateVariantAvailability();
-                        }
-                    });
-                }
-            }
+        if (!currentModalProduct) {
+            return;
         }
+
+        const variants = currentModalProduct.variants || [];
+        const variantHTML = buildVariantSelection(currentModalProduct, variants);
+        const hasContent = typeof variantHTML === 'string' && variantHTML.trim().length > 0;
+
+        const variantContainer = modalBody.querySelector('.modal-variant-selection');
+        if (!variantContainer) {
+            if (!hasContent) {
+                return;
+            }
+
+            const containerParent = modalBody.querySelector('.size-quantity-container');
+            if (!containerParent) {
+                return;
+            }
+
+            containerParent.insertAdjacentHTML('afterbegin', variantHTML);
+            attachSizeSelectListener();
+            return;
+        }
+
+        if (!hasContent) {
+            variantContainer.innerHTML = '';
+            return;
+        }
+
+        variantContainer.outerHTML = variantHTML;
+        attachSizeSelectListener();
     }
 
     function navigateGallery(direction) {
@@ -854,7 +907,7 @@
         
         let images = colorVariants.map(v => ({
             url: v.imageUrl,
-            altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
             variantId: v.id,
             baseVariant: v
         }));
@@ -925,7 +978,7 @@
         
         let images = colorVariants.map(v => ({
             url: v.imageUrl,
-            altText: `${currentModalProduct.name} - ${v.optionLabel || v.name || 'Variant'}`,
+            altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
             variantId: v.id,
             baseVariant: v
         }));
@@ -954,6 +1007,13 @@
         if (mainImage && image) {
             mainImage.src = image.url;
             mainImage.alt = image.altText || currentModalProduct?.name || 'Product image';
+        }
+
+        if (image) {
+            const colorNameElement = modalBody.querySelector('#selected-color-name');
+            if (colorNameElement) {
+                colorNameElement.textContent = getVariantColorName(image.baseVariant) || colorNameElement.textContent || 'Variant';
+            }
         }
 
         thumbnails.forEach((thumb, index) => {
@@ -1063,7 +1123,8 @@
     }
 
     function addItemToCart(product, variant, quantity) {
-        const existing = state.cart.find(item => item.variantId === variant.id);
+        const variantKey = String(variant.id);
+        const existing = state.cart.find(item => String(item.variantId) === variantKey);
         const price = Number.isFinite(variant.retailPrice) ? variant.retailPrice : product.priceRange?.min || 0;
         const currency = variant.currency || product.currency || state.currency || DEFAULT_CURRENCY;
         const image = variant.imageUrl || product.thumbnailUrl || (product.images && product.images[0]?.url) || null;
@@ -1095,7 +1156,7 @@
                 productId: product.id,
                 productName: product.name,
                 productPrintfulId: product.printfulId || null,
-                variantId: variant.id,
+                variantId: variantKey,
                 catalogVariantId: variant.catalogVariantId,
                 quantity,
                 price,
@@ -1115,13 +1176,13 @@
     }
 
     function removeCartItem(variantId) {
-        state.cart = state.cart.filter(item => item.variantId !== variantId);
+        state.cart = state.cart.filter(item => String(item.variantId) !== String(variantId));
         persistCart();
         updateCartUI();
     }
 
     function updateCartItemQuantity(variantId, quantity) {
-        const item = state.cart.find(cartItem => cartItem.variantId === variantId);
+        const item = state.cart.find(cartItem => String(cartItem.variantId) === String(variantId));
         if (!item) {
             return;
         }
@@ -1196,7 +1257,7 @@
             button.addEventListener('click', () => {
                 const variantId = button.getAttribute('data-variant');
                 const adjust = parseInt(button.getAttribute('data-adjust'), 10);
-                const item = state.cart.find(cartItem => cartItem.variantId === variantId);
+                const item = state.cart.find(cartItem => String(cartItem.variantId) === String(variantId));
                 if (!item) {
                     return;
                 }
@@ -1285,6 +1346,7 @@
                 .filter(item => item && item.variantId && item.catalogVariantId)
                 .map(item => ({
                     ...item,
+                    variantId: String(item.variantId),
                     placements: sanitisePlacementLayers(item.placements),
                     orderFiles: sanitiseOrderFiles(item.orderFiles),
                     defaultTechnique: typeof item.defaultTechnique === 'string' && item.defaultTechnique.trim()
