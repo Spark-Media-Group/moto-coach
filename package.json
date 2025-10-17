@@ -8,10 +8,10 @@
     "start": "vercel dev"
   },
   "dependencies": {
-    "resend": "^3.2.0",
+    "@vercel/analytics": "^1.1.1",
     "googleapis": "^128.0.0",
-    "stripe": "^12.18.0",
-    "@vercel/analytics": "^1.1.1"
+    "resend": "^3.2.0",
+    "stripe": "^19.1.0"
   },
   "engines": {
     "node": ">=18.0.0"
