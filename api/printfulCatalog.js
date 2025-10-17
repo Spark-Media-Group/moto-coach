@@ -5,8 +5,14 @@ const SYNC_PRODUCTS_ENDPOINT = `${PRINTFUL_API_BASE}/sync/products`;
 const SYNC_PRODUCT_ENDPOINT = (productId) => `${SYNC_PRODUCTS_ENDPOINT}/${encodeURIComponent(productId)}`;
 const CATALOG_PRODUCT_ENDPOINT = (productId) => `${PRINTFUL_API_BASE}/v2/catalog-products/${encodeURIComponent(productId)}`;
 const CATALOG_VARIANT_ENDPOINT = (variantId) => `${PRINTFUL_API_BASE}/v2/catalog-variants/${encodeURIComponent(variantId)}`;
+const CATEGORIES_ENDPOINT = `${PRINTFUL_API_BASE}/categories`;
 
 const DEFAULT_STORE_NAME = 'Personal orders';
+
+// Cache for Printful categories (so we don't fetch them on every request)
+let CATEGORIES_CACHE = null;
+let CATEGORIES_CACHE_TIMESTAMP = null;
+const CATEGORIES_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 function normaliseRegionName(region) {
     if (!region || typeof region !== 'string') {
@@ -642,6 +648,44 @@ async function fetchFromPrintful(apiKey, url, options = {}) {
     return data;
 }
 
+// Fetch and cache Printful categories
+async function fetchPrintfulCategories(apiKey) {
+    // Check if cache is still valid
+    const now = Date.now();
+    if (CATEGORIES_CACHE && CATEGORIES_CACHE_TIMESTAMP && (now - CATEGORIES_CACHE_TIMESTAMP < CATEGORIES_CACHE_DURATION)) {
+        return CATEGORIES_CACHE;
+    }
+
+    try {
+        const response = await fetchFromPrintful(apiKey, CATEGORIES_ENDPOINT);
+        const categories = response?.result?.categories || [];
+        
+        // Build a map of category ID -> category object for quick lookup
+        const categoryMap = new Map();
+        categories.forEach(cat => {
+            if (cat && cat.id) {
+                categoryMap.set(cat.id, {
+                    id: cat.id,
+                    title: cat.title || cat.name || 'General',
+                    parent_id: cat.parent_id || null,
+                    image_url: cat.image_url || null
+                });
+            }
+        });
+        
+        CATEGORIES_CACHE = categoryMap;
+        CATEGORIES_CACHE_TIMESTAMP = now;
+        
+        return categoryMap;
+    } catch (error) {
+        console.warn('Failed to fetch Printful categories, using empty map:', error.message);
+        // Return empty map if fetch fails, products will fall back to 'General'
+        CATEGORIES_CACHE = new Map();
+        CATEGORIES_CACHE_TIMESTAMP = now;
+        return CATEGORIES_CACHE;
+    }
+}
+
 let STORE_CONTEXT_CACHE = null;
 
 const PRODUCT_PLACEMENT_CACHE = new Map();
@@ -1135,11 +1179,34 @@ function collectImages(product, variants) {
     return Array.from(images.entries()).map(([url, altText]) => ({ url, altText }));
 }
 
-function deriveCategory(product) {
+function deriveCategory(product, categoryMap = null) {
     if (!product) {
         return null;
     }
 
+    // Try to get main_category_id from the product's first variant
+    let mainCategoryId = null;
+    
+    // Check variants for main_category_id
+    if (Array.isArray(product.variants) && product.variants.length > 0) {
+        const firstVariant = product.variants[0];
+        mainCategoryId = firstVariant.main_category_id 
+            || firstVariant.sync_variant?.main_category_id
+            || null;
+    }
+    
+    // If we have a category ID and a category map, look it up
+    if (mainCategoryId && categoryMap && categoryMap instanceof Map) {
+        const category = categoryMap.get(mainCategoryId);
+        if (category) {
+            return {
+                id: category.title.toLowerCase().replace(/[^a-z0-9]+/gi, '-'),
+                name: category.title
+            };
+        }
+    }
+
+    // Fallback to old logic if no category ID or map
     const categoryName = product.product?.main_category?.name
         || product.product?.product_type
         || product.main_category_name
@@ -1242,7 +1309,17 @@ function normaliseProduct(summary, detail, options = {}) {
             ? summary.tags
             : [];
 
-    const category = deriveCategory(product) || deriveCategory(summary);
+    // Get categoryMap from options
+    const categoryMap = options?.categoryMap instanceof Map ? options.categoryMap : null;
+    
+    // Create a temporary product object with variants for category derivation
+    const productWithVariants = {
+        ...product,
+        variants: variantsSource // Use raw variant source so we can access main_category_id
+    };
+    
+    const category = deriveCategory(productWithVariants, categoryMap) 
+        || deriveCategory(summary, categoryMap);
 
     return {
         id: `printful-product-${product.id ?? getSummaryId(summary) ?? Math.random().toString(36).slice(2)}`,
@@ -1350,6 +1427,9 @@ export default async function handler(req, res) {
             });
         }
 
+        // Fetch categories for proper category mapping
+        const categoryMap = await fetchPrintfulCategories(apiKey);
+
         const detailResults = await Promise.allSettled(
             productSummaries.map(async (summary) => {
                 const productId = getSummaryId(summary);
@@ -1382,7 +1462,8 @@ export default async function handler(req, res) {
 
             if (result.status === 'fulfilled') {
                 products.push(normaliseProduct(summary, result.value.detail, {
-                    variantPlacements: result.value.variantPlacements
+                    variantPlacements: result.value.variantPlacements,
+                    categoryMap: categoryMap
                 }));
             } else {
                 errors.push({
