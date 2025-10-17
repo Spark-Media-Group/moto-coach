@@ -1066,13 +1066,23 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
 
     console.log('💰 Costs breakdown:', { retailCosts, costs });
 
-    // Get destination country from shipping address
-    // Normalize country to 2-letter code (e.g., "United States" -> "US")
-    const countryRaw = checkoutData?.shippingAddress?.country || '';
-    const countryCode = normaliseCountryCode(countryRaw) || countryRaw;
+    // Get destination country from Printful response recipient info
+    // The quote response includes the recipient.country_code we sent
+    const recipientCountry = quoteResponse.recipient?.country_code 
+        || quoteResponse.recipient?.country
+        || checkoutData?.shippingAddress?.country 
+        || '';
+    
+    console.log('📍 Recipient info:', quoteResponse.recipient);
+    
+    // Normalize to 2-letter code if needed
+    const countryCode = recipientCountry.length === 2 
+        ? recipientCountry.toUpperCase() 
+        : normaliseCountryCode(recipientCountry) || recipientCountry;
+    
     const preferRetail = isTaxInclusiveCountry(countryCode);
     
-    console.log('🌍 Country & Tax Mode:', { countryRaw, countryCode, preferRetail });
+    console.log('🌍 Country & Tax Mode:', { recipientCountry, countryCode, preferRetail });
 
     // Choose costs based on destination:
     // - AU/NZ: prefer retail_costs (tax-inclusive, GST included)
