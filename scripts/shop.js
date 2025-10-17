@@ -11,9 +11,7 @@
     const FALLBACK_EXCHANGE_RATES = {
         'AUD': 1.0,
         'USD': 0.65,
-        'NZD': 1.08,
-        'EUR': 0.60,
-        'GBP': 0.51
+        'NZD': 1.08
     };
 
     // Current exchange rates (will be updated from Stripe API)
