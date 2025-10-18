@@ -646,7 +646,7 @@ function renderSummary(summary) {
     const shopTotals = hasShopItems ? calculateOrderTotal(summary) : { subtotal: 0, total: 0, currency: 'AUD' };
     const eventTotal = eventRegistration ? toNumber(eventRegistration.totalAmount) : 0;
 
-    const combinedTotal = toNumber(shopTotals.total) + eventTotal;
+    const combinedTotal = Number((toNumber(shopTotals.total) + eventTotal).toFixed(2));
     orderTotal = combinedTotal;
     currencyCode = hasShopItems ? (shopTotals.currency || 'AUD') : (eventRegistration?.currency || 'AUD');
 
@@ -680,15 +680,17 @@ function renderSummary(summary) {
             </div>
         `);
 
-        const taxAmountValue = parsePositiveNumber(summary?.cost?.taxAmount?.amount);
-        const taxIsPending = summary?.cost?.taxAmount?.pending === true;
-        
-        if (taxAmountValue != null || taxIsPending) {
-            const taxCurrency = summary?.cost?.taxAmount?.currencyCode || shippingCurrency || currencyCode;
-            const taxDisplay = (taxIsPending || taxAmountValue === 0) 
-                ? 'Calculated at checkout' 
-                : formatMoney(taxAmountValue, taxCurrency);
-            
+        const taxDetails = summary?.cost?.taxAmount || null;
+        const taxAmountValue = parsePositiveNumber(taxDetails?.amount);
+        const taxIsPending = taxDetails?.pending === true;
+        const taxIsIncluded = taxDetails?.included === true;
+
+        if (!taxIsIncluded && (taxAmountValue != null || taxIsPending)) {
+            const taxCurrency = taxDetails?.currencyCode || shippingCurrency || currencyCode;
+            const taxDisplay = taxIsPending
+                ? 'Calculated at checkout'
+                : formatMoney(taxAmountValue ?? 0, taxCurrency);
+
             totalsRows.push(`
                 <div class="checkout-total-row">
                     <span>Tax</span>
@@ -705,12 +707,36 @@ function renderSummary(summary) {
         </div>
     `);
 
+    let taxNoteMarkup = '';
+    if (hasShopItems) {
+        const taxDetails = summary?.cost?.taxAmount || null;
+        const taxAmountValue = parsePositiveNumber(taxDetails?.amount);
+        const taxCurrency = taxDetails?.currencyCode || currencyCode;
+        const taxIsIncluded = taxDetails?.included === true;
+        const taxIsPending = taxDetails?.pending === true;
+        const taxMode = summary?.taxDisplayMode || summary?.cost?.taxMode;
+        const defaultNote = summary?.taxDisplayNote || summary?.cost?.taxNote;
+
+        if (taxMode === 'tax_included' || taxIsIncluded) {
+            if (taxAmountValue != null && taxAmountValue > 0) {
+                taxNoteMarkup = `<p class="tax-note">Includes GST (${formatMoney(taxAmountValue, taxCurrency)})</p>`;
+            } else {
+                const inclusiveText = defaultNote || 'Includes GST.';
+                taxNoteMarkup = `<p class="tax-note">${inclusiveText}</p>`;
+            }
+        } else if (taxMode === 'tax_added' || taxIsPending) {
+            const noteText = defaultNote || 'Sales tax calculated at checkout.';
+            taxNoteMarkup = `<p class="tax-note">${noteText}</p>`;
+        }
+    }
+
     summaryEl.classList.remove('empty');
     summaryEl.innerHTML = `
         <h2>Order Summary</h2>
         <div class="checkout-items">${eventMarkup}${shopMarkup}</div>
         <div class="checkout-totals">
             ${totalsRows.join('')}
+            ${taxNoteMarkup}
         </div>
     `;
 
@@ -1081,14 +1107,16 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         : normaliseCountryCode(recipientCountry) || recipientCountry;
     
     const preferRetail = isTaxInclusiveCountry(countryCode);
-    
-    console.log('🌍 Country & Tax Mode:', { recipientCountry, countryCode, preferRetail });
+    const usingRetailCosts = Boolean(preferRetail && retailCosts);
+
+    console.log('🌍 Country & Tax Mode:', { recipientCountry, countryCode, preferRetail, usingRetailCosts });
 
     // Choose costs based on destination:
     // - AU/NZ: prefer retail_costs (tax-inclusive, GST included)
     // - Other countries (US): prefer costs (tax-exclusive, tax added at checkout)
-    const chosenCosts = (preferRetail && retailCosts) 
-        ? retailCosts 
+    // - Fallback: if retail costs unavailable, use Printful costs so totals still include tax
+    const chosenCosts = usingRetailCosts
+        ? retailCosts
         : (costs || retailCosts || {});
 
     const currency = quoteResponse.currency
@@ -1100,7 +1128,9 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
     const shippingAmount = parsePositiveNumber(chosenCosts?.shipping);
     const taxAmount = parsePositiveNumber(chosenCosts?.tax);
     const total = parsePositiveNumber(chosenCosts?.total);
-    const computedTotal = total ?? (subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0));
+    const calculatedTotal = subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0);
+    const computedTotal = total ?? calculatedTotal;
+    const finalTotal = Number.isFinite(computedTotal) ? Number(computedTotal.toFixed(2)) : Number(calculatedTotal.toFixed(2));
 
     checkoutData.cost = checkoutData.cost || {};
     checkoutData.cost.subtotalAmount = {
@@ -1108,12 +1138,16 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         currencyCode: currency
     };
     checkoutData.cost.totalAmount = {
-        amount: computedTotal.toFixed(2),
+        amount: finalTotal.toFixed(2),
         currencyCode: currency
     };
 
     // Store tax display mode for payment intent
-    checkoutData.taxDisplayMode = preferRetail ? 'tax_included' : 'tax_added';
+    const taxMode = preferRetail ? 'tax_included' : 'tax_added';
+    checkoutData.taxDisplayMode = taxMode;
+    checkoutData.taxDisplayNote = preferRetail ? 'Includes GST.' : 'Sales tax calculated at checkout.';
+    checkoutData.cost.taxMode = taxMode === 'tax_included' ? 'inclusive' : 'exclusive';
+    checkoutData.cost.taxNote = checkoutData.taxDisplayNote;
 
     if (shippingAmount != null) {
         checkoutData.cost.shippingAmount = {
@@ -1124,10 +1158,11 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         delete checkoutData.cost.shippingAmount;
     }
 
-    if (taxAmount != null && taxAmount > 0) {
+    if (taxAmount != null) {
         checkoutData.cost.taxAmount = {
             amount: taxAmount.toFixed(2),
-            currencyCode: currency
+            currencyCode: currency,
+            included: preferRetail === true
         };
         console.log('✅ Tax amount set:', checkoutData.cost.taxAmount);
     } else if (!preferRetail) {
@@ -1135,13 +1170,14 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         checkoutData.cost.taxAmount = {
             amount: '0.00',
             currencyCode: currency,
-            pending: true // Flag to show "calculated at checkout" message
+            pending: true,
+            included: false // Flag to show "calculated at checkout" message
         };
         console.log('⏳ Tax pending (US address):', checkoutData.cost.taxAmount);
     } else {
-        // For tax-inclusive countries (AU/NZ), don't show separate tax line
+        // For tax-inclusive countries (AU/NZ) without an explicit tax amount
         delete checkoutData.cost.taxAmount;
-        console.log('🇦🇺 Tax-inclusive country, no separate tax line');
+        console.log('🇦🇺 Tax-inclusive country, no explicit tax amount provided');
     }
 
     checkoutData.printfulQuote = {
@@ -1151,7 +1187,7 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
             subtotal,
             shipping: shippingAmount ?? 0,
             tax: taxAmount ?? 0,
-            total: computedTotal
+            total: finalTotal
         }
     };
 }

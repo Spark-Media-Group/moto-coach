@@ -301,6 +301,13 @@
     font-size: 1.05rem;
 }
 
+.checkout-totals .tax-note {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: #475569;
+    margin: 0.25rem 0 0;
+}
+
 .checkout-total-row {
     display: flex;
     justify-content: space-between;
