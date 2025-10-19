@@ -1033,8 +1033,8 @@ main {
     border-radius: 0;
     border: none;
     position: relative;
-    flex: 0 1 calc(33.333% - 2rem);
-    min-width: 200px;
+    flex: 0 1 clamp(180px, 28vw, 320px);
+    min-width: 180px;
 }
 
 .sponsor-logo a {
@@ -1163,12 +1163,14 @@ main {
     }
 
     .sponsors-grid {
-        flex-direction: column;
-        gap: clamp(2rem, 7vw, 3rem);
+        justify-content: center;
+        gap: clamp(1.5rem, 6vw, 2.5rem);
     }
-    
+
     .sponsor-logo {
-        padding: 1.5rem;
+        padding: clamp(1.1rem, 4vw, 1.5rem);
+        flex: 1 1 clamp(140px, 45vw, 200px);
+        min-width: clamp(140px, 42vw, 200px);
     }
     
     .sponsor-image {
