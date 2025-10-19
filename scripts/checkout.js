@@ -29,6 +29,19 @@ function isCheckoutEmpty(summary) {
     return !hasShopLineItems(summary) && !getEventRegistration(summary);
 }
 
+/**
+ * Determines if a country uses tax-inclusive pricing
+ * Australia and New Zealand include GST in displayed prices (use retail_costs)
+ * Other countries (e.g., US) show tax-exclusive prices (use costs)
+ */
+function isTaxInclusiveCountry(countryCode) {
+    if (!countryCode || typeof countryCode !== 'string') {
+        return false;
+    }
+    const code = countryCode.toUpperCase();
+    return code === 'AU' || code === 'NZ';
+}
+
 function clearCheckoutStorage() {
     checkoutData = null;
     try {
@@ -668,12 +681,18 @@ function renderSummary(summary) {
         `);
 
         const taxAmountValue = parsePositiveNumber(summary?.cost?.taxAmount?.amount);
-        if (taxAmountValue != null && taxAmountValue > 0) {
+        const taxIsPending = summary?.cost?.taxAmount?.pending === true;
+        
+        if (taxAmountValue != null || taxIsPending) {
             const taxCurrency = summary?.cost?.taxAmount?.currencyCode || shippingCurrency || currencyCode;
+            const taxDisplay = (taxIsPending || taxAmountValue === 0) 
+                ? 'Calculated at checkout' 
+                : formatMoney(taxAmountValue, taxCurrency);
+            
             totalsRows.push(`
                 <div class="checkout-total-row">
-                    <span>Taxes</span>
-                    <span>${formatMoney(taxAmountValue, taxCurrency)}</span>
+                    <span>Tax</span>
+                    <span>${taxDisplay}</span>
                 </div>
             `);
         }
@@ -895,7 +914,8 @@ async function createPaymentIntent(metadata = {}) {
         body: JSON.stringify({
             amount: orderTotal,
             currency: currencyCode,
-            metadata: enhancedMetadata
+            metadata: enhancedMetadata,
+            taxDisplayMode: checkoutData?.taxDisplayMode || 'unknown'
         })
     });
 
@@ -1035,6 +1055,8 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         return;
     }
 
+    console.log('📊 Printful Quote Response:', quoteResponse);
+
     const retailCosts = quoteResponse.retail_costs && typeof quoteResponse.retail_costs === 'object'
         ? quoteResponse.retail_costs
         : null;
@@ -1042,16 +1064,42 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         ? quoteResponse.costs
         : null;
 
+    console.log('💰 Costs breakdown:', { retailCosts, costs });
+
+    // Get destination country from Printful response recipient info
+    // The quote response includes the recipient.country_code we sent
+    const recipientCountry = quoteResponse.recipient?.country_code 
+        || quoteResponse.recipient?.country
+        || checkoutData?.shippingAddress?.country 
+        || '';
+    
+    console.log('📍 Recipient info:', quoteResponse.recipient);
+    
+    // Normalize to 2-letter code if needed
+    const countryCode = recipientCountry.length === 2 
+        ? recipientCountry.toUpperCase() 
+        : normaliseCountryCode(recipientCountry) || recipientCountry;
+    
+    const preferRetail = isTaxInclusiveCountry(countryCode);
+    
+    console.log('🌍 Country & Tax Mode:', { recipientCountry, countryCode, preferRetail });
+
+    // Choose costs based on destination:
+    // - AU/NZ: prefer retail_costs (tax-inclusive, GST included)
+    // - Other countries (US): prefer costs (tax-exclusive, tax added at checkout)
+    const chosenCosts = (preferRetail && retailCosts) 
+        ? retailCosts 
+        : (costs || retailCosts || {});
+
     const currency = quoteResponse.currency
-        || retailCosts?.currency
-        || costs?.currency
+        || chosenCosts?.currency
         || checkoutData?.cost?.totalAmount?.currencyCode
         || currencyCode;
 
-    const subtotal = parsePositiveNumber(retailCosts?.subtotal ?? costs?.subtotal ?? checkoutData?.cost?.subtotalAmount?.amount) ?? 0;
-    const shippingAmount = parsePositiveNumber(retailCosts?.shipping ?? costs?.shipping);
-    const taxAmount = parsePositiveNumber(retailCosts?.tax ?? costs?.tax);
-    const total = parsePositiveNumber(retailCosts?.total ?? costs?.total);
+    const subtotal = parsePositiveNumber(chosenCosts?.subtotal ?? checkoutData?.cost?.subtotalAmount?.amount) ?? 0;
+    const shippingAmount = parsePositiveNumber(chosenCosts?.shipping);
+    const taxAmount = parsePositiveNumber(chosenCosts?.tax);
+    const total = parsePositiveNumber(chosenCosts?.total);
     const computedTotal = total ?? (subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0));
 
     checkoutData.cost = checkoutData.cost || {};
@@ -1064,6 +1112,9 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         currencyCode: currency
     };
 
+    // Store tax display mode for payment intent
+    checkoutData.taxDisplayMode = preferRetail ? 'tax_included' : 'tax_added';
+
     if (shippingAmount != null) {
         checkoutData.cost.shippingAmount = {
             amount: shippingAmount.toFixed(2),
@@ -1073,13 +1124,24 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         delete checkoutData.cost.shippingAmount;
     }
 
-    if (taxAmount != null) {
+    if (taxAmount != null && taxAmount > 0) {
         checkoutData.cost.taxAmount = {
             amount: taxAmount.toFixed(2),
             currencyCode: currency
         };
+        console.log('✅ Tax amount set:', checkoutData.cost.taxAmount);
+    } else if (!preferRetail) {
+        // For tax-exclusive countries (US), show placeholder when tax isn't available yet
+        checkoutData.cost.taxAmount = {
+            amount: '0.00',
+            currencyCode: currency,
+            pending: true // Flag to show "calculated at checkout" message
+        };
+        console.log('⏳ Tax pending (US address):', checkoutData.cost.taxAmount);
     } else {
+        // For tax-inclusive countries (AU/NZ), don't show separate tax line
         delete checkoutData.cost.taxAmount;
+        console.log('🇦🇺 Tax-inclusive country, no separate tax line');
     }
 
     checkoutData.printfulQuote = {

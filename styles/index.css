@@ -1019,7 +1019,8 @@ main {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6rem;
+    gap: 2rem;
+    flex-wrap: wrap;
 }
 
 .sponsor-logo {
@@ -1032,6 +1033,16 @@ main {
     border-radius: 0;
     border: none;
     position: relative;
+    flex: 0 1 calc(33.333% - 2rem);
+    min-width: 200px;
+}
+
+.sponsor-logo a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
 }
 
 .sponsor-logo::before {
@@ -1064,8 +1075,16 @@ main {
     transition: filter 0.3s ease;
 }
 
+.sponsor-image-white {
+    filter: brightness(0) invert(1) brightness(2);
+}
+
 .sponsor-logo:hover .sponsor-image {
     filter: brightness(1.3) contrast(1.15);
+}
+
+.sponsor-logo:hover .sponsor-image-white {
+    filter: brightness(0) invert(1) brightness(2.2);
 }
 
 .sponsors-copy {
