@@ -1011,19 +1011,19 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
                                     <div style="margin-top:32px; padding:18px 20px; background-color:#f9fafb; border-radius:12px;">
                                         <p style="margin:0 0 12px; font-size:16px; font-weight:600; color:#111827;">What's Next?</p>
                                         <ul style="margin:0; padding-left:20px; color:#374151; line-height:1.6; font-size:14px;">
-                                            <li>We'll confirm availability and send session details.</li>
+                                            <li>Final instructions will be sent out by email the Friday prior to coaching.</li>
                                             <li>Please arrive 15 minutes early for rider check-in.</li>
                                             <li>Bring full safety gear (helmet, boots, gloves).</li>
                                         </ul>
                                     </div>
                                     <div style="margin-top:28px; padding:16px 20px; background-color:#fef3ec; border-radius:12px;">
-                                        <p style="margin:0; font-size:13px; color:#b45309;">Need to make a change? Reply directly to this email or contact us via <a href="https://motocoach.com.au/contact" style="color:#ff6b35; text-decoration:none;">motocoach.com.au/contact</a>.</p>
+                                        <p style="margin:0; font-size:13px; color:#b45309;">Need to confirm your time slot? Email <a href="mailto:leigh@motocoach.com.au" style="color:#ff6b35; text-decoration:none;">leigh@motocoach.com.au</a> or contact us via <a href="https://motocoach.com.au/contact" style="color:#ff6b35; text-decoration:none;">motocoach.com.au/contact</a>.</p>
                                     </div>
                                 </td>
                             </tr>
                             <tr>
                                 <td style="padding:20px 24px 28px; text-align:center; background-color:#111827; color:#f9fafb;">
-                                    <p style="margin:0 0 8px; font-size:14px;">Questions? Email <a href="mailto:inquiries@motocoach.com.au" style="color:#f97316; text-decoration:none;">inquiries@motocoach.com.au</a></p>
+                                    <p style="margin:0 0 8px; font-size:14px;">Questions? Email <a href="mailto:leigh@motocoach.com.au" style="color:#f97316; text-decoration:none;">leigh@motocoach.com.au</a></p>
                                     <p style="margin:0; font-size:12px; letter-spacing:1px; text-transform:uppercase; color:rgba(249, 250, 251, 0.7);">Moto Coach Event Reservation</p>
                                 </td>
                             </tr>
@@ -1060,11 +1060,11 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
 ${commentsPlain}` : '',
             commentsPlain ? '' : null,
             "What's Next?",
-            "• We'll confirm availability and send session details",
+            "• Final instructions will be sent out by email the Friday prior to coaching",
             '• Arrive 15 minutes early for check-in',
             '• Bring full safety gear (helmet, boots, gloves)',
             '',
-            'Questions? Email inquiries@motocoach.com.au',
+            'Questions? Email leigh@motocoach.com.au',
             '',
             '---',
             'Moto Coach Event Reservation'
@@ -1073,7 +1073,7 @@ ${commentsPlain}` : '',
         const plainTextMessage = plainTextLines.join('\n');
 
         const { error } = await resend.emails.send({
-            from: 'Moto Coach <registrations@motocoach.com.au>',
+            from: 'Moto Coach <noreply@motocoach.com.au>',
             to: [recipient.email],
             subject: subjectLine,
             html: htmlEmail,
