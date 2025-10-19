@@ -474,11 +474,23 @@ html {
     transition: all 0.3s ease;
     position: relative;
     z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 a.info-link:hover {
     color: var(--contact-orange);
     text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+}
+
+.flag-icon {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
+.phone-number {
+    display: inline-block;
 }
 
 /* ===================================
