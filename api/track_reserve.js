@@ -617,10 +617,10 @@ export default async function handler(req, res) {
                         rider.dateOfBirth, // Column H: Date of Birth
                         rider.email, // Column I: Rider Email (individual per rider, 18+ only)
                         rider.phone, // Column J: Rider Phone (individual per rider, 18+ only)
-                        formData.contactFirstName || '', // Column K: Parent/Contact First Name
-                        formData.contactLastName || '', // Column L: Parent/Contact Last Name
-                        formData.contactEmail || '', // Column M: Parent/Contact Email
-                        formData.contactPhone || '', // Column N: Parent/Contact Phone
+                        formData.contactFirstName || '', // Column K: Point of Contact First Name
+                        formData.contactLastName || '', // Column L: Point of Contact Last Name
+                        formData.contactEmail || '', // Column M: Point of Contact Email
+                        formData.contactPhone || '', // Column N: Point of Contact Phone
                         formData.comments || '', // Column O: Additional Comments
                     ];
                     rows.push(rowData);
@@ -646,10 +646,10 @@ export default async function handler(req, res) {
                     rider.dateOfBirth, // Column H: Date of Birth
                     rider.email, // Column I: Rider Email (individual per rider, 18+ only)
                     rider.phone, // Column J: Rider Phone (individual per rider, 18+ only)
-                    formData.contactFirstName || '', // Column K: Parent/Contact First Name
-                    formData.contactLastName || '', // Column L: Parent/Contact Last Name
-                    formData.contactEmail || '', // Column M: Parent/Contact Email
-                    formData.contactPhone || '', // Column N: Parent/Contact Phone
+                    formData.contactFirstName || '', // Column K: Point of Contact First Name
+                    formData.contactLastName || '', // Column L: Point of Contact Last Name
+                    formData.contactEmail || '', // Column M: Point of Contact Email
+                    formData.contactPhone || '', // Column N: Point of Contact Phone
                     formData.comments || '', // Column O: Additional Comments
                 ];
                 rows.push(rowData);
@@ -665,10 +665,10 @@ export default async function handler(req, res) {
                 '', '', '', '', '', // Empty rider info (columns D-H)
                 formData.riderEmail || '', // Column I: Rider Email
                 formData.riderPhone || '', // Column J: Rider Phone
-                formData.contactFirstName || '', // Column K: Parent/Contact First Name
-                formData.contactLastName || '', // Column L: Parent/Contact Last Name
-                formData.contactEmail || '', // Column M: Parent/Contact Email
-                formData.contactPhone || '', // Column N: Parent/Contact Phone
+                formData.contactFirstName || '', // Column K: Point of Contact First Name
+                formData.contactLastName || '', // Column L: Point of Contact Last Name
+                formData.contactEmail || '', // Column M: Point of Contact Email
+                formData.contactPhone || '', // Column N: Point of Contact Phone
                 formData.comments || '', // Column O: Additional Comments
             ];
             rows.push(rowData);
@@ -737,37 +737,14 @@ async function sendConfirmationEmails(riders, formData) {
         
         // Use a Map to track unique email addresses and their details
         const emailRecipients = new Map();
-        
-        for (const rider of riders) {
-            if (rider.dateOfBirth) {
-                // Parse Australian date format DD/MM/YYYY
-                const [day, month, year] = rider.dateOfBirth.split('/');
-                const dob = new Date(year, month - 1, day);
-                const today = new Date();
-                
-                let age = today.getFullYear() - dob.getFullYear();
-                const monthDiff = today.getMonth() - dob.getMonth();
-                
-                if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-                    age--;
-                }
-                
-                // If rider is 18+ and has email, send to rider
-                if (age >= 18 && rider.email && !emailRecipients.has(rider.email)) {
-                    emailRecipients.set(rider.email, {
-                        email: rider.email,
-                        name: `${rider.firstName} ${rider.lastName}`,
-                        isRider: true
-                    });
-                }
-            }
-        }
-        
-        // Always send to parent/emergency contact
-        if (formData.contactEmail && !emailRecipients.has(formData.contactEmail)) {
-            emailRecipients.set(formData.contactEmail, {
-                email: formData.contactEmail,
-                name: `${formData.contactFirstName} ${formData.contactLastName}`,
+
+        const contactEmail = (formData.contactEmail || '').trim();
+
+        if (contactEmail) {
+            const contactName = `${formData.contactFirstName || ''} ${formData.contactLastName || ''}`.trim();
+            emailRecipients.set(contactEmail, {
+                email: contactEmail,
+                name: contactName || 'Point of Contact',
                 isRider: false
             });
         }
@@ -887,7 +864,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
         const totalAmountText = totalAmountFormatted || '';
 
         const bookingSummaryRows = [
-            { label: 'Primary Contact', value: contactFullNameHtml || 'N/A' },
+            { label: 'Point of Contact', value: contactFullNameHtml || 'N/A' },
             {
                 label: 'Email',
                 value: contactEmail && contactEmailHref
@@ -1044,7 +1021,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
                 : 'Thank you for reserving your Moto Coach track session.',
             '',
             'Booking Summary:',
-            `Contact: ${contactFullNameText || 'N/A'}`,
+            `Point of Contact: ${contactFullNameText || 'N/A'}`,
             `Email: ${contactEmail || 'N/A'}`,
             `Phone: ${contactPhone || 'N/A'}`,
             `Riders: ${riderCount}`,
