@@ -1,0 +1,841 @@
+/* ===================================
+   TRACK RESERVE STYLES
+   Industrial. Raw. Dirt-ready.
+   =================================== */
+
+:root {
+    --track-black: #0a0a0a;
+    --track-charcoal: #1a1a1a;
+    --track-steel: #2a2a2a;
+    --track-concrete: #3a3a3a;
+    --track-white: #f8f8f8;
+    --track-grey: rgba(248, 248, 248, 0.65);
+    --track-orange: #ff6b35;
+    --track-orange-glow: rgba(255, 107, 53, 0.25);
+    --track-max-width: 1200px;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+/* ===================================
+   SCROLL ANIMATIONS
+   =================================== */
+
+.fade-in-up,
+.fade-in-scale {
+    opacity: 0;
+    transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-in-up {
+    transform: translateY(40px);
+}
+
+.fade-in-scale {
+    transform: scale(0.95);
+}
+
+.fade-in-up.is-visible,
+.fade-in-scale.is-visible {
+    opacity: 1;
+    transform: translate(0) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fade-in-up,
+    .fade-in-scale {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+}
+
+/* ===================================
+   BASE PAGE STYLES
+   =================================== */
+
+.apply-page {
+    background: var(--track-black);
+    color: var(--track-white);
+    min-height: 100vh;
+    position: relative;
+}
+
+/* Industrial texture overlay */
+.apply-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px);
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ===================================
+   MAIN CONTAINER
+   =================================== */
+
+.apply-container {
+    padding: clamp(6rem, 12vw, 10rem) 0 clamp(3rem, 8vw, 6rem);
+    position: relative;
+    z-index: 1;
+}
+
+.container {
+    max-width: var(--track-max-width);
+    margin: 0 auto;
+    padding: 0 clamp(1.5rem, 4vw, 3rem);
+}
+
+/* ===================================
+   BACK BUTTON
+   =================================== */
+
+.back-button-center {
+    margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.back-btn-simple {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.85rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--track-grey);
+    text-decoration: none;
+    padding: 0.75rem 1.5rem;
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    background: rgba(42, 42, 42, 0.5);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+}
+
+.back-btn-simple::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--track-orange);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s ease;
+}
+
+.back-btn-simple:hover {
+    border-color: var(--track-orange);
+    color: var(--track-white);
+    transform: translateX(-5px);
+}
+
+.back-btn-simple:hover::before {
+    transform: scaleX(1);
+}
+
+.back-btn-simple svg {
+    transition: transform 0.3s ease;
+}
+
+.back-btn-simple:hover svg {
+    transform: translateX(-3px);
+}
+
+/* ===================================
+   FORM CONTAINER
+   =================================== */
+
+.track-reservation-form-container {
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.8), rgba(26, 26, 26, 0.8));
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(248, 248, 248, 0.08);
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+}
+
+/* Diagonal stripe pattern */
+.track-reservation-form-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 107, 53, 0.02) 10px,
+        rgba(255, 107, 53, 0.02) 20px
+    );
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Animated accent line */
+.track-reservation-form-container::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--track-orange), transparent);
+    animation: accentSlide 3s ease-in-out infinite;
+}
+
+@keyframes accentSlide {
+    0%, 100% {
+        transform: translateX(-100%);
+    }
+    50% {
+        transform: translateX(100%);
+    }
+}
+
+/* ===================================
+   FORM HEADER
+   =================================== */
+
+.form-header {
+    padding: clamp(2rem, 4vw, 3rem) clamp(2rem, 4vw, 3rem) clamp(1.5rem, 3vw, 2rem);
+    border-bottom: 1px solid rgba(248, 248, 248, 0.08);
+    position: relative;
+    z-index: 1;
+}
+
+.form-header h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    color: var(--track-white);
+    margin-bottom: 0.75rem;
+    position: relative;
+    display: inline-block;
+}
+
+.form-header h2::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: var(--track-orange);
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.6);
+}
+
+.form-header p {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: clamp(0.95rem, 2vw, 1.1rem);
+    color: var(--track-grey);
+    margin-top: 1.5rem;
+}
+
+/* ===================================
+   FORM STYLES
+   =================================== */
+
+.track-reservation-form {
+    padding: clamp(2rem, 4vw, 3rem);
+    position: relative;
+    z-index: 1;
+}
+
+.form-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 107, 53, 0.2);
+}
+
+.form-section-header h3 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--track-orange);
+    margin: 0;
+}
+
+.form-section-header p {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.9rem;
+    color: var(--track-grey);
+}
+
+/* ===================================
+   EVENT DETAILS DISPLAY
+   =================================== */
+
+.event-details-display {
+    background: rgba(42, 42, 42, 0.6);
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    border-left: 3px solid var(--track-orange);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+}
+
+.event-details-display::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.05));
+    pointer-events: none;
+}
+
+.event-title {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--track-white);
+    margin-bottom: 0.75rem;
+}
+
+.event-time,
+.event-location,
+.event-description {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--track-grey);
+    margin-bottom: 0.5rem;
+}
+
+.event-description {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(248, 248, 248, 0.05);
+}
+
+/* ===================================
+   RIDER SECTIONS
+   =================================== */
+
+.rider-section {
+    background: rgba(42, 42, 42, 0.4);
+    border: 1px solid rgba(248, 248, 248, 0.08);
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    transition: all 0.3s ease;
+    border-radius: 0;
+}
+
+.rider-section:hover {
+    border-color: rgba(255, 107, 53, 0.3);
+    background: rgba(42, 42, 42, 0.6);
+}
+
+.rider-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(248, 248, 248, 0.05);
+}
+
+.rider-header h4 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--track-orange);
+    margin: 0;
+}
+
+.remove-rider-btn {
+    background: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    color: #ff6b6b;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0;
+}
+
+.remove-rider-btn:hover {
+    background: rgba(220, 53, 69, 0.2);
+    border-color: rgba(220, 53, 69, 0.6);
+    transform: scale(1.1);
+}
+
+/* ===================================
+   FORM ROWS & GROUPS
+   =================================== */
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--track-orange);
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    padding: 0.95rem 1.15rem;
+    background: rgba(42, 42, 42, 0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    border-left: 3px solid rgba(255, 107, 53, 0.3);
+    color: var(--track-white);
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+    border-radius: 0;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--track-orange);
+    border-left-color: var(--track-orange);
+    box-shadow: 
+        inset 0 1px 3px rgba(0, 0, 0, 0.3),
+        0 0 0 3px rgba(255, 107, 53, 0.15),
+        0 0 20px rgba(255, 107, 53, 0.2);
+    background: rgba(42, 42, 42, 0.9);
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: rgba(248, 248, 248, 0.3);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+/* ===================================
+   RIDER CONTACT SECTION
+   =================================== */
+
+.rider-contact-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(248, 248, 248, 0.05);
+}
+
+.rider-contact-section h4 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--track-grey);
+    margin-bottom: 1rem;
+}
+
+/* ===================================
+   BUTTONS
+   =================================== */
+
+.btn-secondary {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 0.75rem 1.75rem;
+    background: transparent;
+    border: 1px solid rgba(248, 248, 248, 0.2);
+    color: var(--track-white);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    border-radius: 0;
+}
+
+.btn-secondary:hover {
+    border-color: var(--track-orange);
+    background: rgba(255, 107, 53, 0.1);
+    color: var(--track-orange);
+}
+
+/* ===================================
+   PRICING SUMMARY
+   =================================== */
+
+.pricing-summary {
+    background: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(42, 42, 42, 0.6));
+    border: 1px solid rgba(255, 107, 53, 0.2);
+    border-left: 3px solid var(--track-orange);
+    padding: 1.75rem;
+    margin-bottom: 2rem;
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+}
+
+.pricing-summary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 107, 53, 0.05));
+    pointer-events: none;
+}
+
+.pricing-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    font-family: 'Roboto Condensed', sans-serif;
+    color: var(--track-grey);
+    position: relative;
+}
+
+.pricing-row:not(:last-child) {
+    border-bottom: 1px solid rgba(248, 248, 248, 0.05);
+}
+
+.pricing-row.total {
+    margin-top: 0.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid rgba(255, 107, 53, 0.3);
+    font-weight: 700;
+}
+
+.pricing-label {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.pricing-value {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--track-white);
+}
+
+.pricing-row.total .pricing-label {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1.2rem;
+    letter-spacing: 0.1em;
+    color: var(--track-orange);
+}
+
+.pricing-row.total .pricing-value {
+    font-size: 1.8rem;
+    color: var(--track-orange);
+    text-shadow: 0 0 15px rgba(255, 107, 53, 0.4);
+}
+
+#availabilityNote {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: rgba(255, 107, 53, 0.1);
+    border-left: 3px solid var(--track-orange);
+    border-radius: 0;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--track-grey);
+}
+
+#availabilityNote strong {
+    color: var(--track-orange);
+    font-weight: 700;
+}
+
+/* ===================================
+   FORM SUBMIT
+   =================================== */
+
+.form-submit {
+    margin-top: 2rem;
+}
+
+.btn-register,
+.btn-large {
+    font-family: 'Oswald', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    padding: 1.25rem 3rem;
+    background: linear-gradient(135deg, var(--track-orange), #e55a28);
+    border: 2px solid var(--track-orange);
+    color: var(--track-white);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    font-weight: 700;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 
+        0 4px 15px rgba(255, 107, 53, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: 0;
+}
+
+.btn-register::before,
+.btn-large::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-register:hover,
+.btn-large:hover {
+    background: linear-gradient(135deg, #e55a28, var(--track-orange));
+    box-shadow: 
+        0 6px 25px rgba(255, 107, 53, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    border-color: #ff8c5f;
+}
+
+.btn-register:hover::before,
+.btn-large:hover::before {
+    left: 100%;
+}
+
+.btn-register:active,
+.btn-large:active {
+    transform: translateY(0);
+    box-shadow: 
+        0 2px 10px rgba(255, 107, 53, 0.3),
+        inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* ===================================
+   MODALS
+   =================================== */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 1.5rem;
+}
+
+.modal-content {
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.95), rgba(26, 26, 26, 0.95));
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    padding: clamp(2rem, 4vw, 3rem);
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    border-radius: 0;
+}
+
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--track-orange), transparent);
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.modal-header h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--track-white);
+    margin: 1rem 0 0.5rem;
+}
+
+.modal-header p {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    color: var(--track-grey);
+}
+
+.modal-body {
+    margin-bottom: 2rem;
+}
+
+.calendar-action-intro {
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 0.95rem;
+    color: var(--track-grey);
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.calendar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.btn-home {
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.9rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 1rem 2.5rem;
+    background: var(--track-orange);
+    border: 2px solid var(--track-orange);
+    color: var(--track-white);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+    border-radius: 0;
+}
+
+.btn-home:hover {
+    background: transparent;
+    box-shadow: 0 0 25px rgba(255, 107, 53, 0.4);
+}
+
+#errorDetails {
+    font-family: 'Roboto Condensed', sans-serif;
+    color: var(--track-grey);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    white-space: pre-line;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+/* ===================================
+   RESPONSIVE
+   =================================== */
+
+@media (max-width: 768px) {
+    .apply-container {
+        padding: clamp(4rem, 8vw, 6rem) 0 clamp(2rem, 4vw, 3rem);
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .form-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .btn-secondary {
+        width: 100%;
+        text-align: center;
+    }
+
+    .pricing-row {
+        font-size: 0.9rem;
+    }
+
+    .pricing-value {
+        font-size: 1rem;
+    }
+
+    .pricing-row.total .pricing-value {
+        font-size: 1.4rem;
+    }
+
+    .modal-content {
+        padding: 1.5rem;
+    }
+
+    .calendar-actions {
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 520px) {
+    .form-header h2 {
+        font-size: 1.75rem;
+    }
+
+    .rider-section {
+        padding: 1.25rem;
+    }
+
+    .pricing-summary {
+        padding: 1.25rem;
+    }
+
+    .btn-register,
+    .btn-large {
+        padding: 1rem 2rem;
+        font-size: 0.9rem;
+    }
+}

@@ -46,6 +46,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@300;400;700;900&family=Oswald:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../styles/main.css">
+    <link rel="stylesheet" href="../styles/track_reserve.css">
 </head>
 <body class="apply-page">
     <!-- Header -->
@@ -97,7 +98,7 @@
     <main class="apply-container">
         <div class="container">
             <!-- Back Button -->
-            <div class="back-button-center">
+            <div class="back-button-center fade-in-up">
                 <a href="/calendar" class="back-btn-simple">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                         <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z"/>
@@ -107,7 +108,7 @@
             </div>
             
             <!-- Track Reservation Form -->
-            <div class="track-reservation-form-container">
+            <div class="track-reservation-form-container fade-in-scale">
                 <div class="form-header">
                     <h2>RESERVE YOUR SPOT</h2>
                     <p>Book a spot with Leigh's coaching services.</p>
@@ -200,9 +201,9 @@
                         </div>
                     </div>
 
-                    <!-- Parent/Guardian/Emergency Contact (Always shown) -->
+                    <!-- Point of Contact (Always shown) -->
                     <div class="form-section-header">
-                        <h3>Parent/Guardian/Emergency Contact</h3>
+                        <h3>Point of Contact</h3>
                         <p style="color: #ccc; margin: 0; font-size: 0.9em;">Required for all registrations</p>
                     </div>
                     <div class="form-row">
@@ -331,5 +332,28 @@
     <!-- Vercel BotID client initialises inside track_reserve.js -->
     <script type="module" src="../scripts/track_reserve.js"></script>
     <script src="../scripts/analytics.js"></script>
+    
+    <!-- Scroll Animations -->
+    <script>
+        // Intersection Observer for scroll animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('is-visible');
+                }
+            });
+        }, observerOptions);
+
+        // Observe all animated elements
+        document.addEventListener('DOMContentLoaded', () => {
+            const animatedElements = document.querySelectorAll('.fade-in-up, .fade-in-scale');
+            animatedElements.forEach(el => observer.observe(el));
+        });
+    </script>
 </body>
 </html>
