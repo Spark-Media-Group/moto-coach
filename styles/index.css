@@ -1163,12 +1163,14 @@ main {
     }
 
     .sponsors-grid {
-        flex-direction: column;
-        gap: clamp(2rem, 7vw, 3rem);
+        flex-direction: row;
+        gap: clamp(1.5rem, 4vw, 2rem);
     }
     
     .sponsor-logo {
         padding: 1.5rem;
+        flex: 0 1 calc(50% - 1rem);
+        min-width: 140px;
     }
     
     .sponsor-image {
