@@ -240,20 +240,24 @@ function readCheckoutData() {
 }
 
 function formatMoney(amount, currency = 'AUD') {
-    if (amount == null || Number.isNaN(amount)) {
-        return `${currency} 0.00`;
+    const safeCurrency = typeof currency === 'string' ? currency.toUpperCase() : 'AUD';
+    const numeric = typeof amount === 'number' ? amount : parseFloat(amount);
+
+    if (!Number.isFinite(numeric)) {
+        return `${safeCurrency} 0.00`;
     }
 
     try {
-        return amount.toLocaleString('en-AU', {
+        return new Intl.NumberFormat('en-AU', {
             style: 'currency',
-            currency,
+            currency: safeCurrency,
+            currencyDisplay: 'code',
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
-        });
+        }).format(numeric);
     } catch (error) {
         console.warn('Checkout: Failed to format currency', error);
-        return `${currency} ${amount.toFixed(2)}`;
+        return `${safeCurrency} ${numeric.toFixed(2)}`;
     }
 }
 
