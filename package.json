@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Moto Coach Professional Motocross Training Website",
   "scripts": {
-    "dev": "vercel dev",
+    "dev": "echo 'Use: vercel dev' && exit 1",
     "build": "echo 'Static site - no build needed'",
-    "start": "vercel dev"
+    "start": "echo 'Use: vercel dev' && exit 1"
   },
   "dependencies": {
     "@vercel/analytics": "^1.1.1",

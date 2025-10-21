@@ -367,8 +367,21 @@ function setupShippingCalculation() {
                 });
             }
             
-            // Fetch shipping rates
-            await fetchPrintfulShippingRates(recipient);
+            // Fetch full quote (includes shipping AND tax)
+            const customerDetails = {
+                firstName: document.getElementById('first-name-input')?.value || '',
+                lastName: document.getElementById('last-name-input')?.value || '',
+                email: document.getElementById('email-input')?.value || '',
+                phone: document.getElementById('phone-input')?.value || '',
+                address1: recipient.address1,
+                address2: recipient.address2 || '',
+                city: recipient.city,
+                state: recipient.stateCode || '',
+                country: recipient.countryCode,
+                postalCode: recipient.postalCode
+            };
+            
+            await ensurePrintfulQuote(customerDetails);
         }, 1000); // 1 second debounce
     };
     
@@ -689,9 +702,12 @@ function renderSummary(summary) {
                 ? 'Calculated at checkout' 
                 : formatMoney(taxAmountValue, taxCurrency);
             
+            // Use "GST" label for AU/NZ, "Tax" for other countries
+            const taxLabel = (currencyCode === 'AUD' || currencyCode === 'NZD') ? 'GST' : 'Tax';
+            
             totalsRows.push(`
                 <div class="checkout-total-row">
-                    <span>Tax</span>
+                    <span>${taxLabel}</span>
                     <span>${taxDisplay}</span>
                 </div>
             `);
@@ -1101,6 +1117,15 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
     const taxAmount = parsePositiveNumber(chosenCosts?.tax);
     const total = parsePositiveNumber(chosenCosts?.total);
     const computedTotal = total ?? (subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0));
+    
+    console.log('💵 Parsed amounts:', { 
+        subtotal, 
+        shippingAmount, 
+        taxAmount, 
+        total, 
+        computedTotal,
+        rawTax: chosenCosts?.tax 
+    });
 
     checkoutData.cost = checkoutData.cost || {};
     checkoutData.cost.subtotalAmount = {
