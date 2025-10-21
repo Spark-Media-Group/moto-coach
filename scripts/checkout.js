@@ -1321,6 +1321,8 @@ async function ensurePrintfulQuote(customerDetails) {
         quote: 'true'
     };
 
+    console.log('🚀 Sending Printful Quote request with payload:', JSON.stringify(payload, null, 2));
+
     try {
         const response = await fetch('/api/printfulQuote', {
             method: 'POST',
@@ -1334,7 +1336,9 @@ async function ensurePrintfulQuote(customerDetails) {
 
         if (!response.ok) {
             const errorText = typeof data === 'string' ? data : (data?.error ? data.error : JSON.stringify(data));
-            console.warn('Printful quote request failed:', errorText);
+            console.error('❌ Printful quote request failed:', errorText);
+            console.error('Full error response:', data);
+            console.error('Payload that was sent:', payload);
             
             // If we already have shipping calculated, don't fail the entire checkout
             if (checkoutData.cost?.shippingAmount) {
