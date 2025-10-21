@@ -14,7 +14,7 @@ async function fetchStripeExchangeRates() {
         // Use Stripe FX Quotes API (preview) to get live exchange rates
         // This provides accurate, real-time rates directly from Stripe
         const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-        const currencies = ['usd', 'nzd'];
+        const currencies = ['usd'];
         const rates = { AUD: 1.0 };
         
         // Fetch exchange rate for each currency (AUD to target)
@@ -48,7 +48,7 @@ async function fetchStripeExchangeRates() {
         }
         
         // Ensure we got all rates, otherwise throw to use fallback
-        if (Object.keys(rates).length < 3) {
+        if (Object.keys(rates).length < 2) {
             throw new Error('Failed to fetch all exchange rates');
         }
         
@@ -59,8 +59,7 @@ async function fetchStripeExchangeRates() {
         // Fallback to static rates if Stripe API fails
         return {
             AUD: 1.0,
-            USD: 0.65,
-            NZD: 1.08
+            USD: 0.65
         };
     }
 }
@@ -130,10 +129,7 @@ module.exports = async (req, res) => {
         return res.status(200).json({
             rates: {
                 AUD: 1.0,
-                USD: 0.65,
-                NZD: 1.08,
-                EUR: 0.60,
-                GBP: 0.51
+                USD: 0.65
             },
             cached: false,
             fallback: true,

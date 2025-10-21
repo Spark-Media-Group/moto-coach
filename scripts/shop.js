@@ -9,10 +9,11 @@
 
     // Fallback exchange rates (used if API fails)
     const FALLBACK_EXCHANGE_RATES = {
-        'AUD': 1.0,
-        'USD': 0.65,
-        'NZD': 1.08
+        AUD: 1.0,
+        USD: 0.65
     };
+
+    const SUPPORTED_CURRENCIES = ['AUD', 'USD'];
 
     // Current exchange rates (will be updated from Stripe API)
     let EXCHANGE_RATES = { ...FALLBACK_EXCHANGE_RATES };
@@ -51,38 +52,101 @@
     let currentImageIndex = 0;
 
     function formatCurrency(amount, currency = state.currency || DEFAULT_CURRENCY, { prefixFrom = false } = {}) {
-        const numeric = typeof amount === 'number' ? amount : parseFloat(amount);
+        const numeric = toNumeric(amount, NaN);
+        const currencyCode = typeof currency === 'string' ? currency.toUpperCase() : DEFAULT_CURRENCY;
+        const safeCurrency = currencyCode || DEFAULT_CURRENCY;
+
         if (!Number.isFinite(numeric)) {
-            return `${currency} 0.00`;
+            return `${safeCurrency} 0.00`;
         }
 
         try {
-            const formatted = numeric.toLocaleString('en-AU', {
+            const formatted = new Intl.NumberFormat('en-AU', {
                 style: 'currency',
-                currency,
+                currency: safeCurrency,
+                currencyDisplay: 'code',
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
-            });
-            if (prefixFrom) {
-                return `From ${formatted}`;
-            }
-            return formatted;
+            }).format(numeric);
+
+            return prefixFrom ? `From ${formatted}` : formatted;
         } catch (error) {
             console.warn('Shop: Unable to format currency', error);
-            return `${currency} ${numeric.toFixed(2)}`;
+            return `${safeCurrency} ${numeric.toFixed(2)}`;
         }
+    }
+
+    function toNumeric(value, fallback = 0) {
+        if (typeof value === 'number') {
+            return Number.isFinite(value) ? value : fallback;
+        }
+        const parsed = typeof value === 'string' ? parseFloat(value) : NaN;
+        return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function normaliseCurrencyCode(currency) {
+        return typeof currency === 'string' ? currency.toUpperCase() : '';
+    }
+
+    function ensureSupportedCurrency(currency) {
+        const code = normaliseCurrencyCode(currency);
+        return SUPPORTED_CURRENCIES.includes(code) ? code : DEFAULT_CURRENCY;
+    }
+
+    function getExchangeRate(currency) {
+        const code = normaliseCurrencyCode(currency) || DEFAULT_CURRENCY;
+        return EXCHANGE_RATES[code] || 1.0;
     }
 
     // Convert price from AUD to target currency
     function convertPrice(audPrice, targetCurrency = state.currency) {
-        const rate = EXCHANGE_RATES[targetCurrency] || 1.0;
+        const target = normaliseCurrencyCode(targetCurrency) || DEFAULT_CURRENCY;
+        if (target === 'AUD') {
+            return audPrice;
+        }
+        const rate = getExchangeRate(target);
         return audPrice * rate;
+    }
+
+    function convertToAud(amount, sourceCurrency) {
+        const source = normaliseCurrencyCode(sourceCurrency) || DEFAULT_CURRENCY;
+        if (source === 'AUD') {
+            return amount;
+        }
+        const rate = getExchangeRate(source);
+        if (!rate) {
+            return amount;
+        }
+        return amount / rate;
+    }
+
+    function resolveStoredBasePrice(item, fallback = 0) {
+        const baseFromStorage = item ? toNumeric(item.basePriceAud, NaN) : NaN;
+        if (Number.isFinite(baseFromStorage)) {
+            return baseFromStorage;
+        }
+
+        const priceAud = item ? toNumeric(item.priceAud, NaN) : NaN;
+        if (Number.isFinite(priceAud)) {
+            return priceAud;
+        }
+
+        const storedPrice = item ? toNumeric(item.price, NaN) : NaN;
+        if (Number.isFinite(storedPrice)) {
+            const sourceCurrency = item && item.currency ? item.currency : DEFAULT_CURRENCY;
+            const audPrice = convertToAud(storedPrice, sourceCurrency);
+            if (Number.isFinite(audPrice)) {
+                return audPrice;
+            }
+        }
+        return fallback;
     }
 
     // Save currency preference to localStorage
     function saveCurrencyPreference(currency) {
+        const normalised = ensureSupportedCurrency(currency);
         try {
-            localStorage.setItem(CURRENCY_STORAGE_KEY, currency);
+            localStorage.setItem(CURRENCY_STORAGE_KEY, normalised);
         } catch (e) {
             console.warn('Unable to save currency preference:', e);
         }
@@ -92,7 +156,7 @@
     function loadCurrencyPreference() {
         try {
             const saved = localStorage.getItem(CURRENCY_STORAGE_KEY);
-            return saved || DEFAULT_CURRENCY;
+            return ensureSupportedCurrency(saved || DEFAULT_CURRENCY);
         } catch (e) {
             return DEFAULT_CURRENCY;
         }
@@ -118,7 +182,10 @@
             
             if (data.rates) {
                 EXCHANGE_RATES = data.rates;
-                
+
+                // Update any existing cart items using the latest rates
+                repriceCart(state.currency);
+
                 // Cache the rates with timestamp
                 try {
                     localStorage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify({
@@ -154,6 +221,7 @@
                         EXCHANGE_RATES = rates;
                         console.log('[Exchange Rates] Using cached rates (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
                         state.exchangeRatesLoaded = true;
+                        repriceCart(state.currency);
                         return true;
                     }
                 }
@@ -165,6 +233,7 @@
             EXCHANGE_RATES = { ...FALLBACK_EXCHANGE_RATES };
             console.log('[Exchange Rates] Using fallback rates');
             state.exchangeRatesLoaded = false;
+            repriceCart(state.currency);
             return false;
         }
     }
@@ -330,10 +399,13 @@
         const cards = state.filteredProducts.map(product => {
             const image = product.images?.[0]?.url || product.thumbnailUrl || 'images/long-logo.png';
             const priceRange = product.priceRange || { min: 0, max: 0, currency: 'AUD' };
-            
+
+            const minPriceAud = toNumeric(priceRange.min, 0);
+            const maxPriceAud = toNumeric(priceRange.max, minPriceAud);
+
             // Convert price from AUD to selected currency
-            const convertedMinPrice = convertPrice(priceRange.min, state.currency);
-            const convertedMaxPrice = convertPrice(priceRange.max, state.currency);
+            const convertedMinPrice = convertPrice(minPriceAud, state.currency);
+            const convertedMaxPrice = convertPrice(maxPriceAud, state.currency);
             
             const priceLabel = priceRange.hasMultiplePrices
                 ? formatCurrency(convertedMinPrice, state.currency, { prefixFrom: true })
@@ -641,7 +713,7 @@
             }
         }
 
-        const price = currentVariant?.retailPrice ?? product.priceRange?.min ?? 0;
+        const price = toNumeric(currentVariant?.retailPrice, toNumeric(product.priceRange?.min, 0));
         // Convert price from AUD to selected currency
         const convertedPrice = convertPrice(price, state.currency);
         const gallery = buildImageGallery(product, currentVariant);
@@ -819,8 +891,11 @@
         if (priceDisplays.length === 0 || !currentVariant) {
             return;
         }
-        const currency = currentVariant.currency || currentModalProduct?.currency || state.currency;
-        const priceHTML = `<span class="price-current">${formatCurrency(currentVariant.retailPrice, currency)}</span>`;
+        const fallbackPrice = toNumeric(currentModalProduct?.priceRange?.min, 0);
+        const basePriceAud = toNumeric(currentVariant.retailPrice, fallbackPrice);
+        const currency = ensureSupportedCurrency(state.currency);
+        const convertedPrice = convertPrice(basePriceAud, currency);
+        const priceHTML = `<span class="price-current">${formatCurrency(convertedPrice, currency)}</span>`;
         priceDisplays.forEach(display => {
             display.innerHTML = priceHTML;
         });
@@ -1126,8 +1201,9 @@
         
         // Store price in the CURRENT DISPLAY CURRENCY that the customer is shopping in
         // This currency will be passed to Printful for quote and Stripe for payment
-        const price = Number.isFinite(variant.retailPrice) ? variant.retailPrice : (product.priceRange?.min || 0);
-        const currency = state.currency || DEFAULT_CURRENCY;
+        const basePriceAud = toNumeric(variant.retailPrice, toNumeric(product.priceRange?.min, 0));
+        const currency = ensureSupportedCurrency(state.currency);
+        const price = convertPrice(basePriceAud, currency);
         
         const image = variant.imageUrl || product.thumbnailUrl || (product.images && product.images[0]?.url) || null;
         const placements = sanitisePlacementLayers(variant.placements);
@@ -1141,6 +1217,9 @@
 
         if (existing) {
             existing.quantity += quantity;
+            existing.basePriceAud = toNumeric(existing.basePriceAud, basePriceAud);
+            existing.currency = currency;
+            existing.price = convertPrice(existing.basePriceAud, currency);
             if (!existing.placements?.length && placements.length) {
                 existing.placements = placements;
             }
@@ -1161,6 +1240,7 @@
                 variantId: variantKey,
                 catalogVariantId: variant.catalogVariantId,
                 quantity,
+                basePriceAud,
                 price, // Store in customer's chosen currency
                 currency, // Store customer's chosen currency
                 image,
@@ -1201,7 +1281,9 @@
         const totalQuantity = state.cart.reduce((total, item) => total + item.quantity, 0);
         
         // Use currency from first cart item, or current state currency
-        const currency = state.cart.length > 0 ? state.cart[0].currency : state.currency;
+        const currency = ensureSupportedCurrency(state.cart.length > 0
+            ? state.cart[0].currency
+            : state.currency);
 
         return { subtotal, totalQuantity, currency };
     }
@@ -1231,8 +1313,8 @@
         cartItemsContainer.innerHTML = state.cart.map(item => {
             // Item price is already in the customer's chosen currency (stored when added to cart)
             // Use item.currency to show the correct currency symbol
-            const itemCurrency = item.currency || state.currency;
-            
+            const itemCurrency = ensureSupportedCurrency(item.currency || state.currency);
+
             return `
             <div class="cart-item" data-variant-id="${item.variantId}">
                 <div class="cart-item-image">
@@ -1298,7 +1380,7 @@
             variantTitle: item.variantName,
             price: {
                 amount: (item.price ?? 0).toFixed(2),
-                currencyCode: item.currency || currency
+                currencyCode: ensureSupportedCurrency(item.currency || currency)
             },
             image: item.image ? { url: item.image, altText: `${item.productName} - ${item.variantName}` } : null,
             printfulCatalogVariantId: item.catalogVariantId,
@@ -1350,24 +1432,58 @@
             }
             return parsed
                 .filter(item => item && item.variantId && item.catalogVariantId)
-                .map(item => ({
-                    ...item,
-                    variantId: String(item.variantId),
-                    placements: sanitisePlacementLayers(item.placements),
-                    orderFiles: sanitiseOrderFiles(item.orderFiles),
-                    defaultTechnique: typeof item.defaultTechnique === 'string' && item.defaultTechnique.trim()
-                        ? item.defaultTechnique.trim()
-                        : null,
-                    availableTechniques: Array.isArray(item.availableTechniques)
-                        ? Array.from(new Set(item.availableTechniques
-                            .filter(tech => typeof tech === 'string' && tech.trim())
-                            .map(tech => tech.trim())))
-                        : []
-                }));
+                .map(item => {
+                    const currency = ensureSupportedCurrency(item.currency || DEFAULT_CURRENCY);
+                    const basePriceAud = resolveStoredBasePrice(item);
+                    const price = convertPrice(basePriceAud, currency);
+
+                    return {
+                        ...item,
+                        basePriceAud,
+                        price,
+                        currency,
+                        variantId: String(item.variantId),
+                        placements: sanitisePlacementLayers(item.placements),
+                        orderFiles: sanitiseOrderFiles(item.orderFiles),
+                        defaultTechnique: typeof item.defaultTechnique === 'string' && item.defaultTechnique.trim()
+                            ? item.defaultTechnique.trim()
+                            : null,
+                        availableTechniques: Array.isArray(item.availableTechniques)
+                            ? Array.from(new Set(item.availableTechniques
+                                .filter(tech => typeof tech === 'string' && tech.trim())
+                                .map(tech => tech.trim())))
+                            : []
+                    };
+                });
         } catch (error) {
             console.warn('Shop: Unable to read stored cart', error);
             return [];
         }
+    }
+
+    function repriceCart(targetCurrency) {
+        if (!Array.isArray(state.cart) || state.cart.length === 0) {
+            persistCart();
+            updateCartUI();
+            return;
+        }
+
+        const currency = ensureSupportedCurrency(targetCurrency);
+
+        state.cart = state.cart.map(item => {
+            const basePriceAud = resolveStoredBasePrice(item, item.basePriceAud ?? 0);
+            const price = convertPrice(basePriceAud, currency);
+
+            return {
+                ...item,
+                basePriceAud,
+                price,
+                currency
+            };
+        });
+
+        persistCart();
+        updateCartUI();
     }
 
     function toggleCart(forceOpen = null) {
@@ -1424,33 +1540,34 @@
         const savedCurrency = loadCurrencyPreference();
         state.currency = savedCurrency;
         currencySelect.value = savedCurrency;
+        repriceCart(state.currency);
 
         // Handle currency change
         currencySelect.addEventListener('change', event => {
-            const newCurrency = event.target.value;
+            const newCurrency = ensureSupportedCurrency(event.target.value);
+            if (newCurrency !== event.target.value) {
+                event.target.value = newCurrency;
+            }
+
             state.currency = newCurrency;
             saveCurrencyPreference(newCurrency);
-            
+
+            repriceCart(newCurrency);
+
             // Re-render products with new currency
             renderProducts(state.filteredProducts);
-            updateCartUI();
-            
+
             // Update modal if open
-            if (currentModalProduct && productModal && productModal.classList.contains('active')) {
-                const priceDisplay = document.getElementById('modal-price-display');
-                if (priceDisplay && currentVariant) {
-                    const convertedPrice = convertPrice(currentVariant.retailPrice, newCurrency);
-                    priceDisplay.innerHTML = `<span class="price-current">${formatCurrency(convertedPrice, newCurrency)}</span>`;
-                }
-            }
+            updateModalPrice();
         });
     }
 
     function initialiseShop() {
         showLoadingState();
 
+        state.currency = loadCurrencyPreference();
         state.cart = loadCartFromStorage();
-        updateCartUI();
+        repriceCart(state.currency);
 
         // Fetch exchange rates first, then load products
         fetchExchangeRates()
@@ -1459,9 +1576,6 @@
             })
             .then(products => {
                 state.products = products;
-                // Don't override currency with Printful's currency, use user preference
-                const savedCurrency = loadCurrencyPreference();
-                state.currency = savedCurrency;
                 state.categories = deriveCategories(products);
                 renderCategoryFilters();
                 applyFilters();
