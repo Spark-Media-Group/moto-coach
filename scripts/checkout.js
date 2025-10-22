@@ -2,6 +2,12 @@ import { ensureBotIdClient } from './botid-client.js';
 
 const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
 const TRACK_RESERVE_EVENT_STORAGE_KEY = 'trackReserveEventDetails';
+const EXCHANGE_RATES_STORAGE_KEY = 'motocoach_exchange_rates';
+const FALLBACK_EXCHANGE_RATES = {
+    AUD: 1.0,
+    USD: 0.65
+};
+
 let stripe = null;
 let elements = null;
 let paymentElement = null;
@@ -11,6 +17,100 @@ let currencyCode = 'AUD';
 let shippingRequired = true;
 let shippingFieldsInitialised = false;
 let stripePublishableKey = null;
+let exchangeRatesCache = null;
+
+function normaliseCurrencyCode(value) {
+    if (!value || typeof value !== 'string') {
+        return 'AUD';
+    }
+    const trimmed = value.trim().toUpperCase();
+    return trimmed || 'AUD';
+}
+
+function loadExchangeRatesFromStorage() {
+    const rates = { ...FALLBACK_EXCHANGE_RATES };
+
+    try {
+        if (typeof localStorage === 'undefined') {
+            return rates;
+        }
+
+        const stored = localStorage.getItem(EXCHANGE_RATES_STORAGE_KEY);
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            const source = parsed?.rates && typeof parsed.rates === 'object' ? parsed.rates : null;
+
+            if (source) {
+                for (const [code, value] of Object.entries(source)) {
+                    if (!code) {
+                        continue;
+                    }
+                    const numeric = typeof value === 'number' ? value : parseFloat(value);
+                    if (Number.isFinite(numeric) && numeric > 0) {
+                        rates[code.trim().toUpperCase()] = numeric;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('Checkout: Unable to load exchange rates, using fallback values', error);
+    }
+
+    return rates;
+}
+
+function getExchangeRates() {
+    if (!exchangeRatesCache) {
+        exchangeRatesCache = loadExchangeRatesFromStorage();
+    }
+    return exchangeRatesCache;
+}
+
+function convertCurrencyAmount(amount, fromCurrency, toCurrency) {
+    const numeric = typeof amount === 'number' ? amount : parseFloat(amount);
+
+    if (!Number.isFinite(numeric)) {
+        return null;
+    }
+
+    const source = normaliseCurrencyCode(fromCurrency);
+    const target = normaliseCurrencyCode(toCurrency);
+
+    if (source === target) {
+        return numeric;
+    }
+
+    const rates = getExchangeRates();
+
+    const rateFor = (code) => {
+        if (code === 'AUD') {
+            return 1.0;
+        }
+        const rate = rates[code];
+        return Number.isFinite(rate) && rate > 0 ? rate : null;
+    };
+
+    let amountInAud = numeric;
+
+    if (source !== 'AUD') {
+        const sourceRate = rateFor(source);
+        if (!sourceRate) {
+            return numeric;
+        }
+        amountInAud = numeric / sourceRate;
+    }
+
+    if (target === 'AUD') {
+        return amountInAud;
+    }
+
+    const targetRate = rateFor(target);
+    if (!targetRate) {
+        return amountInAud;
+    }
+
+    return amountInAud * targetRate;
+}
 
 function hasShopLineItems(summary) {
     return Boolean(summary?.lines && Array.isArray(summary.lines) && summary.lines.length > 0);
@@ -319,6 +419,140 @@ function getCountryCode(countryName) {
     return countryMap[countryName] || countryName;
 }
 
+function getCheckoutCurrency() {
+    const candidates = [
+        checkoutData?.cost?.totalAmount?.currencyCode,
+        checkoutData?.cost?.subtotalAmount?.currencyCode,
+        checkoutData?.lines?.[0]?.price?.currencyCode,
+        currencyCode
+    ];
+
+    for (const candidate of candidates) {
+        if (typeof candidate === 'string' && candidate.trim()) {
+            return candidate.trim().toUpperCase();
+        }
+    }
+
+    return 'AUD';
+}
+
+function buildPrintfulEstimationPayload(recipient) {
+    if (!recipient || !hasShopLineItems(checkoutData)) {
+        return null;
+    }
+
+    const orderCurrency = getCheckoutCurrency();
+
+    const items = (checkoutData?.lines || [])
+        .map(line => extractPrintfulItemFromLine(line, orderCurrency))
+        .filter(Boolean);
+
+    if (!items.length) {
+        return null;
+    }
+
+    const countryCode = normaliseCountryCode(recipient.countryCode || recipient.country) || 'US';
+    const stateCode = normaliseStateCode(countryCode, recipient.stateCode || recipient.state) || undefined;
+
+    const subtotal = (checkoutData?.lines || []).reduce((acc, line) => {
+        const price = parsePositiveNumber(line?.price?.amount);
+        const quantity = Number(line?.quantity) || 0;
+        if (price != null && quantity > 0) {
+            return acc + price * quantity;
+        }
+        return acc;
+    }, 0);
+
+    const safeSubtotal = Number.isFinite(subtotal) ? subtotal : 0;
+
+    const recipientPayload = {
+        name: 'Moto Coach Customer',
+        address1: recipient.address1,
+        address2: recipient.address2 || undefined,
+        city: recipient.city,
+        country_code: countryCode,
+        state_code: stateCode,
+        zip: recipient.postalCode
+    };
+
+    return {
+        source: 'catalog',
+        recipient: recipientPayload,
+        items,
+        retail_costs: {
+            currency: orderCurrency,
+            subtotal: safeSubtotal.toFixed(2)
+        },
+        currency: orderCurrency,
+        metadata: {
+            quote: 'true',
+            context: 'checkout-summary'
+        }
+    };
+}
+
+async function fetchPrintfulQuoteForSummary(recipient) {
+    if (!hasShopLineItems(checkoutData)) {
+        return null;
+    }
+
+    const payload = buildPrintfulEstimationPayload(recipient);
+
+    if (!payload) {
+        console.warn('Checkout: Unable to build Printful estimation payload for summary display');
+        return null;
+    }
+
+    const countryCode = normaliseCountryCode(recipient.countryCode || recipient.country) || 'US';
+
+    checkoutData.shippingAddress = {
+        address1: recipient.address1,
+        address2: recipient.address2 || '',
+        city: recipient.city,
+        state: recipient.stateCode || recipient.state || '',
+        postalCode: recipient.postalCode,
+        country: countryCode
+    };
+
+    try {
+        const response = await fetch('/api/printfulQuote', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+        const data = isJson ? await response.json() : await response.text();
+
+        if (!response.ok) {
+            const errorText = typeof data === 'string'
+                ? data
+                : (data?.error ? data.error : 'Printful quote request failed');
+            throw new Error(errorText);
+        }
+
+        if (data && typeof data === 'object') {
+            const enriched = {
+                ...data,
+                recipient: {
+                    country_code: countryCode,
+                    country: countryCode,
+                    ...recipient
+                }
+            };
+            applyPrintfulQuoteToCheckout(enriched);
+            saveCheckoutData(checkoutData);
+            renderSummary(checkoutData);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Checkout: failed to refresh Printful quote for summary', error);
+        return null;
+    }
+}
+
 function setupShippingCalculation() {
     const address1Input = document.querySelector('input[name="address1"]');
     const cityInput = document.querySelector('input[name="city"]');
@@ -368,15 +602,28 @@ function setupShippingCalculation() {
                             amountSpan.innerHTML = '<span style="color: #ff6b35;">Calculating...</span>';
                         }
                     }
+
+                    const currency = getCheckoutCurrency();
+                    if (currency === 'USD' && firstSpan && firstSpan.textContent.trim() === 'Tax') {
+                        const amountSpan = row.querySelector('span:last-child');
+                        if (amountSpan) {
+                            amountSpan.innerHTML = '<span style="color: #ff6b35;">Calculating...</span>';
+                        }
+                    }
                 });
             }
             
-            // Fetch shipping cost from Printful (V1 API)
-            await fetchPrintfulShippingRates(recipient);
-            
-            // For US addresses, show tax placeholder (calculated at payment)
-            if (recipient.countryCode === 'US') {
-                setTaxPlaceholder(recipient.countryCode);
+            const currency = getCheckoutCurrency();
+            if (currency === 'USD') {
+                await fetchPrintfulQuoteForSummary(recipient);
+            } else {
+                // Fetch shipping cost from Printful (V1 API)
+                await fetchPrintfulShippingRates(recipient);
+                
+                // For US addresses, show tax placeholder (calculated at payment)
+                if (recipient.countryCode === 'US') {
+                    setTaxPlaceholder(recipient.countryCode);
+                }
             }
         }, 1000); // 1 second debounce
     };
@@ -694,9 +941,9 @@ function renderSummary(summary) {
         
         if (taxAmountValue != null || taxIsPending) {
             const taxCurrency = summary?.cost?.taxAmount?.currencyCode || shippingCurrency || currencyCode;
-            const taxDisplay = (taxIsPending || taxAmountValue === 0) 
+            const taxDisplay = taxIsPending 
                 ? 'Calculated at checkout' 
-                : formatMoney(taxAmountValue, taxCurrency);
+                : formatMoney(taxAmountValue ?? 0, taxCurrency);
             
             // Use "GST" label for AU/NZ, "Tax" for other countries
             const taxLabel = (currencyCode === 'AUD' || currencyCode === 'NZD') ? 'GST' : 'Tax';
@@ -1067,7 +1314,7 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         return;
     }
 
-    console.log('📊 Printful Quote Response:', quoteResponse);
+    console.log('Checkout: Printful quote response', quoteResponse);
 
     const retailCosts = quoteResponse.retail_costs && typeof quoteResponse.retail_costs === 'object'
         ? quoteResponse.retail_costs
@@ -1076,51 +1323,105 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         ? quoteResponse.costs
         : null;
 
-    console.log('💰 Costs breakdown:', { retailCosts, costs });
+    console.log('Checkout: Quote cost breakdown', { retailCosts, costs });
 
     // Get destination country from Printful response recipient info
     // The quote response includes the recipient.country_code we sent
-    const recipientCountry = quoteResponse.recipient?.country_code 
+    const recipientCountry = quoteResponse.recipient?.country_code
         || quoteResponse.recipient?.country
-        || checkoutData?.shippingAddress?.country 
+        || checkoutData?.shippingAddress?.country
         || '';
-    
-    console.log('📍 Recipient info:', quoteResponse.recipient);
-    
+
+    console.log('Checkout: Quote recipient info', quoteResponse.recipient);
+
     // Normalize to 2-letter code if needed
-    const countryCode = recipientCountry.length === 2 
-        ? recipientCountry.toUpperCase() 
+    const countryCode = recipientCountry.length === 2
+        ? recipientCountry.toUpperCase()
         : normaliseCountryCode(recipientCountry) || recipientCountry;
-    
+
     const preferRetail = isTaxInclusiveCountry(countryCode);
-    
-    console.log('🌍 Country & Tax Mode:', { recipientCountry, countryCode, preferRetail });
 
-    // Choose costs based on destination:
-    // - AU/NZ: prefer retail_costs (tax-inclusive, GST included)
-    // - Other countries (US): prefer costs (tax-exclusive, tax added at checkout)
-    const chosenCosts = (preferRetail && retailCosts) 
-        ? retailCosts 
-        : (costs || retailCosts || {});
+    console.log('Checkout: Quote tax mode', { recipientCountry, countryCode, preferRetail });
 
-    const currency = quoteResponse.currency
-        || chosenCosts?.currency
+    const displayCosts = retailCosts || costs || {};
+    const backupCosts = costs || retailCosts || {};
+
+    const currency = normaliseCurrencyCode(
+        quoteResponse.currency
+        || displayCosts?.currency
+        || backupCosts?.currency
         || checkoutData?.cost?.totalAmount?.currencyCode
-        || currencyCode;
+        || currencyCode
+    );
 
-    const subtotal = parsePositiveNumber(chosenCosts?.subtotal ?? checkoutData?.cost?.subtotalAmount?.amount) ?? 0;
-    const shippingAmount = parsePositiveNumber(chosenCosts?.shipping);
-    const taxAmount = parsePositiveNumber(chosenCosts?.tax);
-    const total = parsePositiveNumber(chosenCosts?.total);
-    const computedTotal = total ?? (subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0));
-    
-    console.log('💵 Parsed amounts:', { 
-        subtotal, 
-        shippingAmount, 
-        taxAmount, 
-        total, 
+    const resolveCostAmount = (primary, secondary, key, { defaultValue, defaultCurrency } = {}) => {
+        let value = parsePositiveNumber(primary?.[key]);
+        let valueCurrency = primary?.currency;
+
+        if (value == null && secondary) {
+            value = parsePositiveNumber(secondary?.[key]);
+            valueCurrency = secondary?.currency;
+        }
+
+        if (value == null && defaultValue != null) {
+            value = parsePositiveNumber(defaultValue);
+            valueCurrency = defaultCurrency;
+        }
+
+        if (value == null) {
+            return null;
+        }
+
+        const sourceCurrency = normaliseCurrencyCode(valueCurrency || currency);
+        if (sourceCurrency === currency) {
+            return value;
+        }
+
+        const converted = convertCurrencyAmount(value, sourceCurrency, currency);
+        return converted != null ? converted : value;
+    };
+
+    const existingSubtotal = checkoutData?.cost?.subtotalAmount;
+    const existingShipping = checkoutData?.cost?.shippingAmount;
+    const existingTotal = checkoutData?.cost?.totalAmount;
+    const existingTax = checkoutData?.cost?.taxAmount;
+
+    const subtotal = resolveCostAmount(displayCosts, backupCosts, 'subtotal', {
+        defaultValue: existingSubtotal?.amount,
+        defaultCurrency: existingSubtotal?.currencyCode
+    }) ?? 0;
+    const shippingAmount = resolveCostAmount(displayCosts, backupCosts, 'shipping', {
+        defaultValue: existingShipping?.amount,
+        defaultCurrency: existingShipping?.currencyCode
+    });
+    let taxAmount = resolveCostAmount(displayCosts, backupCosts, 'tax', {
+        defaultValue: existingTax?.pending ? null : existingTax?.amount,
+        defaultCurrency: existingTax?.currencyCode
+    });
+    const total = resolveCostAmount(displayCosts, backupCosts, 'total', {
+        defaultValue: existingTotal?.amount,
+        defaultCurrency: existingTotal?.currencyCode
+    });
+
+    if (taxAmount == null) {
+        const rawTax = parsePositiveNumber(costs?.tax);
+        if (rawTax != null) {
+            const convertedTax = convertCurrencyAmount(rawTax, costs?.currency || currency, currency);
+            taxAmount = convertedTax != null ? convertedTax : rawTax;
+        }
+    }
+
+    const computedTotal = Number.isFinite(total)
+        ? total
+        : subtotal + (Number.isFinite(shippingAmount) ? shippingAmount : 0) + (Number.isFinite(taxAmount) ? taxAmount : 0);
+
+    console.log('Checkout: Parsed quote amounts', {
+        subtotal,
+        shippingAmount,
+        taxAmount,
+        total,
         computedTotal,
-        rawTax: chosenCosts?.tax 
+        rawTax: displayCosts?.tax ?? backupCosts?.tax
     });
 
     checkoutData.cost = checkoutData.cost || {};
@@ -1145,12 +1446,12 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         delete checkoutData.cost.shippingAmount;
     }
 
-    if (taxAmount != null && taxAmount > 0) {
+    if (taxAmount != null) {
         checkoutData.cost.taxAmount = {
             amount: taxAmount.toFixed(2),
             currencyCode: currency
         };
-        console.log('✅ Tax amount set:', checkoutData.cost.taxAmount);
+        console.log('Checkout: Tax amount set', checkoutData.cost.taxAmount);
     } else if (!preferRetail) {
         // For tax-exclusive countries (US), show placeholder when tax isn't available yet
         checkoutData.cost.taxAmount = {
@@ -1158,11 +1459,11 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
             currencyCode: currency,
             pending: true // Flag to show "calculated at checkout" message
         };
-        console.log('⏳ Tax pending (US address):', checkoutData.cost.taxAmount);
+        console.log('Checkout: Tax pending (quote unavailable)', checkoutData.cost.taxAmount);
     } else {
         // For tax-inclusive countries (AU/NZ), don't show separate tax line
         delete checkoutData.cost.taxAmount;
-        console.log('🇦🇺 Tax-inclusive country, no separate tax line');
+        console.log('Checkout: Tax-inclusive country, no separate tax line');
     }
 
     checkoutData.printfulQuote = {
@@ -1170,8 +1471,8 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
         currency,
         totals: {
             subtotal,
-            shipping: shippingAmount ?? 0,
-            tax: taxAmount ?? 0,
+            shipping: Number.isFinite(shippingAmount) ? shippingAmount : 0,
+            tax: Number.isFinite(taxAmount) ? taxAmount : 0,
             total: computedTotal
         }
     };
@@ -2314,3 +2615,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         form.addEventListener('submit', handleFormSubmit);
     }
 });
+
