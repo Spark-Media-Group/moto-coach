@@ -371,12 +371,12 @@ function setupShippingCalculation() {
                 });
             }
             
-            // Fetch shipping cost from Printful
+            // Fetch shipping cost from Printful (V1 API)
             await fetchPrintfulShippingRates(recipient);
             
-            // For US addresses, calculate tax using Stripe Tax API
+            // For US addresses, show tax placeholder (calculated at payment)
             if (recipient.countryCode === 'US') {
-                await calculateStripeTax(recipient);
+                setTaxPlaceholder(recipient.countryCode);
             }
         }, 1000); // 1 second debounce
     };
@@ -1377,6 +1377,36 @@ async function calculateStripeTax(recipient) {
         console.error('Error calculating tax:', error);
         return null;
     }
+}
+
+function setTaxPlaceholder(countryCode) {
+    if (!hasShopLineItems(checkoutData)) {
+        return;
+    }
+
+    const currency = checkoutData.lines[0]?.price?.currencyCode || 'USD';
+    
+    checkoutData.cost = checkoutData.cost || {};
+    checkoutData.cost.taxAmount = {
+        amount: '0.00',
+        currencyCode: currency,
+        pending: true
+    };
+    
+    // Update total (without tax for now - will be added at payment)
+    const subtotal = parseFloat(checkoutData.cost.subtotalAmount?.amount || 0);
+    const shipping = parseFloat(checkoutData.cost.shippingAmount?.amount || 0);
+    const total = subtotal + shipping;
+    
+    checkoutData.cost.totalAmount = {
+        amount: total.toFixed(2),
+        currencyCode: currency
+    };
+    
+    saveCheckoutData(checkoutData);
+    renderSummary(checkoutData);
+    
+    console.log('✅ Tax placeholder set - will be calculated at payment');
 }
 
 async function ensurePrintfulQuote(customerDetails) {
