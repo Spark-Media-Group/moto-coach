@@ -549,6 +549,13 @@ async function fetchPrintfulQuoteForSummary(recipient) {
         return data;
     } catch (error) {
         console.error('Checkout: failed to refresh Printful quote for summary', error);
+        
+        if (countryCode === 'US') {
+            setTaxPlaceholder(countryCode);
+        } else {
+            renderSummary(checkoutData);
+        }
+
         return null;
     }
 }
