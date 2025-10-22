@@ -1,6 +1,7 @@
 import { ensureBotIdClient } from './botid-client.js';
 
 const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
+const CART_STORAGE_KEY = 'motocoach_shop_cart';
 const TRACK_RESERVE_EVENT_STORAGE_KEY = 'trackReserveEventDetails';
 const EXCHANGE_RATES_STORAGE_KEY = 'motocoach_exchange_rates';
 const FALLBACK_EXCHANGE_RATES = {
@@ -164,6 +165,114 @@ function saveCheckoutData(data) {
     } catch (error) {
         console.warn('Checkout: Unable to persist session storage', error);
     }
+}
+
+function readStoredCartItems() {
+    let stored = null;
+
+    try {
+        stored = sessionStorage.getItem(CART_STORAGE_KEY);
+    } catch (error) {
+        console.warn('Checkout: Unable to read cart session storage', error);
+    }
+
+    if (!stored && typeof localStorage !== 'undefined') {
+        try {
+            stored = localStorage.getItem(CART_STORAGE_KEY);
+        } catch (error) {
+            console.warn('Checkout: Unable to read cart local storage', error);
+        }
+    }
+
+    if (!stored) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(stored);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+        console.warn('Checkout: Unable to parse stored cart data', error);
+        return [];
+    }
+}
+
+function persistStoredCartItems(items) {
+    if (!Array.isArray(items) || items.length === 0) {
+        try {
+            sessionStorage.removeItem(CART_STORAGE_KEY);
+        } catch (error) {
+            console.warn('Checkout: Unable to clear cart session storage', error);
+        }
+
+        if (typeof localStorage !== 'undefined') {
+            try {
+                localStorage.removeItem(CART_STORAGE_KEY);
+            } catch (error) {
+                console.warn('Checkout: Unable to clear cart local storage', error);
+            }
+        }
+
+        return;
+    }
+
+    const serialised = JSON.stringify(items);
+
+    try {
+        sessionStorage.setItem(CART_STORAGE_KEY, serialised);
+    } catch (error) {
+        console.warn('Checkout: Unable to persist cart session storage', error);
+    }
+
+    if (typeof localStorage !== 'undefined') {
+        try {
+            if (localStorage.getItem(CART_STORAGE_KEY) !== null) {
+                localStorage.setItem(CART_STORAGE_KEY, serialised);
+            }
+        } catch (error) {
+            console.warn('Checkout: Unable to persist cart local storage', error);
+        }
+    }
+}
+
+function removeCartItemFromStorage(removedLine, removedIndex) {
+    const items = readStoredCartItems();
+    if (!items.length) {
+        return;
+    }
+
+    const sanitisedItems = items.filter(item => item && typeof item === 'object');
+    let didChange = sanitisedItems.length !== items.length;
+
+    const targetIdValue = removedLine && (removedLine.id ?? removedLine.variantId);
+    const targetId = targetIdValue != null ? String(targetIdValue) : null;
+    const targetIndex = Number.isInteger(removedIndex) && removedIndex >= 0 ? removedIndex : null;
+
+    const filtered = sanitisedItems.filter((item, index) => {
+        const variantIdValue = item && (item.variantId ?? item.id);
+        const variantId = variantIdValue != null ? String(variantIdValue) : null;
+
+        if (targetId) {
+            if (variantId === targetId) {
+                didChange = true;
+                return false;
+            }
+            return true;
+        }
+
+        if (targetIndex != null && index === targetIndex) {
+            didChange = true;
+            return false;
+        }
+
+        return true;
+    });
+
+    if (!didChange) {
+        return;
+    }
+
+    persistStoredCartItems(filtered);
 }
 
 function clearStoredEventRegistrationDetails() {
@@ -2431,7 +2540,7 @@ function removeShopLine(lineId, lineIndex) {
         return;
     }
 
-    lines.splice(targetIndex, 1);
+    const [removedLine] = lines.splice(targetIndex, 1);
 
     const updated = {
         ...checkoutData,
@@ -2457,6 +2566,7 @@ function removeShopLine(lineId, lineIndex) {
     }
 
     saveCheckoutData(updated);
+    removeCartItemFromStorage(removedLine, targetIndex);
     renderSummary(checkoutData);
     initialiseStripe();
 }
