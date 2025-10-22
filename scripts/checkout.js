@@ -240,20 +240,24 @@ function readCheckoutData() {
 }
 
 function formatMoney(amount, currency = 'AUD') {
-    if (amount == null || Number.isNaN(amount)) {
-        return `${currency} 0.00`;
+    const safeCurrency = typeof currency === 'string' ? currency.toUpperCase() : 'AUD';
+    const numeric = typeof amount === 'number' ? amount : parseFloat(amount);
+
+    if (!Number.isFinite(numeric)) {
+        return `${safeCurrency} 0.00`;
     }
 
     try {
-        return amount.toLocaleString('en-AU', {
+        return new Intl.NumberFormat('en-AU', {
             style: 'currency',
-            currency,
+            currency: safeCurrency,
+            currencyDisplay: 'code',
             minimumFractionDigits: 2,
             maximumFractionDigits: 2
-        });
+        }).format(numeric);
     } catch (error) {
         console.warn('Checkout: Failed to format currency', error);
-        return `${currency} ${amount.toFixed(2)}`;
+        return `${safeCurrency} ${numeric.toFixed(2)}`;
     }
 }
 
@@ -367,8 +371,13 @@ function setupShippingCalculation() {
                 });
             }
             
-            // Fetch shipping rates
+            // Fetch shipping cost from Printful (V1 API)
             await fetchPrintfulShippingRates(recipient);
+            
+            // For US addresses, show tax placeholder (calculated at payment)
+            if (recipient.countryCode === 'US') {
+                setTaxPlaceholder(recipient.countryCode);
+            }
         }, 1000); // 1 second debounce
     };
     
@@ -689,9 +698,12 @@ function renderSummary(summary) {
                 ? 'Calculated at checkout' 
                 : formatMoney(taxAmountValue, taxCurrency);
             
+            // Use "GST" label for AU/NZ, "Tax" for other countries
+            const taxLabel = (currencyCode === 'AUD' || currencyCode === 'NZD') ? 'GST' : 'Tax';
+            
             totalsRows.push(`
                 <div class="checkout-total-row">
-                    <span>Tax</span>
+                    <span>${taxLabel}</span>
                     <span>${taxDisplay}</span>
                 </div>
             `);
@@ -1101,6 +1113,15 @@ function applyPrintfulQuoteToCheckout(quoteResponse) {
     const taxAmount = parsePositiveNumber(chosenCosts?.tax);
     const total = parsePositiveNumber(chosenCosts?.total);
     const computedTotal = total ?? (subtotal + (shippingAmount ?? 0) + (taxAmount ?? 0));
+    
+    console.log('💵 Parsed amounts:', { 
+        subtotal, 
+        shippingAmount, 
+        taxAmount, 
+        total, 
+        computedTotal,
+        rawTax: chosenCosts?.tax 
+    });
 
     checkoutData.cost = checkoutData.cost || {};
     checkoutData.cost.subtotalAmount = {
@@ -1198,7 +1219,7 @@ async function fetchPrintfulShippingRates(recipient) {
         locale: 'en_US'
     };
 
-    console.log('Fetching shipping rates with payload:', {
+    console.log('📦 Fetching shipping rates with payload:', {
         recipient: payload.recipient,
         items: payload.items,
         currency: payload.currency
@@ -1246,7 +1267,7 @@ async function fetchPrintfulShippingRates(recipient) {
                 deliveryDate: `${data.cheapestOption.minDeliveryDate} to ${data.cheapestOption.maxDeliveryDate}`
             };
             
-            // Update total to include shipping
+            // Update total to include shipping (tax will be added separately for US)
             const subtotal = parseFloat(checkoutData.cost.subtotalAmount?.amount || 0);
             const tax = parseFloat(checkoutData.cost.taxAmount?.amount || 0);
             const total = subtotal + shippingAmount + tax;
@@ -1276,6 +1297,118 @@ async function fetchPrintfulShippingRates(recipient) {
     }
 }
 
+async function calculateStripeTax(recipient) {
+    if (!hasShopLineItems(checkoutData)) {
+        return null;
+    }
+
+    // Build line items for Stripe Tax API
+    const lineItems = checkoutData.lines.map(line => ({
+        amount: parseFloat(line.price?.amount || 0),
+        id: line.id,
+        reference: line.title,
+        taxCode: 'txcd_99999999', // General tangible goods
+    }));
+
+    const payload = {
+        lineItems,
+        currency: checkoutData.lines[0]?.price?.currencyCode || 'USD',
+        customerDetails: {
+            address: {
+                line1: recipient.address1,
+                city: recipient.city,
+                state: recipient.stateCode,
+                postal_code: recipient.postalCode,
+                country: recipient.countryCode,
+            },
+            shippingCost: checkoutData.cost?.shippingAmount?.amount || 0,
+        },
+    };
+
+    console.log('💰 Calculating tax with Stripe Tax API:', payload);
+
+    try {
+        const response = await fetch('/api/calculate-tax', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('Failed to calculate tax:', error);
+            return null;
+        }
+
+        const data = await response.json();
+        
+        if (data.success && data.taxAmount != null) {
+            const taxAmount = data.taxAmount;
+            const currency = data.currency;
+            
+            checkoutData.cost = checkoutData.cost || {};
+            checkoutData.cost.taxAmount = {
+                amount: taxAmount.toFixed(2),
+                currencyCode: currency
+            };
+            
+            // Update total to include tax
+            const subtotal = parseFloat(checkoutData.cost.subtotalAmount?.amount || 0);
+            const shipping = parseFloat(checkoutData.cost.shippingAmount?.amount || 0);
+            const total = subtotal + shipping + taxAmount;
+            
+            checkoutData.cost.totalAmount = {
+                amount: total.toFixed(2),
+                currencyCode: currency
+            };
+            
+            // Store tax breakdown for reference
+            checkoutData.taxBreakdown = data.taxBreakdown;
+            
+            // Save and re-render
+            saveCheckoutData(checkoutData);
+            renderSummary(checkoutData);
+            
+            console.log(`✅ Tax calculated: $${taxAmount.toFixed(2)}`);
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Error calculating tax:', error);
+        return null;
+    }
+}
+
+function setTaxPlaceholder(countryCode) {
+    if (!hasShopLineItems(checkoutData)) {
+        return;
+    }
+
+    const currency = checkoutData.lines[0]?.price?.currencyCode || 'USD';
+    
+    checkoutData.cost = checkoutData.cost || {};
+    checkoutData.cost.taxAmount = {
+        amount: '0.00',
+        currencyCode: currency,
+        pending: true
+    };
+    
+    // Update total (without tax for now - will be added at payment)
+    const subtotal = parseFloat(checkoutData.cost.subtotalAmount?.amount || 0);
+    const shipping = parseFloat(checkoutData.cost.shippingAmount?.amount || 0);
+    const total = subtotal + shipping;
+    
+    checkoutData.cost.totalAmount = {
+        amount: total.toFixed(2),
+        currencyCode: currency
+    };
+    
+    saveCheckoutData(checkoutData);
+    renderSummary(checkoutData);
+    
+    console.log('✅ Tax placeholder set - will be calculated at payment');
+}
+
 async function ensurePrintfulQuote(customerDetails) {
     if (!hasShopLineItems(checkoutData)) {
         return null;
@@ -1292,6 +1425,8 @@ async function ensurePrintfulQuote(customerDetails) {
         quote: 'true'
     };
 
+    console.log('🚀 Sending Printful Quote request with payload:', JSON.stringify(payload, null, 2));
+
     try {
         const response = await fetch('/api/printfulQuote', {
             method: 'POST',
@@ -1305,7 +1440,9 @@ async function ensurePrintfulQuote(customerDetails) {
 
         if (!response.ok) {
             const errorText = typeof data === 'string' ? data : (data?.error ? data.error : JSON.stringify(data));
-            console.warn('Printful quote request failed:', errorText);
+            console.error('❌ Printful quote request failed:', errorText);
+            console.error('Full error response:', JSON.stringify(data, null, 2));
+            console.error('Payload that was sent:', JSON.stringify(payload, null, 2));
             
             // If we already have shipping calculated, don't fail the entire checkout
             if (checkoutData.cost?.shippingAmount) {

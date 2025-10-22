@@ -363,9 +363,15 @@ html {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
-    box-shadow: 
+    box-shadow:
         0 4px 20px rgba(0, 0, 0, 0.3),
         inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
 }
 
 /* Diagonal stripe texture */
@@ -658,16 +664,86 @@ a.info-link:hover {
 
     .info-card {
         padding: 1.5rem;
+        display: grid;
+        grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        column-gap: 1.25rem;
+        row-gap: 0.5rem;
+        align-items: start;
     }
 
     .info-icon {
         width: 38px;
         height: 38px;
+        grid-column: 1;
+        grid-row: 1;
+        justify-self: start;
     }
 
     .info-icon svg {
         width: 22px;
         height: 22px;
+    }
+
+    .info-card h3 {
+        grid-column: 1;
+        grid-row: 2;
+        text-align: left;
+        justify-self: start;
+        margin: 0;
+    }
+
+    .info-card .info-content {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+        display: grid;
+        grid-auto-rows: min-content;
+        gap: 0.35rem;
+        justify-items: start;
+        text-align: left;
+        width: 100%;
+    }
+
+    .info-card .info-content > * {
+        width: 100%;
+    }
+
+    .info-card .info-content p {
+        text-align: left;
+        margin: 0;
+    }
+
+    .info-card .info-content .info-link {
+        align-self: stretch;
+        display: block;
+        position: relative;
+        text-align: left;
+    }
+
+    .info-card .info-content .info-link.has-flag {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        column-gap: 0.5rem;
+        padding-left: 0;
+        position: static;
+    }
+
+    .info-card .info-content .info-link.has-flag .flag-icon {
+        position: static;
+        transform: none;
+    }
+
+    .info-card .info-content .info-link.has-flag .phone-number {
+        display: inline;
+    }
+
+    .info-card .info-content--phone p {
+        padding-left: 0;
+    }
+
+    .info-card .info-content .info-link.has-flag img {
+        display: block;
     }
 }
 
