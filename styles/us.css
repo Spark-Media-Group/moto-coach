@@ -603,6 +603,18 @@ html {
     color: var(--us-white);
 }
 
+.packages-inquire {
+    margin-top: clamp(2rem, 4vw, 3rem);
+    display: flex;
+    justify-content: center;
+}
+
+.packages-inquire .package-btn {
+    width: auto;
+    min-width: 260px;
+    padding-inline: clamp(2rem, 4vw, 3rem);
+}
+
 /* Facility Section */
 .us-facility {
     padding: clamp(5rem, 10vw, 8rem) 0;
