@@ -554,6 +554,28 @@ button.btn-register:hover {
     animation: spin 1s linear infinite;
 }
 
+.mobile-calendar-loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem 1.5rem;
+    color: #ccc;
+    text-align: center;
+}
+
+.calendar-page.mobile-loading .calendar-main-container {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .calendar-page.mobile-loading .mobile-calendar-loading {
+        display: flex;
+        min-height: 60vh;
+    }
+}
+
 @keyframes spin {
     0% {
         transform: rotate(0deg);
@@ -1470,6 +1492,22 @@ body.modal-open {
         background: #1f1f1f;
     }
 
+    .calendar-day.past-event.has-events,
+    .calendar-day.mobile-day-disabled {
+        cursor: default;
+        pointer-events: none;
+    }
+
+    .calendar-day.past-event.has-events {
+        border-color: #2a2a2a;
+        background: #161616;
+    }
+
+    .calendar-day.mobile-day-disabled:focus-visible,
+    .calendar-day.past-event.has-events:focus-visible {
+        outline: none;
+    }
+
     .calendar-day.has-events:active {
         transform: none;
     }
@@ -1507,6 +1545,12 @@ body.modal-open {
         letter-spacing: 0.4px;
         text-transform: uppercase;
         text-align: center;
+    }
+
+    .event-count--past {
+        background: rgba(255, 255, 255, 0.08);
+        color: rgba(255, 255, 255, 0.55);
+        text-decoration: line-through;
     }
 }
 

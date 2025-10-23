@@ -51,6 +51,9 @@ class MotoCoachCalendar {
         this.cacheLastUpdated = null; // Track when cache was last updated
         this.heightSyncRaf = null; // Track pending animation frame for height syncing
         this.apiKey = 'calendar-app-2024'; // Simple API key for request validation
+        this.hasLoadedEvents = false;
+        this.pageElement = null;
+        this.mobileLoadingElement = null;
         this.mobileModalElements = {
             modal: null,
             dialog: null,
@@ -98,7 +101,9 @@ class MotoCoachCalendar {
     }
 
     async init() {
+        this.cacheDomElements();
         this.checkViewMode();
+        this.updateMobileLoadingState();
         this.bindEvents();
         this.setupMobileModal();
 
@@ -112,7 +117,10 @@ class MotoCoachCalendar {
         // Populate events into calendar and update events panel
         await this.populateEventsIntoCalendar();
         await this.updateEventPanel();
-        
+
+        this.hasLoadedEvents = true;
+        this.updateMobileLoadingState();
+
         // Add throttled resize listener to switch between desktop/mobile views and recalculate pagination
         window.addEventListener('resize', this.throttle(async () => {
             this.checkViewMode();
@@ -131,7 +139,14 @@ class MotoCoachCalendar {
                 this.currentEventPage = 1; // Reset to first page
                 await this.updateEventPanel();
             }
+
+            this.updateMobileLoadingState();
         }, 150));
+    }
+
+    cacheDomElements() {
+        this.pageElement = document.querySelector('.calendar-page');
+        this.mobileLoadingElement = document.getElementById('mobileCalendarLoading');
     }
 
     checkViewMode() {
@@ -143,6 +158,7 @@ class MotoCoachCalendar {
         }
 
         this.scheduleEventPanelHeightSync();
+        this.updateMobileLoadingState();
     }
 
     bindEvents() {
@@ -164,6 +180,25 @@ class MotoCoachCalendar {
         }
 
         // Note: Date selection removed - calendar is now view-only with hover interactions
+    }
+
+    updateMobileLoadingState() {
+        if (!this.pageElement) {
+            return;
+        }
+
+        const shouldShowMobileSpinner = this.isMobileView && !this.hasLoadedEvents;
+        this.pageElement.classList.toggle('mobile-loading', shouldShowMobileSpinner);
+
+        if (!this.mobileLoadingElement) {
+            return;
+        }
+
+        if (shouldShowMobileSpinner) {
+            this.mobileLoadingElement.removeAttribute('hidden');
+        } else {
+            this.mobileLoadingElement.setAttribute('hidden', '');
+        }
     }
 
     async loadEvents() {
@@ -431,6 +466,18 @@ class MotoCoachCalendar {
         return event.date < now;
     }
 
+    isDateBeforeToday(date) {
+        if (!(date instanceof Date)) {
+            return false;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const comparisonDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        return comparisonDate < today;
+    }
+
     async previousMonth() {
         // Use a safer method to decrement month
         const currentMonth = this.currentDate.getMonth();
@@ -526,12 +573,14 @@ class MotoCoachCalendar {
     }
 
     async populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap) {
+        const isPastDay = this.isDateBeforeToday(currentDay);
+
         if (dayEvents.length > 0) {
             dayElement.classList.add('has-events');
 
             // Check if ALL events on this day are past
             const allEventsPast = dayEvents.every(event => this.isEventPast(event));
-            if (allEventsPast) {
+            if (allEventsPast || isPastDay) {
                 dayElement.classList.add('past-event');
             }
 
@@ -542,23 +591,17 @@ class MotoCoachCalendar {
                 eventCount.className = 'event-count';
                 const countLabel = dayEvents.length === 1 ? '1 Event' : `${dayEvents.length} Events`;
                 eventCount.textContent = countLabel;
+                eventCount.classList.toggle('event-count--past', isPastDay);
                 if (!existingEventCount) {
                     dayElement.appendChild(eventCount);
                 }
 
-                dayElement.setAttribute('tabindex', '0');
-                dayElement.setAttribute('role', 'button');
-                dayElement.setAttribute('aria-label', this.buildMobileDayAriaLabel(currentDay, dayEvents));
                 dayElement.dataset.fullDate = currentDay.toISOString();
-                if (!dayElement.dataset.modalBound) {
-                    dayElement.addEventListener('click', () => this.openMobileModal(currentDay));
-                    dayElement.addEventListener('keydown', event => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            this.openMobileModal(currentDay);
-                        }
-                    });
-                    dayElement.dataset.modalBound = 'true';
+
+                if (isPastDay) {
+                    this.disableMobileDayInteraction(dayElement);
+                } else {
+                    this.enableMobileDayInteraction(dayElement, currentDay, dayEvents);
                 }
             } else {
                 // Desktop: Show event previews
@@ -566,12 +609,12 @@ class MotoCoachCalendar {
                 if (!existingEventsContainer) {
                     const eventsContainer = document.createElement('div');
                     eventsContainer.className = 'day-events';
-                    
+
                     // Show up to 3 events in the day box
                     for (const event of dayEvents.slice(0, 3)) {
                         const eventPreview = document.createElement('div');
                         eventPreview.className = `event-preview event-${event.type}`;
-                        
+
                         // Check if event is full using cached data
                         let isEventFull = false;
                         if (event.maxSpots && event.maxSpots > 0) {
@@ -588,19 +631,19 @@ class MotoCoachCalendar {
                                 }
                             }
                         }
-                        
+
                         if (isEventFull) {
                             // Show "EVENT FULL" for full events - no click handler
-                            const eventTitle = event.title.length > 15 
-                                ? event.title.substring(0, 15) + '...' 
+                            const eventTitle = event.title.length > 15
+                                ? event.title.substring(0, 15) + '...'
                                 : event.title;
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                            
+
                             // Create elements safely to prevent XSS
                             const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
                             const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
                             const fullDiv = this.createElementWithText('div', 'event-full-indicator', 'EVENT FULL');
-                            
+
                             eventPreview.appendChild(titleDiv);
                             eventPreview.appendChild(timeDiv);
                             eventPreview.appendChild(fullDiv);
@@ -608,33 +651,33 @@ class MotoCoachCalendar {
                         } else {
                             // Show normal event details with click handler for available events
                             const maxTitleLength = 15;
-                            const eventTitle = event.title.length > maxTitleLength 
-                                ? event.title.substring(0, maxTitleLength) + '...' 
+                            const eventTitle = event.title.length > maxTitleLength
+                                ? event.title.substring(0, maxTitleLength) + '...'
                                 : event.title;
-                            
+
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                            
+
                             // Create elements safely to prevent XSS
                             const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
                             const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
-                            
+
                             eventPreview.appendChild(titleDiv);
                             eventPreview.appendChild(timeDiv);
-                            
+
                             // Show location on desktop
                             if (event.location) {
-                                const eventLocation = event.location.length > 20 
-                                    ? event.location.substring(0, 20) + '...' 
+                                const eventLocation = event.location.length > 20
+                                    ? event.location.substring(0, 20) + '...'
                                     : event.location;
                                 const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
                                 eventPreview.appendChild(locationDiv);
                             }
-                            
+
                             // Add click handler only for available events
                             if (!this.isEventPast(event)) {
                                 eventPreview.style.cursor = 'pointer';
                                 eventPreview.classList.add('clickable-event');
-                                
+
                                 // Create unique event ID for scrolling
                                 const eventId = this.generateEventId(event);
                                 eventPreview.addEventListener('click', () => {
@@ -642,10 +685,10 @@ class MotoCoachCalendar {
                                 });
                             }
                         }
-                        
+
                         eventsContainer.appendChild(eventPreview);
                     }
-                    
+
                     // If more events, show "and X more"
                     if (dayEvents.length > 3) {
                         const moreEvents = document.createElement('div');
@@ -653,8 +696,21 @@ class MotoCoachCalendar {
                         moreEvents.textContent = `+${dayEvents.length - 3} more`;
                         eventsContainer.appendChild(moreEvents);
                     }
-                    
+
                     dayElement.appendChild(eventsContainer);
+                }
+            }
+        } else {
+            if (isPastDay) {
+                // Add past-event class even if no events, for visual consistency
+                dayElement.classList.add('past-event');
+            }
+
+            if (this.isMobileView) {
+                this.disableMobileDayInteraction(dayElement);
+                const existingEventCount = dayElement.querySelector('.event-count');
+                if (existingEventCount) {
+                    existingEventCount.remove();
                 }
             }
         }
@@ -668,6 +724,63 @@ class MotoCoachCalendar {
         });
         const countLabel = dayEvents.length === 1 ? '1 event' : `${dayEvents.length} events`;
         return `${formattedDate}, ${countLabel}`;
+    }
+
+    enableMobileDayInteraction(dayElement, currentDay, dayEvents) {
+        if (!dayElement) {
+            return;
+        }
+
+        dayElement.classList.remove('mobile-day-disabled');
+        dayElement.setAttribute('tabindex', '0');
+        dayElement.setAttribute('role', 'button');
+        dayElement.setAttribute('aria-label', this.buildMobileDayAriaLabel(currentDay, dayEvents));
+
+        if (!dayElement._mobileClickHandler) {
+            dayElement._mobileClickHandler = () => {
+                const { fullDate } = dayElement.dataset;
+                if (fullDate) {
+                    this.openMobileModal(new Date(fullDate));
+                }
+            };
+        }
+
+        if (!dayElement._mobileKeydownHandler) {
+            dayElement._mobileKeydownHandler = event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    const { fullDate } = dayElement.dataset;
+                    if (fullDate) {
+                        this.openMobileModal(new Date(fullDate));
+                    }
+                }
+            };
+        }
+
+        dayElement.removeEventListener('click', dayElement._mobileClickHandler);
+        dayElement.addEventListener('click', dayElement._mobileClickHandler);
+
+        dayElement.removeEventListener('keydown', dayElement._mobileKeydownHandler);
+        dayElement.addEventListener('keydown', dayElement._mobileKeydownHandler);
+    }
+
+    disableMobileDayInteraction(dayElement) {
+        if (!dayElement) {
+            return;
+        }
+
+        if (dayElement._mobileClickHandler) {
+            dayElement.removeEventListener('click', dayElement._mobileClickHandler);
+        }
+
+        if (dayElement._mobileKeydownHandler) {
+            dayElement.removeEventListener('keydown', dayElement._mobileKeydownHandler);
+        }
+
+        dayElement.classList.add('mobile-day-disabled');
+        dayElement.removeAttribute('tabindex');
+        dayElement.removeAttribute('role');
+        dayElement.removeAttribute('aria-label');
     }
 
     setupMobileModal() {
@@ -1020,11 +1133,8 @@ class MotoCoachCalendar {
 
             dayElement.dataset.fullDate = currentDay.toISOString();
 
-            // Check if this day is in the past (before today)
-            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            const currentDayMidnight = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
-            const isPastDay = currentDayMidnight < todayMidnight;
-            
+            const isPastDay = this.isDateBeforeToday(currentDay);
+
             if (this.isSameDay(currentDay, today)) {
                 dayElement.classList.add('today');
             }
@@ -1053,18 +1163,15 @@ class MotoCoachCalendar {
         } else {
             const today = new Date();
             let currentDay;
-            
+
             if (this.isMobileView && fullDate) {
                 currentDay = fullDate;
             } else {
                 currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
             }
-            
-            // Check if this day is in the past (before today)
-            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            const currentDayMidnight = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
-            const isPastDay = currentDayMidnight < todayMidnight;
-            
+
+            const isPastDay = this.isDateBeforeToday(currentDay);
+
             if (this.isSameDay(currentDay, today)) {
                 dayElement.classList.add('today');
             }
