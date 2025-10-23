@@ -554,6 +554,28 @@ button.btn-register:hover {
     animation: spin 1s linear infinite;
 }
 
+.mobile-calendar-loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 3rem 1.5rem;
+    color: #ccc;
+    text-align: center;
+}
+
+.calendar-page.mobile-loading .calendar-main-container {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .calendar-page.mobile-loading .mobile-calendar-loading {
+        display: flex;
+        min-height: 60vh;
+    }
+}
+
 @keyframes spin {
     0% {
         transform: rotate(0deg);

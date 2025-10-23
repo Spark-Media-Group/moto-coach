@@ -51,6 +51,9 @@ class MotoCoachCalendar {
         this.cacheLastUpdated = null; // Track when cache was last updated
         this.heightSyncRaf = null; // Track pending animation frame for height syncing
         this.apiKey = 'calendar-app-2024'; // Simple API key for request validation
+        this.hasLoadedEvents = false;
+        this.pageElement = null;
+        this.mobileLoadingElement = null;
         this.mobileModalElements = {
             modal: null,
             dialog: null,
@@ -98,7 +101,9 @@ class MotoCoachCalendar {
     }
 
     async init() {
+        this.cacheDomElements();
         this.checkViewMode();
+        this.updateMobileLoadingState();
         this.bindEvents();
         this.setupMobileModal();
 
@@ -112,7 +117,10 @@ class MotoCoachCalendar {
         // Populate events into calendar and update events panel
         await this.populateEventsIntoCalendar();
         await this.updateEventPanel();
-        
+
+        this.hasLoadedEvents = true;
+        this.updateMobileLoadingState();
+
         // Add throttled resize listener to switch between desktop/mobile views and recalculate pagination
         window.addEventListener('resize', this.throttle(async () => {
             this.checkViewMode();
@@ -131,7 +139,14 @@ class MotoCoachCalendar {
                 this.currentEventPage = 1; // Reset to first page
                 await this.updateEventPanel();
             }
+
+            this.updateMobileLoadingState();
         }, 150));
+    }
+
+    cacheDomElements() {
+        this.pageElement = document.querySelector('.calendar-page');
+        this.mobileLoadingElement = document.getElementById('mobileCalendarLoading');
     }
 
     checkViewMode() {
@@ -143,6 +158,7 @@ class MotoCoachCalendar {
         }
 
         this.scheduleEventPanelHeightSync();
+        this.updateMobileLoadingState();
     }
 
     bindEvents() {
@@ -164,6 +180,25 @@ class MotoCoachCalendar {
         }
 
         // Note: Date selection removed - calendar is now view-only with hover interactions
+    }
+
+    updateMobileLoadingState() {
+        if (!this.pageElement) {
+            return;
+        }
+
+        const shouldShowMobileSpinner = this.isMobileView && !this.hasLoadedEvents;
+        this.pageElement.classList.toggle('mobile-loading', shouldShowMobileSpinner);
+
+        if (!this.mobileLoadingElement) {
+            return;
+        }
+
+        if (shouldShowMobileSpinner) {
+            this.mobileLoadingElement.removeAttribute('hidden');
+        } else {
+            this.mobileLoadingElement.setAttribute('hidden', '');
+        }
     }
 
     async loadEvents() {
