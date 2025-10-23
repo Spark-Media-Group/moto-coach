@@ -1,9 +1,7 @@
 import { applyCors } from './_utils/cors';
 import {
-    PRINTFUL_ORDER_ESTIMATION_ENDPOINT,
-    callPrintful,
-    extractEstimationTaskId,
-    waitForOrderEstimation
+    PRINTFUL_ORDER_ESTIMATE_COSTS_ENDPOINT,
+    callPrintful
 } from './_utils/printful';
 import { prepareOrderPayload } from './_utils/printful-order.js';
 
@@ -85,44 +83,27 @@ export default async function handler(req, res) {
             orderPayload.source = 'catalog';
         }
 
-        const createResponse = await callPrintful(PRINTFUL_ORDER_ESTIMATION_ENDPOINT, {
+        const estimateResponse = await callPrintful(PRINTFUL_ORDER_ESTIMATE_COSTS_ENDPOINT, {
             method: 'POST',
             apiKey,
             body: orderPayload,
             storeId
         });
 
-        const taskId = extractEstimationTaskId(createResponse);
-
-        if (!taskId) {
-            return res.status(502).json({
-                error: 'Unable to determine Printful estimation task ID from response',
-                details: createResponse
-            });
-        }
-
-        let completedTask;
-
-        try {
-            const { task } = await waitForOrderEstimation(taskId, apiKey, { storeId });
-            completedTask = task;
-        } catch (pollError) {
-            const status = pollError.status && Number.isInteger(pollError.status) ? pollError.status : 504;
-            return res.status(status).json({
-                error: status === 504
-                    ? 'Printful cost calculation did not complete'
-                    : 'Printful cost calculation failed',
-                details: pollError.body || pollError.message
-            });
-        }
-
+        const result = estimateResponse?.result && typeof estimateResponse.result === 'object'
+            ? estimateResponse.result
+            : estimateResponse;
         return res.status(200).json({
             success: true,
-            costs: completedTask?.costs || null,
-            retail_costs: completedTask?.retail_costs || null,
-            shipping: completedTask?.shipping || null,
-            currency: completedTask?.retail_costs?.currency || completedTask?.costs?.currency || null,
-            quote: completedTask
+            costs: result?.costs || null,
+            retail_costs: result?.retail_costs || null,
+            shipping: result?.shipping || null,
+            currency: result?.retail_costs?.currency
+                || result?.costs?.currency
+                || orderPayload?.retail_costs?.currency
+                || orderPayload?.currency
+                || null,
+            quote: result
         });
     } catch (error) {
         console.error('Error generating Printful quote:', error);

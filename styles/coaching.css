@@ -674,6 +674,10 @@ h4 {
         justify-items: center;
     }
 
+    .overview-highlights .highlight {
+        width: min(100%, 320px);
+    }
+
     .overview-media {
         order: 0;
     }
