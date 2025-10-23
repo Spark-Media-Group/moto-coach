@@ -1030,48 +1030,53 @@ footer {
     }
 }
 
-/* Apply Page Styles */
+/* Apply Page Styles - Elite Industrial (matching track_reserve) */
 .apply-page {
-    background-color: #1a1a1a;
-    color: white;
+    background-color: #0a0a0a;
+    color: #f8f8f8;
     min-height: 100vh;
 }
 
 .apply-container {
-    background-color: #1a1a1a;
+    background-color: #0a0a0a;
     min-height: 100vh;
-    padding-top: 120px;
+    padding: clamp(6rem, 12vw, 8rem) 0 clamp(3rem, 6vw, 5rem);
 }
 
 .back-button-center {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: clamp(2rem, 4vw, 3rem);
 }
 
 .back-btn-simple {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: #ff6600;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    border-radius: 5px;
+    gap: 0.5rem;
+    font-family: 'Oswald', sans-serif;
+    background: transparent;
+    color: #f8f8f8;
+    border: 2px solid rgba(248, 248, 248, 0.2);
+    padding: 0.75rem 1.75rem;
     text-decoration: none;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
     transition: all 0.3s ease;
 }
 
 .back-btn-simple:hover {
-    background: #e55a00;
-    color: white;
+    background: rgba(248, 248, 248, 0.05);
+    border-color: #ff6b35;
+    color: #ff6b35;
     text-decoration: none;
     transform: translateX(-3px);
 }
 
 .back-btn-simple svg {
     transition: transform 0.3s ease;
+    width: 18px;
+    height: 18px;
 }
 
 .back-btn-simple:hover svg {
@@ -1100,82 +1105,162 @@ footer {
     line-height: 1.6;
 }
 
-/* Application form container styling for apply page */
+/* Application form container styling for apply page - matching track_reserve */
 .apply-page .contact-form-container {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 40px;
+    background: #2a2a2a;
+    border: 1px solid rgba(248, 248, 248, 0.1);
+    padding: clamp(2.5rem, 5vw, 3.5rem);
     max-width: 900px;
     margin: 0 auto;
-    backdrop-filter: blur(10px);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
+}
+
+.apply-page .contact-form-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 107, 53, 0.02) 10px,
+        rgba(255, 107, 53, 0.02) 20px
+    );
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+}
+
+.apply-page .form-header {
+    position: relative;
+    z-index: 1;
+    margin-bottom: clamp(2rem, 4vw, 2.5rem);
 }
 
 .apply-page .form-header h2 {
-    color: white;
     font-family: 'Oswald', sans-serif;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    color: #f8f8f8;
     margin-bottom: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: relative;
+    display: inline-block;
+}
+
+.apply-page .form-header h2::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: #ff6b35;
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.5);
 }
 
 .apply-page .form-header p {
-    color: #ccc;
-    margin-bottom: 2rem;
+    color: rgba(248, 248, 248, 0.65);
+    margin-top: 1.5rem;
+    line-height: 1.7;
+    font-size: clamp(0.95rem, 1.8vw, 1.05rem);
 }
 
 /* Application form specific styling */
+.application-form {
+    position: relative;
+    z-index: 1;
+}
+
 .application-form .form-group label {
-    color: white !important;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #f8f8f8 !important;
+    font-weight: 500;
+    margin-bottom: 0.5rem;
 }
 
 .application-form .form-group input,
 .application-form .form-group select,
 .application-form .form-group textarea {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border: 2px solid rgba(255, 102, 0, 0.3) !important;
-    color: white !important;
+    font-family: 'Roboto Condensed', sans-serif;
+    font-size: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(42, 42, 42, 0.6) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(248, 248, 248, 0.1) !important;
+    border-left: 3px solid rgba(255, 107, 53, 0.3) !important;
+    color: #f8f8f8 !important;
+    transition: all 0.3s ease;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .application-form .form-group input::placeholder,
 .application-form .form-group textarea::placeholder {
-    color: rgba(255, 255, 255, 0.6) !important;
+    color: rgba(248, 248, 248, 0.3) !important;
 }
 
 .application-form .form-group input:focus,
 .application-form .form-group select:focus,
 .application-form .form-group textarea:focus {
-    border-color: #ff6600 !important;
-    box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.1) !important;
-    background: rgba(255, 255, 255, 0.15) !important;
+    outline: none;
+    border-color: #ff6b35 !important;
+    border-left-color: #ff6b35 !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 0 3px rgba(255, 107, 53, 0.15), 0 0 20px rgba(255, 107, 53, 0.2) !important;
+    background: rgba(42, 42, 42, 0.9) !important;
 }
 
 /* Application form section headers */
-.form-section-header {
+.apply-page .form-section-header {
     margin: 2rem 0 1.5rem 0;
-    padding-bottom: 0.5rem;
-    border-bottom: 2px solid rgba(255, 102, 0, 0.3);
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 107, 53, 0.3);
+    position: relative;
+    z-index: 1;
 }
 
-.form-section-header h3 {
-    color: #ff6600 !important;
+.apply-page .form-section-header h3 {
     font-family: 'Oswald', sans-serif;
-    font-size: 1.3rem;
+    font-size: clamp(1rem, 2vw, 1.2rem);
     font-weight: 600;
-    margin: 0;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.15em;
+    color: #ff6b35 !important;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
 }
 
-/* Supporter form sections */
+/* Supporter form sections - darker nested background for better contrast */
 .supporter-form-section {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 102, 0, 0.2);
-    border-radius: 8px;
-    padding: 1.5rem;
+    background: rgba(26, 26, 26, 0.7);
+    border: 1px solid rgba(248, 248, 248, 0.08);
+    border-left: 3px solid rgba(255, 107, 53, 0.3);
+    padding: 1.75rem;
     margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+    transition: all 0.3s ease;
+}
+
+.supporter-form-section:hover {
+    border-color: rgba(255, 107, 53, 0.3);
+    background: rgba(26, 26, 26, 0.9);
 }
 
 .supporter-form-section .form-section-header {
     margin-top: 0;
+    padding-top: 0;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(248, 248, 248, 0.05);
 }
 
 /* File input styling for apply page */
@@ -1186,34 +1271,40 @@ footer {
 .application-form .file-upload-wrapper {
     position: relative;
     display: block;
-    background: rgba(255, 255, 255, 0.1) !important;
-    border: 2px solid rgba(255, 102, 0, 0.3) !important;
-    color: white !important;
-    padding: 0.75rem !important;
-    border-radius: 5px;
+    background: rgba(42, 42, 42, 0.6) !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(248, 248, 248, 0.1) !important;
+    border-left: 3px solid rgba(255, 107, 53, 0.3) !important;
+    color: #f8f8f8 !important;
+    padding: 1rem 1.25rem !important;
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: center;
     font-size: 1rem;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .application-form .file-upload-wrapper:hover {
-    border-color: #ff6600 !important;
-    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: #ff6b35 !important;
+    border-left-color: #ff6b35 !important;
+    background: rgba(42, 42, 42, 0.9) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 107, 53, 0.2) !important;
 }
 
 .application-form .file-upload-wrapper.has-file {
-    color: #ff6600 !important;
-    border-color: #ff6600 !important;
+    color: #ff6b35 !important;
+    border-color: #ff6b35 !important;
+    border-left-color: #ff6b35 !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3), 0 0 15px rgba(255, 107, 53, 0.2) !important;
 }
 
 .application-form .file-upload-text {
-    color: rgba(255, 255, 255, 0.8);
+    color: rgba(248, 248, 248, 0.8);
 }
 
 .application-form .file-upload-wrapper.has-file .file-upload-text {
-    color: #ff6600;
-    font-weight: 500;
+    color: #ff6b35;
+    font-weight: 600;
 }
 
 /* Apply page footer override */
