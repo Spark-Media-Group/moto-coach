@@ -1,48 +1,5 @@
 {
-  "buildCommand": "echo 'No build needed for static site'",
-  "outputDirectory": ".",
-  "rewrites": [
-    {
-      "source": "/programs/professional_coaching",
-      "destination": "/programs/professional_coaching.html"
-    },
-    {
-      "source": "/programs/australia_travel_program",
-      "destination": "/programs/australia_travel_program.html"
-    },
-    {
-      "source": "/programs/us_travel_program",
-      "destination": "/programs/us_travel_program.html"
-    },
-    {
-      "source": "/programs/apply_us",
-      "destination": "/programs/apply_us.html"
-    },
-    {
-      "source": "/programs/track_reserve",
-      "destination": "/programs/track_reserve.html"
-    },
-    {
-      "source": "/contact",
-      "destination": "/contact.html"
-    },
-    {
-      "source": "/calendar",
-      "destination": "/calendar.html"
-    },
-    {
-      "source": "/shop",
-      "destination": "/shop.html"
-    },
-    {
-      "source": "/team",
-      "destination": "/team.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/$1"
-    }
-  ],
+  "buildCommand": "npm run build",
   "redirects": [
     {
       "source": "/programs/professional_coaching.html",

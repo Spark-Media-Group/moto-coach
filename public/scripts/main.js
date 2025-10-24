@@ -295,18 +295,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Load header for non-home pages
-    const headerPlaceholder = document.getElementById('header-placeholder');
-    if (headerPlaceholder) {
-        fetch('includes/header.html')
-            .then(response => response.text())
-            .then(data => {
-                headerPlaceholder.innerHTML = data;
-            })
-            .catch(error => console.error('Error loading header:', error));
-    }
-    
-    
     // Typewriter effect for team page title
     const teamTitle = document.querySelector('#team-title');
     if (teamTitle) {

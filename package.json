@@ -3,13 +3,16 @@
   "version": "1.0.0",
   "description": "Moto Coach Professional Motocross Training Website",
   "scripts": {
-    "dev": "echo 'Use: vercel dev' && exit 1",
-    "build": "echo 'Static site - no build needed'",
-    "start": "echo 'Use: vercel dev' && exit 1"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@vercel/analytics": "^1.1.1",
     "googleapis": "^128.0.0",
+    "next": "^14.2.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "resend": "^3.2.0",
     "stripe": "^19.1.0"
   },
