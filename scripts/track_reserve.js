@@ -12,6 +12,22 @@ let cachedEventDetails = null;
 let registrationContext = null;
 let isMultiEventRegistration = false;
 
+const HTML_ESCAPE_LOOKUP = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+};
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    return String(value).replace(/[&<>"']/g, (char) => HTML_ESCAPE_LOOKUP[char] || char);
+}
+
 function parseDateInput(value) {
     if (!value) {
         return null;
@@ -798,16 +814,24 @@ function populateMultiEventDetails(events, pricingInfo) {
     }
 
     // Create detailed event list
-    const eventDetailsHTML = normalizedEvents.map(event => `
+    const eventDetailsHTML = normalizedEvents.map(event => {
+        const safeTitle = escapeHtml(event.title);
+        const safeDate = escapeHtml(event.date);
+        const safeTime = escapeHtml(event.time);
+        const safeLocation = escapeHtml(event.location);
+        const descriptionValue = typeof event.description === 'string' ? event.description.toLowerCase() : '';
+        const safeDescription = escapeHtml(descriptionValue);
+
+        return `
         <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; margin: 0.5rem 0; border-radius: 6px;">
-            <div style="font-weight: 600; color: #ff6b35; margin-bottom: 0.5rem;">${event.title}</div>
-            <div style="margin-bottom: 0.25rem;">📅 ${event.date}</div>
-            <div style="margin-bottom: 0.25rem;">🕒 ${event.time}</div>
-            ${event.location ? `<div style="margin-bottom: 0.25rem;">📍 ${event.location}</div>` : ''}
-            ${event.description ? `<div style=\"margin-bottom: 0.25rem; font-size: 0.9rem; opacity: 0.8;\">${event.description.toLowerCase()}</div>` : ''}
+            <div style="font-weight: 600; color: #ff6b35; margin-bottom: 0.5rem;">${safeTitle}</div>
+            <div style="margin-bottom: 0.25rem;">📅 ${safeDate}</div>
+            <div style="margin-bottom: 0.25rem;">🕒 ${safeTime}</div>
+            ${safeLocation ? `<div style="margin-bottom: 0.25rem;">📍 ${safeLocation}</div>` : ''}
+            ${safeDescription ? `<div style=\"margin-bottom: 0.25rem; font-size: 0.9rem; opacity: 0.8;\">${safeDescription}</div>` : ''}
             <div style="color: #ff6b35; font-weight: 600;">Rate: $${(event.effectiveRate || event.rate || 0).toFixed(2)} AUD per rider</div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     if (timeDisplay) {
         timeDisplay.innerHTML = eventDetailsHTML;
