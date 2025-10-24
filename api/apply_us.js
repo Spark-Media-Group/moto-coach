@@ -9,9 +9,14 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const LOGO_URL = 'https://motocoach.com.au/images/tall-logo-black.png';
 
 const BIKE_CHOICE_LABELS = {
-    'yamaha-yz250f': 'Yamaha YZ250F - $8,500',
-    'honda-crf250r': 'Honda CRF250R - $8,200',
-    'husky-tc250': 'Husky TC 250 - $8,800'
+    'yamaha-yz450f': 'Yamaha YZ450F',
+    'yamaha-yz250f': 'Yamaha YZ250F',
+    'honda-crf450r': 'Honda CRF450R',
+    'honda-crf250r': 'Honda CRF250R',
+    'ktm-sxf450': 'KTM SXF450',
+    'ktm-sxf250': 'KTM SXF250',
+    'ktm-sxf85': 'KTM SXF85',
+    'husky-tc250': 'Husky TC 250'
 };
 
 const HTML_ESCAPE_LOOKUP = {
@@ -457,6 +462,10 @@ export default async function handler(req, res) {
         const additionalComments = typeof formData.additionalComments === 'string'
             ? formData.additionalComments.trim()
             : '';
+        // Google Sheets trims trailing empty values, which caused the Application Status to
+        // shift into column N when Additional Comments were left blank. Using a single space
+        // preserves the column alignment while still appearing empty in the sheet.
+        const additionalCommentsCellValue = additionalComments === '' ? ' ' : additionalComments;
 
         formData.additionalComments = additionalComments;
 
@@ -474,7 +483,7 @@ export default async function handler(req, res) {
             supporterData, // Column K: Supporter Details
             formData.emergencyContact, // Column L: Emergency Contact Name
             formData.emergencyPhone, // Column M: Emergency Contact Phone
-            additionalComments, // Column N: Additional Comments
+            additionalCommentsCellValue, // Column N: Additional Comments
             'Pending Review' // Column O: Application Status
         ];
 
@@ -482,7 +491,7 @@ export default async function handler(req, res) {
         try {
             await sheets.spreadsheets.values.append({
                 spreadsheetId,
-                range: 'US Travel Applications!A2:O', // Start from row 2, columns A through O
+                range: 'US Training Camp Inquiries!A2:O', // Start from row 2, columns A through O
                 valueInputOption: 'RAW',
                 requestBody: {
                     values: [rowData],
@@ -491,8 +500,8 @@ export default async function handler(req, res) {
         } catch (sheetError) {
             // If sheet doesn't exist, create it
             if (sheetError.code === 400) {
-                console.log('Creating new sheet for US Travel Applications...');
-                
+                console.log('Creating new sheet for US Training Camp Inquiries...');
+
                 // Create the new sheet
                 await sheets.spreadsheets.batchUpdate({
                     spreadsheetId,
@@ -500,7 +509,7 @@ export default async function handler(req, res) {
                         requests: [{
                             addSheet: {
                                 properties: {
-                                    title: 'US Travel Applications'
+                                    title: 'US Training Camp Inquiries'
                                 }
                             }
                         }]
@@ -517,7 +526,7 @@ export default async function handler(req, res) {
 
                 await sheets.spreadsheets.values.update({
                     spreadsheetId,
-                    range: 'US Travel Applications!A1:O1',
+                    range: 'US Training Camp Inquiries!A1:O1',
                     valueInputOption: 'RAW',
                     requestBody: {
                         values: [headers],
@@ -527,7 +536,7 @@ export default async function handler(req, res) {
                 // Now add the application data
                 await sheets.spreadsheets.values.append({
                     spreadsheetId,
-                    range: 'US Travel Applications!A2:O',
+                    range: 'US Training Camp Inquiries!A2:O',
                     valueInputOption: 'RAW',
                     requestBody: {
                         values: [rowData],
