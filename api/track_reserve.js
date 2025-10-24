@@ -988,7 +988,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
                                     <div style="margin-top:32px; padding:18px 20px; background-color:#f9fafb; border-radius:12px;">
                                         <p style="margin:0 0 12px; font-size:16px; font-weight:600; color:#111827;">What's Next?</p>
                                         <ul style="margin:0; padding-left:20px; color:#374151; line-height:1.6; font-size:14px;">
-                                            <li>Final instructions will be sent out by email the Friday prior to coaching.</li>
+                                            <li>Final instructions will be sent out by email the day before training.</li>
                                             <li>Please arrive 15 minutes early for rider check-in.</li>
                                             <li>Bring full safety gear (helmet, boots, gloves).</li>
                                         </ul>
@@ -1037,7 +1037,7 @@ async function sendIndividualConfirmationEmail(recipient, formData, riders) {
 ${commentsPlain}` : '',
             commentsPlain ? '' : null,
             "What's Next?",
-            "• Final instructions will be sent out by email the Friday prior to coaching",
+            "• Final instructions will be sent out by email the day before training",
             '• Arrive 15 minutes early for check-in',
             '• Bring full safety gear (helmet, boots, gloves)',
             '',
