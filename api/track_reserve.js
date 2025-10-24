@@ -157,29 +157,6 @@ async function validateEventDetails(eventData) {
             return { success: true }; // Allow through if calendar not configured
         }
 
-        // Get calendar events for validation
-        const now = new Date();
-        const sixMonthsFromNow = new Date();
-        sixMonthsFromNow.setMonth(now.getMonth() + 6);
-
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
-            `key=${apiKey}&` +
-            `timeMin=${now.toISOString()}&` +
-            `timeMax=${sixMonthsFromNow.toISOString()}&` +
-            `maxResults=250&` +
-            `singleEvents=true&` +
-            `orderBy=startTime`;
-
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            console.warn(`Google Calendar API error: ${response.status}, skipping validation`);
-            return { success: true }; // Allow through if API fails
-        }
-
-        const data = await response.json();
-        const calendarEvents = data.items || [];
-
         // Validate each event in the submission
         const eventsToValidate = eventData.events || [{
             title: eventData.eventName,
@@ -187,6 +164,58 @@ async function validateEventDetails(eventData) {
             location: eventData.eventLocation,
             time: eventData.eventTime
         }];
+
+        const parsedDates = eventsToValidate
+            .map(event => parseDateInput(event.dateString || event.date))
+            .filter(date => date && !Number.isNaN(date.getTime()));
+
+        let timeMin;
+        let timeMax;
+
+        if (parsedDates.length) {
+            const earliest = new Date(Math.min(...parsedDates.map(date => date.getTime())));
+            const latest = new Date(Math.max(...parsedDates.map(date => date.getTime())));
+
+            const bufferedStart = new Date(earliest);
+            bufferedStart.setDate(bufferedStart.getDate() - 2);
+
+            const bufferedEnd = new Date(latest);
+            bufferedEnd.setDate(bufferedEnd.getDate() + 2);
+
+            timeMin = bufferedStart;
+            timeMax = bufferedEnd;
+        } else {
+            const now = new Date();
+            const sixMonthsFromNow = new Date(now);
+            sixMonthsFromNow.setMonth(now.getMonth() + 6);
+
+            timeMin = now;
+            timeMax = sixMonthsFromNow;
+        }
+
+        if (timeMin > timeMax) {
+            const adjustedMax = new Date(timeMin);
+            adjustedMax.setDate(adjustedMax.getDate() + 1);
+            timeMax = adjustedMax;
+        }
+
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
+            `key=${apiKey}&` +
+            `timeMin=${timeMin.toISOString()}&` +
+            `timeMax=${timeMax.toISOString()}&` +
+            `maxResults=250&` +
+            `singleEvents=true&` +
+            `orderBy=startTime`;
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            console.warn(`Google Calendar API error: ${response.status}, skipping validation`);
+            return { success: true }; // Allow through if API fails
+        }
+
+        const data = await response.json();
+        const calendarEvents = data.items || [];
 
         const invalidEvents = [];
 
