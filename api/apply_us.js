@@ -9,9 +9,14 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const LOGO_URL = 'https://motocoach.com.au/images/tall-logo-black.png';
 
 const BIKE_CHOICE_LABELS = {
-    'yamaha-yz250f': 'Yamaha YZ250F - $8,500',
-    'honda-crf250r': 'Honda CRF250R - $8,200',
-    'husky-tc250': 'Husky TC 250 - $8,800'
+    'yamaha-yz450f': 'Yamaha YZ450F',
+    'yamaha-yz250f': 'Yamaha YZ250F',
+    'honda-crf450r': 'Honda CRF450R',
+    'honda-crf250r': 'Honda CRF250R',
+    'ktm-sxf450': 'KTM SXF450',
+    'ktm-sxf250': 'KTM SXF250',
+    'ktm-sxf85': 'KTM SXF85',
+    'husky-tc250': 'Husky TC 250'
 };
 
 const HTML_ESCAPE_LOOKUP = {
