@@ -728,6 +728,11 @@ html {
     color: var(--checkout-white);
 }
 
+.checkout-total-row .checkout-amount-pending {
+    color: var(--checkout-orange);
+    font-weight: 700;
+}
+
 .checkout-total-row.grand-total {
     font-family: 'Oswald', sans-serif;
     font-size: 1.5rem;

@@ -1107,14 +1107,16 @@ footer {
 
 /* Application form container styling for apply page - matching track_reserve */
 .apply-page .contact-form-container {
-    background: #2a2a2a;
-    border: 1px solid rgba(248, 248, 248, 0.1);
+    background: linear-gradient(135deg, rgba(42, 42, 42, 0.8), rgba(26, 26, 26, 0.8));
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(248, 248, 248, 0.08);
     padding: clamp(2.5rem, 5vw, 3.5rem);
     max-width: 900px;
     margin: 0 auto;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     position: relative;
     overflow: hidden;
+    border-radius: 0;
 }
 
 .apply-page .contact-form-container::before {

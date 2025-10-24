@@ -19,6 +19,112 @@ let shippingRequired = true;
 let shippingFieldsInitialised = false;
 let stripePublishableKey = null;
 let exchangeRatesCache = null;
+let checkoutLocked = false;
+
+const SAFE_URL_PROTOCOLS = new Set(['https:']);
+const DATA_URL_PATTERN = /^data:image\//i;
+
+function escapeHTML(value) {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function sanitiseUrl(url) {
+    if (!url) {
+        return '';
+    }
+
+    const value = String(url).trim();
+    if (!value) {
+        return '';
+    }
+
+    if (DATA_URL_PATTERN.test(value)) {
+        return value;
+    }
+
+    try {
+        const parsed = new URL(value, window.location.origin);
+        if (parsed.origin === window.location.origin) {
+            return parsed.href;
+        }
+
+        if (SAFE_URL_PROTOCOLS.has(parsed.protocol) && parsed.hostname) {
+            return parsed.href;
+        }
+    } catch (error) {
+        console.warn('Checkout: blocked unsafe URL value', { url, error });
+    }
+
+    return '';
+}
+
+function markAmountPending(element, message = 'Calculating…') {
+    if (!element) {
+        return;
+    }
+
+    element.textContent = message;
+    element.classList.add('checkout-amount-pending');
+}
+
+function hardenConsole() {
+    try {
+        if (typeof window === 'undefined' || !window.console) {
+            return;
+        }
+
+        const consoleRef = window.console;
+        const methodNames = Object.getOwnPropertyNames(consoleRef);
+
+        methodNames.forEach(name => {
+            const descriptor = Object.getOwnPropertyDescriptor(consoleRef, name);
+            const original = descriptor?.value;
+
+            if (typeof original === 'function') {
+                try {
+                    Object.defineProperty(consoleRef, name, {
+                        value: original.bind(consoleRef),
+                        writable: false,
+                        configurable: false
+                    });
+                } catch (error) {
+                    // Ignore failures to lock individual console methods
+                }
+            }
+        });
+
+        try {
+            Object.freeze(consoleRef);
+        } catch (error) {
+            // Ignore if freeze is not permitted
+        }
+
+        try {
+            Object.defineProperty(window, 'console', {
+                value: consoleRef,
+                configurable: false,
+                writable: false
+            });
+        } catch (error) {
+            // Ignore if the console property cannot be redefined
+        }
+    } catch (error) {
+        // Swallow errors to avoid interfering with checkout flow
+    }
+}
+
+if (typeof window !== 'undefined') {
+    hardenConsole();
+}
 
 function normaliseCurrencyCode(value) {
     if (!value || typeof value !== 'string') {
@@ -709,25 +815,25 @@ function setupShippingCalculation() {
             const summaryEl = document.getElementById('checkout-summary');
             if (summaryEl) {
                 // Find the shipping row by iterating through total rows
-                const totalRows = summaryEl.querySelectorAll('.checkout-total-row');
-                totalRows.forEach(row => {
-                    const firstSpan = row.querySelector('span:first-child');
-                    if (firstSpan && firstSpan.textContent.trim() === 'Shipping') {
-                        const amountSpan = row.querySelector('span:last-child');
-                        if (amountSpan) {
-                            amountSpan.innerHTML = '<span style="color: #ff6b35;">Calculating...</span>';
+                    const totalRows = summaryEl.querySelectorAll('.checkout-total-row');
+                    totalRows.forEach(row => {
+                        const firstSpan = row.querySelector('span:first-child');
+                        if (firstSpan && firstSpan.textContent.trim() === 'Shipping') {
+                            const amountSpan = row.querySelector('span:last-child');
+                            if (amountSpan) {
+                                markAmountPending(amountSpan);
+                            }
                         }
-                    }
 
-                    const currency = getCheckoutCurrency();
-                    if (currency === 'USD' && firstSpan && firstSpan.textContent.trim() === 'Tax') {
-                        const amountSpan = row.querySelector('span:last-child');
-                        if (amountSpan) {
-                            amountSpan.innerHTML = '<span style="color: #ff6b35;">Calculating...</span>';
+                        const currency = getCheckoutCurrency();
+                        if (currency === 'USD' && firstSpan && firstSpan.textContent.trim() === 'Tax') {
+                            const amountSpan = row.querySelector('span:last-child');
+                            if (amountSpan) {
+                                markAmountPending(amountSpan);
+                            }
                         }
-                    }
-                });
-            }
+                    });
+                }
             
             const currency = getCheckoutCurrency();
             if (currency === 'USD') {
@@ -873,11 +979,25 @@ function renderEmptyState() {
             <h2>Your Cart is empty</h2>
             <p>Visit the store or register for an event to add items to your cart.</p>
             <div class="empty-actions">
-                <a href="/shop" class="btn-primary empty-link">Store</a>
+                <!-- <a href="/shop" class="btn-primary empty-link">Store</a> -->
                 <a href="/calendar" class="btn-secondary empty-link">Register for Events</a>
             </div>
         `;
     }
+}
+
+function lockOrderSummary() {
+    checkoutLocked = true;
+
+    const summaryEl = document.getElementById('checkout-summary');
+    if (!summaryEl) {
+        return;
+    }
+
+    summaryEl.classList.add('summary-locked');
+    summaryEl.querySelectorAll('.checkout-remove-button').forEach(button => {
+        button.remove();
+    });
 }
 
 function buildShopItemsMarkup(summary, lineCurrency) {
@@ -885,30 +1005,51 @@ function buildShopItemsMarkup(summary, lineCurrency) {
         return '';
     }
 
-    return summary.lines.map((line, index) => {
+    const lines = Array.isArray(summary.lines)
+        ? summary.lines.filter(line => line && typeof line === 'object')
+        : [];
+
+    return lines.map((line, index) => {
         const image = line.image || {};
         const linePrice = parseFloat(line.price?.amount ?? '0');
         const lineCurrencyCode = line.price?.currencyCode || lineCurrency || currencyCode;
         const priceFormatted = formatMoney(linePrice, lineCurrencyCode);
-        const variantTitle = line.variantTitle ? `<p>${line.variantTitle}</p>` : '';
-        const removeLabel = line.title ? `Remove ${line.title}` : 'Remove item';
-
-        return `
-            <div class="checkout-item">
-                <div class="checkout-item-thumb">
-                    ${image.url ? `<img src="${image.url}" alt="${image.altText || line.title || 'Product image'}">` : '<span>No image</span>'}
-                </div>
-                <div class="checkout-item-details">
-                    <div class="checkout-item-header">
-                        <h3>${line.title || 'Cart item'}</h3>
-                        <button type="button" class="checkout-remove-button" data-remove-line="${line.id || ''}" data-line-index="${index}" aria-label="${removeLabel}">
+        const variantTitle = line.variantTitle ? `<p>${escapeHTML(line.variantTitle)}</p>` : '';
+        const removeLabelRaw = line.title ? `Remove ${line.title}` : 'Remove item';
+        const removeLabel = escapeHTML(removeLabelRaw);
+        const itemTitle = escapeHTML(line.title || 'Cart item');
+        const quantityValue = Number(line.quantity);
+        const quantityDisplay = escapeHTML(String(Number.isFinite(quantityValue) && quantityValue > 0 ? quantityValue : 0));
+        const priceDisplay = escapeHTML(priceFormatted);
+        const safeImageUrl = sanitiseUrl(image.url);
+        const safeAltText = escapeHTML(image.altText || line.title || 'Product image');
+        const imageMarkup = safeImageUrl
+            ? `<img src="${safeImageUrl}" alt="${safeAltText}" loading="lazy" decoding="async">`
+            : '<span>No image</span>';
+        const removeLineValue = escapeHTML(line.id ?? line.variantId ?? '');
+        const lineIndexValue = escapeHTML(String(index));
+        const removeButtonMarkup = checkoutLocked
+            ? ''
+            : `
+                        <button type="button" class="checkout-remove-button" data-remove-line="${removeLineValue}" data-line-index="${lineIndexValue}" aria-label="${removeLabel}">
                             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                 <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
                             </svg>
                         </button>
+                    `;
+
+        return `
+            <div class="checkout-item">
+                <div class="checkout-item-thumb">
+                    ${imageMarkup}
+                </div>
+                <div class="checkout-item-details">
+                    <div class="checkout-item-header">
+                        <h3>${itemTitle}</h3>
+                        ${removeButtonMarkup}
                     </div>
                     ${variantTitle}
-                    <p>Qty: ${line.quantity} · ${priceFormatted}</p>
+                    <p>Qty: ${quantityDisplay} · ${priceDisplay}</p>
                 </div>
             </div>
         `;
@@ -920,16 +1061,23 @@ function formatEventList(events) {
         return '';
     }
 
+    const safeEvents = events.filter(event => event && typeof event === 'object');
+
+    if (!safeEvents.length) {
+        return '';
+    }
+
+    const listItems = safeEvents.map(event => {
+        const title = escapeHTML(event.title || 'Moto Coach Event');
+        const date = escapeHTML(event.date || event.dateString || '');
+        const time = event.time ? ` · ${escapeHTML(event.time)}` : '';
+        const location = event.location ? ` · ${escapeHTML(event.location)}` : '';
+        return `<li><span class="event-title">${title}</span><span class="event-meta">${date}${time}${location}</span></li>`;
+    }).join('');
+
     return `
         <h4>Events</h4>
-        <ul class="event-list">
-            ${events.map(event => {
-                const date = event.date || event.dateString || '';
-                const time = event.time ? ` · ${event.time}` : '';
-                const location = event.location ? ` · ${event.location}` : '';
-                return `<li><span class="event-title">${event.title || 'Moto Coach Event'}</span><span class="event-meta">${date}${time}${location}</span></li>`;
-            }).join('')}
-        </ul>
+        <ul class="event-list">${listItems}</ul>
     `;
 }
 
@@ -938,17 +1086,32 @@ function formatRiderList(riders) {
         return '';
     }
 
+    const safeRiders = riders.filter(rider => rider && typeof rider === 'object');
+
+    if (!safeRiders.length) {
+        return '';
+    }
+
+    const riderItems = safeRiders.map(rider => {
+        const firstName = rider.firstName ? escapeHTML(rider.firstName) : '';
+        const lastName = rider.lastName ? escapeHTML(rider.lastName) : '';
+        const name = `${[firstName, lastName].filter(Boolean).join(' ')}`.trim() || 'Rider';
+
+        const bikeParts = [];
+        if (rider.bikeSize) {
+            bikeParts.push(escapeHTML(rider.bikeSize));
+        }
+        if (rider.bikeNumber) {
+            bikeParts.push(`#${escapeHTML(rider.bikeNumber)}`);
+        }
+
+        const bikeDetails = bikeParts.length ? ` (${bikeParts.join(', ')})` : '';
+        return `<li>${name}${bikeDetails}</li>`;
+    }).join('');
+
     return `
         <h4>Riders</h4>
-        <ul class="event-rider-list">
-            ${riders.map(rider => {
-                const name = `${rider.firstName || ''} ${rider.lastName || ''}`.trim() || 'Rider';
-                const bikeDetails = rider.bikeSize || rider.bikeNumber
-                    ? ` (${[rider.bikeSize, rider.bikeNumber ? `#${rider.bikeNumber}` : ''].filter(Boolean).join(', ')})`
-                    : '';
-                return `<li>${name}${bikeDetails}</li>`;
-            }).join('')}
-        </ul>
+        <ul class="event-rider-list">${riderItems}</ul>
     `;
 }
 
@@ -958,12 +1121,22 @@ function buildEventRegistrationMarkup(registration) {
     }
 
     const currency = registration.currency || currencyCode;
-    const riderCount = registration.riderCount || 0;
+    const riderCount = Number(registration.riderCount) || 0;
     const riderLabel = riderCount === 1 ? 'rider' : 'riders';
     const perRider = registration.perRiderAmount
         ? formatMoney(registration.perRiderAmount, currency)
         : formatMoney(riderCount > 0 ? registration.totalAmount / riderCount : registration.totalAmount, currency);
     const total = formatMoney(registration.totalAmount, currency);
+
+    const removeButtonMarkup = checkoutLocked
+        ? ''
+        : `
+                    <button type="button" class="checkout-remove-button" data-remove-event="true" aria-label="Remove event registration">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
+                        </svg>
+                    </button>
+                `;
 
     return `
         <div class="checkout-item event-registration">
@@ -973,18 +1146,14 @@ function buildEventRegistrationMarkup(registration) {
             <div class="checkout-item-details">
                 <div class="checkout-item-header">
                     <h3>Event Registration</h3>
-                    <button type="button" class="checkout-remove-button" data-remove-event="true" aria-label="Remove event registration">
-                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
-                        </svg>
-                    </button>
+                    ${removeButtonMarkup}
                 </div>
-                <p>${riderCount} ${riderLabel} · ${perRider} each</p>
+                <p>${escapeHTML(String(riderCount))} ${escapeHTML(riderLabel)} · ${escapeHTML(perRider)} each</p>
                 <div class="event-summary">
                     ${formatEventList(registration.events)}
                     ${formatRiderList(registration.riders)}
                 </div>
-                <p class="event-total">Subtotal: ${total}</p>
+                <p class="event-total">Subtotal: ${escapeHTML(total)}</p>
             </div>
         </div>
     `;
@@ -995,6 +1164,8 @@ function renderSummary(summary) {
     if (!summaryEl) {
         return;
     }
+
+    summaryEl.classList.toggle('summary-locked', checkoutLocked);
 
     if (!summary) {
         renderEmptyState();
@@ -1030,7 +1201,7 @@ function renderSummary(summary) {
         totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Event registration</span>
-                <span>${formatMoney(eventTotal, currencyCode)}</span>
+                <span>${escapeHTML(formatMoney(eventTotal, currencyCode))}</span>
             </div>
         `);
     }
@@ -1042,32 +1213,37 @@ function renderSummary(summary) {
         totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Shop items</span>
-                <span>${formatMoney(shopTotals.subtotal, shopCurrency)}</span>
+                <span>${escapeHTML(formatMoney(shopTotals.subtotal, shopCurrency))}</span>
             </div>
         `);
+        const shippingDisplay = shippingAmountValue != null
+            ? formatMoney(shippingAmountValue, shippingCurrency)
+            : 'Calculated separately';
+        const shippingClassAttr = shippingAmountValue != null ? '' : ' class="checkout-amount-pending"';
         totalsRows.push(`
             <div class="checkout-total-row">
                 <span>Shipping</span>
-                <span>${shippingAmountValue != null ? formatMoney(shippingAmountValue, shippingCurrency) : 'Calculated separately'}</span>
+                <span${shippingClassAttr}>${escapeHTML(shippingDisplay)}</span>
             </div>
         `);
 
         const taxAmountValue = parsePositiveNumber(summary?.cost?.taxAmount?.amount);
         const taxIsPending = summary?.cost?.taxAmount?.pending === true;
-        
+
         if (taxAmountValue != null || taxIsPending) {
             const taxCurrency = summary?.cost?.taxAmount?.currencyCode || shippingCurrency || currencyCode;
-            const taxDisplay = taxIsPending 
-                ? 'Calculated at checkout' 
+            const taxDisplay = taxIsPending
+                ? 'Calculated at checkout'
                 : formatMoney(taxAmountValue ?? 0, taxCurrency);
             
             // Use "GST" label for AU/NZ, "Tax" for other countries
             const taxLabel = (currencyCode === 'AUD' || currencyCode === 'NZD') ? 'GST' : 'Tax';
-            
+            const taxClassAttr = taxIsPending ? ' class="checkout-amount-pending"' : '';
+
             totalsRows.push(`
                 <div class="checkout-total-row">
-                    <span>${taxLabel}</span>
-                    <span>${taxDisplay}</span>
+                    <span>${escapeHTML(taxLabel)}</span>
+                    <span${taxClassAttr}>${escapeHTML(taxDisplay)}</span>
                 </div>
             `);
         }
@@ -1076,7 +1252,7 @@ function renderSummary(summary) {
     totalsRows.push(`
         <div class="checkout-total-row grand-total">
             <span>Total</span>
-            <span>${formatMoney(combinedTotal, currencyCode)}</span>
+            <span>${escapeHTML(formatMoney(combinedTotal, currencyCode))}</span>
         </div>
     `);
 
@@ -2476,6 +2652,7 @@ function showSuccess({ orderData = null, registrationResult = null } = {}) {
         successMessage.textContent = parts.join(' ');
     }
 
+    lockOrderSummary();
     sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 }
 
@@ -2592,6 +2769,10 @@ function removeEventRegistration() {
 }
 
 function handleSummaryInteraction(event) {
+    if (checkoutLocked) {
+        return;
+    }
+
     const button = event.target.closest('.checkout-remove-button');
     if (!button) {
         return;
