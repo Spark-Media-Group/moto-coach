@@ -62,6 +62,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
         const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim();
         const safeEmail = toSafeString(recipientEmail);
         const safeDateOfBirth = toSafeString(formData.dateOfBirth);
+        const safePhone = toSafeString(formData.phone);
         const safeBikeChoice = toSafeString(normaliseBikeChoice(formData.bikeChoice));
         const bringingSupporter = formData.bringingSupporter === 'yes' ? 'Yes' : 'No';
         const safeBringingSupporter = toSafeString(bringingSupporter);
@@ -94,6 +95,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
                             <h3 style="color: #ff6600; margin-top: 0;">Inquiry Details:</h3>
                             <p style="margin: 5px 0;"><strong>Inquiry ID:</strong> ${safeApplicationId}</p>
                             <p style="margin: 5px 0;"><strong>Name:</strong> ${safeFullName || 'Not provided'}</p>
+                            <p style="margin: 5px 0;"><strong>Phone:</strong> ${safePhone || 'Not provided'}</p>
                             <p style="margin: 5px 0;"><strong>Email:</strong> ${safeEmail || 'Not provided'}</p>
                             <p style="margin: 5px 0;"><strong>Date of Birth:</strong> ${safeDateOfBirth || 'Not provided'}</p>
                             <p style="margin: 5px 0;"><strong>Bike Choice:</strong> ${safeBikeChoice || 'Not provided'}</p>
@@ -152,6 +154,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
         const safeFirstName = toSafeString(formData.firstName);
         const safeLastName = toSafeString(formData.lastName);
         const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim() || 'Applicant';
+        const safePhone = toSafeString(formData.phone);
         const safeEmail = toSafeString(formData.email);
         const safeDateOfBirth = toSafeString(formData.dateOfBirth);
         const safeBikeChoice = toSafeString(normaliseBikeChoice(formData.bikeChoice));
@@ -174,6 +177,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
                         toSafeString(formData[`supporterLastName${i}`])
                     ].filter(Boolean).join(' ').trim();
                     const supporterDob = toSafeString(formData[`supporterDateOfBirth${i}`]);
+                    const supporterPhone = toSafeString(formData[`supporterPhone${i}`]);
                     const supporterPassport = toSafeString(formData[`supporterPassportNumber${i}`]);
 
                     supporterDetails.push(`
@@ -182,6 +186,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
                             <div style="color: #374151; font-size: 14px; line-height: 1.5;">
                                 ${supporterName ? `<div><strong>Name:</strong> ${supporterName}</div>` : ''}
                                 ${supporterDob ? `<div><strong>Date of Birth:</strong> ${supporterDob}</div>` : ''}
+                                ${supporterPhone ? `<div><strong>Phone:</strong> ${supporterPhone}</div>` : ''}
                                 ${supporterPassport ? `<div><strong>Passport Number:</strong> ${supporterPassport}</div>` : ''}
                             </div>
                         </div>
@@ -192,6 +197,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
 
         const detailRows = [
             { label: 'Applicant', value: safeFullName },
+            { label: 'Phone', value: safePhone || 'N/A' },
             {
                 label: 'Email',
                 value: safeEmail
@@ -339,7 +345,7 @@ export default async function handler(req, res) {
 
         // Validate required fields
         const requiredFields = [
-            'firstName', 'lastName', 'dateOfBirth', 'email', 'bikeChoice',
+            'firstName', 'lastName', 'dateOfBirth', 'phone', 'email', 'bikeChoice',
             'passportNumber', 'bringingSupporter', 'emergencyContact', 'emergencyPhone'
         ];
 
@@ -380,8 +386,8 @@ export default async function handler(req, res) {
             // Validate individual supporter details
             for (let i = 1; i <= parseInt(formData.supporterCount); i++) {
                 const requiredSupporterFields = [
-                    `supporterFirstName${i}`, `supporterLastName${i}`, 
-                    `supporterDateOfBirth${i}`, `supporterPassportNumber${i}`
+                    `supporterFirstName${i}`, `supporterLastName${i}`,
+                    `supporterDateOfBirth${i}`, `supporterPhone${i}`, `supporterPassportNumber${i}`
                 ];
                 
                 for (const field of requiredSupporterFields) {
@@ -453,7 +459,13 @@ export default async function handler(req, res) {
             const supporters = [];
             for (let i = 1; i <= parseInt(formData.supporterCount); i++) {
                 if (formData[`supporterFirstName${i}`]) {
-                    supporters.push(`${formData[`supporterFirstName${i}`]} ${formData[`supporterLastName${i}`]} (DOB: ${formData[`supporterDateOfBirth${i}`]}, Passport: ${formData[`supporterPassportNumber${i}`]})`);
+                    const supporterFirstName = (formData[`supporterFirstName${i}`] || '').trim();
+                    const supporterLastName = (formData[`supporterLastName${i}`] || '').trim();
+                    const supporterName = `${supporterFirstName} ${supporterLastName}`.trim();
+                    const supporterDob = (formData[`supporterDateOfBirth${i}`] || '').trim();
+                    const supporterPhone = (formData[`supporterPhone${i}`] || '').trim();
+                    const supporterPassport = (formData[`supporterPassportNumber${i}`] || '').trim();
+                    supporters.push(`${supporterName} (DOB: ${supporterDob}, Phone: ${supporterPhone}, Passport: ${supporterPassport})`);
                 }
             }
             supporterData = supporters.join('; ');
@@ -475,23 +487,24 @@ export default async function handler(req, res) {
             formData.firstName, // Column C: First Name
             formData.lastName, // Column D: Last Name
             formData.dateOfBirth, // Column E: Date of Birth
-            formData.email, // Column F: Email
-            normaliseBikeChoice(formData.bikeChoice), // Column G: Bike Choice
-            formData.passportNumber, // Column H: Passport Number
-            formData.bringingSupporter, // Column I: Bringing Supporter (Yes/No)
-            formData.supporterCount || '', // Column J: Number of Supporters
-            supporterData, // Column K: Supporter Details
-            formData.emergencyContact, // Column L: Emergency Contact Name
-            formData.emergencyPhone, // Column M: Emergency Contact Phone
-            additionalCommentsCellValue, // Column N: Additional Comments
-            'Pending Review' // Column O: Application Status
+            formData.phone, // Column F: Phone
+            formData.email, // Column G: Email
+            normaliseBikeChoice(formData.bikeChoice), // Column H: Bike Choice
+            formData.passportNumber, // Column I: Passport Number
+            formData.bringingSupporter, // Column J: Bringing Supporter (Yes/No)
+            formData.supporterCount || '', // Column K: Number of Supporters
+            supporterData, // Column L: Supporter Details
+            formData.emergencyContact, // Column M: Emergency Contact Name
+            formData.emergencyPhone, // Column N: Emergency Contact Phone
+            additionalCommentsCellValue, // Column O: Additional Comments
+            'Pending Review' // Column P: Application Status
         ];
 
         // Write to Google Sheets (create new sheet if it doesn't exist)
         try {
             await sheets.spreadsheets.values.append({
                 spreadsheetId,
-                range: 'US Training Camp Inquiries!A2:O', // Start from row 2, columns A through O
+                range: 'US Training Camp Inquiries!A2:P', // Start from row 2, columns A through P
                 valueInputOption: 'RAW',
                 requestBody: {
                     values: [rowData],
@@ -519,14 +532,14 @@ export default async function handler(req, res) {
                 // Add headers
                 const headers = [
                     'Timestamp', 'Application ID', 'First Name', 'Last Name', 'Date of Birth',
-                    'Email', 'Bike Choice', 'Passport Number', 'Bringing Supporter',
+                    'Phone', 'Email', 'Bike Choice', 'Passport Number', 'Bringing Supporter',
                     'Number of Supporters', 'Supporter Details', 'Emergency Contact Name',
                     'Emergency Contact Phone', 'Additional Comments', 'Application Status'
                 ];
 
                 await sheets.spreadsheets.values.update({
                     spreadsheetId,
-                    range: 'US Training Camp Inquiries!A1:O1',
+                    range: 'US Training Camp Inquiries!A1:P1',
                     valueInputOption: 'RAW',
                     requestBody: {
                         values: [headers],
@@ -536,7 +549,7 @@ export default async function handler(req, res) {
                 // Now add the application data
                 await sheets.spreadsheets.values.append({
                     spreadsheetId,
-                    range: 'US Training Camp Inquiries!A2:O',
+                    range: 'US Training Camp Inquiries!A2:P',
                     valueInputOption: 'RAW',
                     requestBody: {
                         values: [rowData],

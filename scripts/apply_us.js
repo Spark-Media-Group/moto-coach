@@ -164,7 +164,7 @@ function readFileAsBase64(file) {
 function validateFormData(formData) {
     // Check required fields
     const requiredFields = [
-        'firstName', 'lastName', 'dateOfBirth', 'email', 'bikeChoice',
+        'firstName', 'lastName', 'dateOfBirth', 'phone', 'email', 'bikeChoice',
         'passportNumber', 'bringingSupporter', 'emergencyContact', 'emergencyPhone'
     ];
     
@@ -199,7 +199,7 @@ function validateFormData(formData) {
         for (let i = 1; i <= parseInt(formData.supporterCount); i++) {
             const requiredSupporterFields = [
                 `supporterFirstName${i}`, `supporterLastName${i}`,
-                `supporterDateOfBirth${i}`, `supporterPassportNumber${i}`
+                `supporterDateOfBirth${i}`, `supporterPhone${i}`, `supporterPassportNumber${i}`
             ];
             
             for (const field of requiredSupporterFields) {
@@ -398,6 +398,12 @@ window.generateSupporterForms = function() {
                     <label for="supporterDateOfBirth${i}">Date of Birth *</label>
                     <input type="date" id="supporterDateOfBirth${i}" name="supporterDateOfBirth${i}" required>
                 </div>
+                <div class="form-group">
+                    <label for="supporterPhone${i}">Phone Number *</label>
+                    <input type="tel" id="supporterPhone${i}" name="supporterPhone${i}" required>
+                </div>
+            </div>
+            <div class="form-row single-column">
                 <div class="form-group">
                     <label for="supporterPassportNumber${i}">Passport Number *</label>
                     <input type="text" id="supporterPassportNumber${i}" name="supporterPassportNumber${i}" required>
