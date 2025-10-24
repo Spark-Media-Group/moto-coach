@@ -48,6 +48,50 @@ function normaliseBikeChoice(choice) {
     return BIKE_CHOICE_LABELS[choice] || choice || '';
 }
 
+function toIsoDateString(value) {
+    if (value === null || value === undefined) {
+        return null;
+    }
+
+    const trimmed = String(value).trim();
+    if (!trimmed) {
+        return null;
+    }
+
+    const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+        const [, yearStr, monthStr, dayStr] = isoMatch;
+        const year = parseInt(yearStr, 10);
+        const month = parseInt(monthStr, 10);
+        const day = parseInt(dayStr, 10);
+        const date = new Date(year, month - 1, day);
+        if (date.getFullYear() === year && (date.getMonth() + 1) === month && date.getDate() === day) {
+            return `${yearStr}-${monthStr}-${dayStr}`;
+        }
+        return null;
+    }
+
+    const auMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (auMatch) {
+        const [, dayStr, monthStr, yearStr] = auMatch;
+        const day = parseInt(dayStr, 10);
+        const month = parseInt(monthStr, 10);
+        const year = parseInt(yearStr, 10);
+        const date = new Date(year, month - 1, day);
+        if (date.getFullYear() === year && (date.getMonth() + 1) === month && date.getDate() === day) {
+            const isoMonth = monthStr.padStart(2, '0');
+            const isoDay = dayStr.padStart(2, '0');
+            return `${yearStr}-${isoMonth}-${isoDay}`;
+        }
+    }
+
+    return null;
+}
+
+function normaliseDateForOutput(value) {
+    return toIsoDateString(value) || String(value ?? '').trim();
+}
+
 // Function to send confirmation email to applicant
 async function sendApplicantConfirmationEmail(formData, applicationId) {
     try {
@@ -61,7 +105,7 @@ async function sendApplicantConfirmationEmail(formData, applicationId) {
         const safeLastName = toSafeString(formData.lastName);
         const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim();
         const safeEmail = toSafeString(recipientEmail);
-        const safeDateOfBirth = toSafeString(formData.dateOfBirth);
+        const safeDateOfBirth = toSafeString(normaliseDateForOutput(formData.dateOfBirth));
         const safePhone = toSafeString(formData.phone);
         const safeBikeChoice = toSafeString(normaliseBikeChoice(formData.bikeChoice));
         const bringingSupporter = formData.bringingSupporter === 'yes' ? 'Yes' : 'No';
@@ -156,7 +200,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
         const safeFullName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim() || 'Applicant';
         const safePhone = toSafeString(formData.phone);
         const safeEmail = toSafeString(formData.email);
-        const safeDateOfBirth = toSafeString(formData.dateOfBirth);
+        const safeDateOfBirth = toSafeString(normaliseDateForOutput(formData.dateOfBirth));
         const safeBikeChoice = toSafeString(normaliseBikeChoice(formData.bikeChoice));
         const safePassportNumber = toSafeString(formData.passportNumber);
         const safeSupporterCount = toSafeString(formData.supporterCount);
@@ -176,7 +220,7 @@ async function sendAdminNotificationEmail(formData, applicationId) {
                         toSafeString(formData[`supporterFirstName${i}`]),
                         toSafeString(formData[`supporterLastName${i}`])
                     ].filter(Boolean).join(' ').trim();
-                    const supporterDob = toSafeString(formData[`supporterDateOfBirth${i}`]);
+                    const supporterDob = toSafeString(normaliseDateForOutput(formData[`supporterDateOfBirth${i}`]));
                     const supporterPhone = toSafeString(formData[`supporterPhone${i}`]);
                     const supporterPassport = toSafeString(formData[`supporterPassportNumber${i}`]);
 
@@ -365,10 +409,19 @@ export default async function handler(req, res) {
             });
         }
 
+        const applicantDobIso = toIsoDateString(formData.dateOfBirth);
+        if (!applicantDobIso) {
+            return res.status(400).json({
+                error: 'Invalid date of birth',
+                details: 'Please enter the date of birth in DD/MM/YYYY format.'
+            });
+        }
+        formData.dateOfBirth = applicantDobIso;
+
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(formData.email)) {
-            return res.status(400).json({ 
+            return res.status(400).json({
                 error: 'Invalid email format',
                 details: 'Please enter a valid email address.'
             });
@@ -377,27 +430,44 @@ export default async function handler(req, res) {
         // Validate supporter information if applicable
         if (formData.bringingSupporter === 'yes') {
             if (!formData.supporterCount) {
-                return res.status(400).json({ 
+                return res.status(400).json({
                     error: 'Missing supporter count',
                     details: 'Please specify the number of supporters.'
                 });
             }
 
+            const supporterCount = parseInt(formData.supporterCount, 10);
+            if (!Number.isFinite(supporterCount) || supporterCount <= 0) {
+                return res.status(400).json({
+                    error: 'Invalid supporter count',
+                    details: 'Please provide a valid number of supporters.'
+                });
+            }
+
             // Validate individual supporter details
-            for (let i = 1; i <= parseInt(formData.supporterCount); i++) {
+            for (let i = 1; i <= supporterCount; i++) {
                 const requiredSupporterFields = [
                     `supporterFirstName${i}`, `supporterLastName${i}`,
                     `supporterDateOfBirth${i}`, `supporterPhone${i}`, `supporterPassportNumber${i}`
                 ];
-                
+
                 for (const field of requiredSupporterFields) {
                     if (!formData[field]) {
-                        return res.status(400).json({ 
+                        return res.status(400).json({
                             error: `Missing supporter ${i} information`,
                             details: `Please fill in all details for supporter ${i}.`
                         });
                     }
                 }
+
+                const supporterDobIso = toIsoDateString(formData[`supporterDateOfBirth${i}`]);
+                if (!supporterDobIso) {
+                    return res.status(400).json({
+                        error: `Invalid supporter ${i} date of birth`,
+                        details: `Please enter supporter ${i}'s date of birth in DD/MM/YYYY format.`
+                    });
+                }
+                formData[`supporterDateOfBirth${i}`] = supporterDobIso;
             }
         }
 
@@ -462,7 +532,7 @@ export default async function handler(req, res) {
                     const supporterFirstName = (formData[`supporterFirstName${i}`] || '').trim();
                     const supporterLastName = (formData[`supporterLastName${i}`] || '').trim();
                     const supporterName = `${supporterFirstName} ${supporterLastName}`.trim();
-                    const supporterDob = (formData[`supporterDateOfBirth${i}`] || '').trim();
+                    const supporterDob = normaliseDateForOutput(formData[`supporterDateOfBirth${i}`]);
                     const supporterPhone = (formData[`supporterPhone${i}`] || '').trim();
                     const supporterPassport = (formData[`supporterPassportNumber${i}`] || '').trim();
                     supporters.push(`${supporterName} (DOB: ${supporterDob}, Phone: ${supporterPhone}, Passport: ${supporterPassport})`);

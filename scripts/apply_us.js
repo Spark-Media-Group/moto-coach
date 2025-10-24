@@ -3,6 +3,8 @@ import { ensureBotIdClient } from './botid-client.js';
 // US Travel Program Inquiry Form Handler
 let botProtectionEnabled = true;
 
+const DATE_INPUT_SELECTOR = '[data-date-format="dd/mm/yyyy"]';
+
 document.addEventListener('DOMContentLoaded', async function() {
     const form = document.querySelector('.application-form');
     if (!form) {
@@ -11,12 +13,59 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     await initialiseBotProtection();
 
+    setupAustralianDateInputs();
+
     // Handle form submission
     form.addEventListener('submit', handleFormSubmission);
 
     // File upload handlers
     setupFileUpload();
 });
+
+function setupAustralianDateInputs(scope = document) {
+    const inputs = scope.querySelectorAll(DATE_INPUT_SELECTOR);
+    inputs.forEach((input) => {
+        input.addEventListener('input', handleDateInputFormatting);
+        input.addEventListener('blur', handleDateInputBlur);
+    });
+}
+
+function handleDateInputFormatting(event) {
+    const input = event.target;
+    if (!input || !input.matches(DATE_INPUT_SELECTOR)) {
+        return;
+    }
+
+    const digitsOnly = input.value.replace(/\D/g, '').slice(0, 8);
+    const day = digitsOnly.slice(0, 2);
+    const month = digitsOnly.slice(2, 4);
+    const year = digitsOnly.slice(4, 8);
+
+    let formattedValue = day;
+    if (month) {
+        formattedValue = `${day}/${month}`;
+    }
+    if (year) {
+        formattedValue = `${day}/${month}/${year}`;
+    }
+
+    input.value = formattedValue;
+}
+
+function handleDateInputBlur(event) {
+    const input = event.target;
+    if (!input || !input.matches(DATE_INPUT_SELECTOR)) {
+        return;
+    }
+
+    const digitsOnly = input.value.replace(/\D/g, '');
+    if (digitsOnly.length === 8) {
+        const day = digitsOnly.slice(0, 2);
+        const month = digitsOnly.slice(2, 4);
+        const year = digitsOnly.slice(4, 8);
+        input.value = `${day}/${month}/${year}`;
+    }
+}
 
 async function initialiseBotProtection() {
     try {
@@ -62,7 +111,9 @@ async function handleFormSubmission(e) {
         if (!validation.isValid) {
             throw new Error(validation.message);
         }
-        
+
+        convertDateFieldsToIso(formData);
+
         // Submit to backend API
         const response = await fetch('/api/apply_us', {
             method: 'POST',
@@ -160,8 +211,77 @@ function readFileAsBase64(file) {
     });
 }
 
+function isValidAustralianDate(value) {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) {
+        return false;
+    }
+
+    const [, dayStr, monthStr, yearStr] = match;
+    const day = parseInt(dayStr, 10);
+    const month = parseInt(monthStr, 10);
+    const year = parseInt(yearStr, 10);
+
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && (date.getMonth() + 1) === month && date.getDate() === day;
+}
+
+function convertAustralianDateToIso(value) {
+    const trimmed = typeof value === 'string' ? value.trim() : '';
+    if (!trimmed) {
+        return '';
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        return trimmed;
+    }
+
+    const match = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!match) {
+        return trimmed;
+    }
+
+    const [, dayStr, monthStr, yearStr] = match;
+    const day = parseInt(dayStr, 10);
+    const month = parseInt(monthStr, 10);
+    const year = parseInt(yearStr, 10);
+    const date = new Date(year, month - 1, day);
+
+    if (date.getFullYear() !== year || (date.getMonth() + 1) !== month || date.getDate() !== day) {
+        return trimmed;
+    }
+
+    const isoMonth = monthStr.padStart(2, '0');
+    const isoDay = dayStr.padStart(2, '0');
+    return `${yearStr}-${isoMonth}-${isoDay}`;
+}
+
+function convertDateFieldsToIso(formData) {
+    if (formData.dateOfBirth) {
+        formData.dateOfBirth = convertAustralianDateToIso(formData.dateOfBirth);
+    }
+
+    if (formData.bringingSupporter === 'yes' && formData.supporterCount) {
+        const supporterTotal = parseInt(formData.supporterCount, 10);
+        for (let i = 1; i <= supporterTotal; i++) {
+            const fieldName = `supporterDateOfBirth${i}`;
+            if (formData[fieldName]) {
+                formData[fieldName] = convertAustralianDateToIso(formData[fieldName]);
+            }
+        }
+    }
+}
+
 // Validate form data
 function validateFormData(formData) {
+    if (!isValidAustralianDate(formData.dateOfBirth)) {
+        return {
+            isValid: false,
+            message: 'Please enter your date of birth in DD/MM/YYYY format.'
+        };
+    }
+
     // Check required fields
     const requiredFields = [
         'firstName', 'lastName', 'dateOfBirth', 'phone', 'email', 'bikeChoice',
@@ -210,9 +330,17 @@ function validateFormData(formData) {
                     };
                 }
             }
+
+            const supporterDob = formData[`supporterDateOfBirth${i}`];
+            if (!isValidAustralianDate(supporterDob)) {
+                return {
+                    isValid: false,
+                    message: `Please enter supporter ${i}'s date of birth in DD/MM/YYYY format.`
+                };
+            }
         }
     }
-    
+
     if (!formData.passportPicture || !formData.passportPicture.data) {
         return {
             isValid: false,
@@ -395,8 +523,16 @@ window.generateSupporterForms = function() {
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label for="supporterDateOfBirth${i}">Date of Birth *</label>
-                    <input type="date" id="supporterDateOfBirth${i}" name="supporterDateOfBirth${i}" required>
+                    <label for="supporterDateOfBirth${i}">Date of Birth (DD/MM/YYYY) *</label>
+                    <input
+                        type="text"
+                        id="supporterDateOfBirth${i}"
+                        name="supporterDateOfBirth${i}"
+                        inputmode="numeric"
+                        pattern="\\d{2}/\\d{2}/\\d{4}"
+                        placeholder="DD/MM/YYYY"
+                        data-date-format="dd/mm/yyyy"
+                        required>
                 </div>
                 <div class="form-group">
                     <label for="supporterPhone${i}">Phone Number *</label>
@@ -410,7 +546,9 @@ window.generateSupporterForms = function() {
                 </div>
             </div>
         `;
-        
+
         supporterForms.insertAdjacentHTML('beforeend', supporterForm);
     }
+
+    setupAustralianDateInputs(supporterForms);
 };
