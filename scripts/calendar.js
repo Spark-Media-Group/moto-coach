@@ -51,6 +51,9 @@ class MotoCoachCalendar {
         this.cacheLastUpdated = null; // Track when cache was last updated
         this.heightSyncRaf = null; // Track pending animation frame for height syncing
         this.apiKey = 'calendar-app-2024'; // Simple API key for request validation
+        this.hasLoadedEvents = false;
+        this.pageElement = null;
+        this.mobileLoadingElement = null;
         this.mobileModalElements = {
             modal: null,
             dialog: null,
@@ -97,8 +100,28 @@ class MotoCoachCalendar {
         return element;
     }
 
+    createSelectionButton(eventKey, action) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.eventKey = eventKey;
+
+        if (action === 'remove') {
+            button.className = 'btn-remove-selection';
+            button.textContent = 'Remove from Selection';
+            button.addEventListener('click', () => this.removeEventFromSelection(eventKey));
+        } else {
+            button.className = 'btn-add-selection';
+            button.textContent = 'Add to Selection';
+            button.addEventListener('click', () => this.addEventToSelectionByKey(eventKey));
+        }
+
+        return button;
+    }
+
     async init() {
+        this.cacheDomElements();
         this.checkViewMode();
+        this.updateMobileLoadingState();
         this.bindEvents();
         this.setupMobileModal();
 
@@ -112,7 +135,10 @@ class MotoCoachCalendar {
         // Populate events into calendar and update events panel
         await this.populateEventsIntoCalendar();
         await this.updateEventPanel();
-        
+
+        this.hasLoadedEvents = true;
+        this.updateMobileLoadingState();
+
         // Add throttled resize listener to switch between desktop/mobile views and recalculate pagination
         window.addEventListener('resize', this.throttle(async () => {
             this.checkViewMode();
@@ -131,7 +157,14 @@ class MotoCoachCalendar {
                 this.currentEventPage = 1; // Reset to first page
                 await this.updateEventPanel();
             }
+
+            this.updateMobileLoadingState();
         }, 150));
+    }
+
+    cacheDomElements() {
+        this.pageElement = document.querySelector('.calendar-page');
+        this.mobileLoadingElement = document.getElementById('mobileCalendarLoading');
     }
 
     checkViewMode() {
@@ -143,6 +176,7 @@ class MotoCoachCalendar {
         }
 
         this.scheduleEventPanelHeightSync();
+        this.updateMobileLoadingState();
     }
 
     bindEvents() {
@@ -164,6 +198,25 @@ class MotoCoachCalendar {
         }
 
         // Note: Date selection removed - calendar is now view-only with hover interactions
+    }
+
+    updateMobileLoadingState() {
+        if (!this.pageElement) {
+            return;
+        }
+
+        const shouldShowMobileSpinner = this.isMobileView && !this.hasLoadedEvents;
+        this.pageElement.classList.toggle('mobile-loading', shouldShowMobileSpinner);
+
+        if (!this.mobileLoadingElement) {
+            return;
+        }
+
+        if (shouldShowMobileSpinner) {
+            this.mobileLoadingElement.removeAttribute('hidden');
+        } else {
+            this.mobileLoadingElement.setAttribute('hidden', '');
+        }
     }
 
     async loadEvents() {
@@ -431,6 +484,18 @@ class MotoCoachCalendar {
         return event.date < now;
     }
 
+    isDateBeforeToday(date) {
+        if (!(date instanceof Date)) {
+            return false;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const comparisonDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        return comparisonDate < today;
+    }
+
     async previousMonth() {
         // Use a safer method to decrement month
         const currentMonth = this.currentDate.getMonth();
@@ -526,12 +591,14 @@ class MotoCoachCalendar {
     }
 
     async populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap) {
+        const isPastDay = this.isDateBeforeToday(currentDay);
+
         if (dayEvents.length > 0) {
             dayElement.classList.add('has-events');
 
             // Check if ALL events on this day are past
             const allEventsPast = dayEvents.every(event => this.isEventPast(event));
-            if (allEventsPast) {
+            if (allEventsPast || isPastDay) {
                 dayElement.classList.add('past-event');
             }
 
@@ -542,23 +609,17 @@ class MotoCoachCalendar {
                 eventCount.className = 'event-count';
                 const countLabel = dayEvents.length === 1 ? '1 Event' : `${dayEvents.length} Events`;
                 eventCount.textContent = countLabel;
+                eventCount.classList.toggle('event-count--past', isPastDay);
                 if (!existingEventCount) {
                     dayElement.appendChild(eventCount);
                 }
 
-                dayElement.setAttribute('tabindex', '0');
-                dayElement.setAttribute('role', 'button');
-                dayElement.setAttribute('aria-label', this.buildMobileDayAriaLabel(currentDay, dayEvents));
                 dayElement.dataset.fullDate = currentDay.toISOString();
-                if (!dayElement.dataset.modalBound) {
-                    dayElement.addEventListener('click', () => this.openMobileModal(currentDay));
-                    dayElement.addEventListener('keydown', event => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            this.openMobileModal(currentDay);
-                        }
-                    });
-                    dayElement.dataset.modalBound = 'true';
+
+                if (isPastDay) {
+                    this.disableMobileDayInteraction(dayElement);
+                } else {
+                    this.enableMobileDayInteraction(dayElement, currentDay, dayEvents);
                 }
             } else {
                 // Desktop: Show event previews
@@ -566,12 +627,12 @@ class MotoCoachCalendar {
                 if (!existingEventsContainer) {
                     const eventsContainer = document.createElement('div');
                     eventsContainer.className = 'day-events';
-                    
+
                     // Show up to 3 events in the day box
                     for (const event of dayEvents.slice(0, 3)) {
                         const eventPreview = document.createElement('div');
                         eventPreview.className = `event-preview event-${event.type}`;
-                        
+
                         // Check if event is full using cached data
                         let isEventFull = false;
                         if (event.maxSpots && event.maxSpots > 0) {
@@ -588,19 +649,19 @@ class MotoCoachCalendar {
                                 }
                             }
                         }
-                        
+
                         if (isEventFull) {
                             // Show "EVENT FULL" for full events - no click handler
-                            const eventTitle = event.title.length > 15 
-                                ? event.title.substring(0, 15) + '...' 
+                            const eventTitle = event.title.length > 15
+                                ? event.title.substring(0, 15) + '...'
                                 : event.title;
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                            
+
                             // Create elements safely to prevent XSS
                             const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
                             const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
                             const fullDiv = this.createElementWithText('div', 'event-full-indicator', 'EVENT FULL');
-                            
+
                             eventPreview.appendChild(titleDiv);
                             eventPreview.appendChild(timeDiv);
                             eventPreview.appendChild(fullDiv);
@@ -608,33 +669,33 @@ class MotoCoachCalendar {
                         } else {
                             // Show normal event details with click handler for available events
                             const maxTitleLength = 15;
-                            const eventTitle = event.title.length > maxTitleLength 
-                                ? event.title.substring(0, maxTitleLength) + '...' 
+                            const eventTitle = event.title.length > maxTitleLength
+                                ? event.title.substring(0, maxTitleLength) + '...'
                                 : event.title;
-                            
+
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-                            
+
                             // Create elements safely to prevent XSS
                             const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
                             const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
-                            
+
                             eventPreview.appendChild(titleDiv);
                             eventPreview.appendChild(timeDiv);
-                            
+
                             // Show location on desktop
                             if (event.location) {
-                                const eventLocation = event.location.length > 20 
-                                    ? event.location.substring(0, 20) + '...' 
+                                const eventLocation = event.location.length > 20
+                                    ? event.location.substring(0, 20) + '...'
                                     : event.location;
                                 const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
                                 eventPreview.appendChild(locationDiv);
                             }
-                            
+
                             // Add click handler only for available events
                             if (!this.isEventPast(event)) {
                                 eventPreview.style.cursor = 'pointer';
                                 eventPreview.classList.add('clickable-event');
-                                
+
                                 // Create unique event ID for scrolling
                                 const eventId = this.generateEventId(event);
                                 eventPreview.addEventListener('click', () => {
@@ -642,10 +703,10 @@ class MotoCoachCalendar {
                                 });
                             }
                         }
-                        
+
                         eventsContainer.appendChild(eventPreview);
                     }
-                    
+
                     // If more events, show "and X more"
                     if (dayEvents.length > 3) {
                         const moreEvents = document.createElement('div');
@@ -653,8 +714,21 @@ class MotoCoachCalendar {
                         moreEvents.textContent = `+${dayEvents.length - 3} more`;
                         eventsContainer.appendChild(moreEvents);
                     }
-                    
+
                     dayElement.appendChild(eventsContainer);
+                }
+            }
+        } else {
+            if (isPastDay) {
+                // Add past-event class even if no events, for visual consistency
+                dayElement.classList.add('past-event');
+            }
+
+            if (this.isMobileView) {
+                this.disableMobileDayInteraction(dayElement);
+                const existingEventCount = dayElement.querySelector('.event-count');
+                if (existingEventCount) {
+                    existingEventCount.remove();
                 }
             }
         }
@@ -668,6 +742,63 @@ class MotoCoachCalendar {
         });
         const countLabel = dayEvents.length === 1 ? '1 event' : `${dayEvents.length} events`;
         return `${formattedDate}, ${countLabel}`;
+    }
+
+    enableMobileDayInteraction(dayElement, currentDay, dayEvents) {
+        if (!dayElement) {
+            return;
+        }
+
+        dayElement.classList.remove('mobile-day-disabled');
+        dayElement.setAttribute('tabindex', '0');
+        dayElement.setAttribute('role', 'button');
+        dayElement.setAttribute('aria-label', this.buildMobileDayAriaLabel(currentDay, dayEvents));
+
+        if (!dayElement._mobileClickHandler) {
+            dayElement._mobileClickHandler = () => {
+                const { fullDate } = dayElement.dataset;
+                if (fullDate) {
+                    this.openMobileModal(new Date(fullDate));
+                }
+            };
+        }
+
+        if (!dayElement._mobileKeydownHandler) {
+            dayElement._mobileKeydownHandler = event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    const { fullDate } = dayElement.dataset;
+                    if (fullDate) {
+                        this.openMobileModal(new Date(fullDate));
+                    }
+                }
+            };
+        }
+
+        dayElement.removeEventListener('click', dayElement._mobileClickHandler);
+        dayElement.addEventListener('click', dayElement._mobileClickHandler);
+
+        dayElement.removeEventListener('keydown', dayElement._mobileKeydownHandler);
+        dayElement.addEventListener('keydown', dayElement._mobileKeydownHandler);
+    }
+
+    disableMobileDayInteraction(dayElement) {
+        if (!dayElement) {
+            return;
+        }
+
+        if (dayElement._mobileClickHandler) {
+            dayElement.removeEventListener('click', dayElement._mobileClickHandler);
+        }
+
+        if (dayElement._mobileKeydownHandler) {
+            dayElement.removeEventListener('keydown', dayElement._mobileKeydownHandler);
+        }
+
+        dayElement.classList.add('mobile-day-disabled');
+        dayElement.removeAttribute('tabindex');
+        dayElement.removeAttribute('role');
+        dayElement.removeAttribute('aria-label');
     }
 
     setupMobileModal() {
@@ -1020,11 +1151,8 @@ class MotoCoachCalendar {
 
             dayElement.dataset.fullDate = currentDay.toISOString();
 
-            // Check if this day is in the past (before today)
-            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            const currentDayMidnight = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
-            const isPastDay = currentDayMidnight < todayMidnight;
-            
+            const isPastDay = this.isDateBeforeToday(currentDay);
+
             if (this.isSameDay(currentDay, today)) {
                 dayElement.classList.add('today');
             }
@@ -1053,18 +1181,15 @@ class MotoCoachCalendar {
         } else {
             const today = new Date();
             let currentDay;
-            
+
             if (this.isMobileView && fullDate) {
                 currentDay = fullDate;
             } else {
                 currentDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
             }
-            
-            // Check if this day is in the past (before today)
-            const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            const currentDayMidnight = new Date(currentDay.getFullYear(), currentDay.getMonth(), currentDay.getDate());
-            const isPastDay = currentDayMidnight < todayMidnight;
-            
+
+            const isPastDay = this.isDateBeforeToday(currentDay);
+
             if (this.isSameDay(currentDay, today)) {
                 dayElement.classList.add('today');
             }
@@ -1224,7 +1349,7 @@ class MotoCoachCalendar {
         this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
     }
 
-    addEventToSelectionByKey(eventKey, buttonElement) {
+    addEventToSelectionByKey(eventKey) {
         // Find the event by key from our current events
         const targetEvent = this.events.find(event => {
             const key = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
@@ -1353,29 +1478,22 @@ class MotoCoachCalendar {
             if (registerContainer) {
                 const addButton = registerContainer.querySelector('.btn-add-selection');
                 const removeButton = registerContainer.querySelector('.btn-remove-selection');
-                
+                const eventRegister = eventItem.querySelector('.event-register') || registerContainer;
+
                 if (addButton) {
-                    const eventKey = addButton.getAttribute('data-event-key');
-                    const isSelected = this.selectedEvents.has(eventKey);
-                    
-                    if (isSelected) {
-                        // Replace add button with remove button
-                        addButton.outerHTML = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${eventKey}')">Remove from Selection</button>`;
-                        // Update event item styling for selected state
-                        const eventRegister = eventItem.querySelector('.event-register') || eventItem.querySelector('.event-register-centered');
+                    const eventKey = addButton.dataset.eventKey || addButton.getAttribute('data-event-key');
+                    if (eventKey && this.selectedEvents.has(eventKey)) {
+                        const removeBtn = this.createSelectionButton(eventKey, 'remove');
+                        registerContainer.replaceChild(removeBtn, addButton);
                         if (eventRegister) {
                             eventRegister.classList.add('event-selected');
                         }
                     }
                 } else if (removeButton) {
-                    const eventKey = removeButton.getAttribute('onclick').match(/'([^']+)'/)[1];
-                    const isSelected = this.selectedEvents.has(eventKey);
-                    
-                    if (!isSelected) {
-                        // Replace remove button with add button
-                        removeButton.outerHTML = `<button class="btn-add-selection" data-event-key="${eventKey}" onclick="calendar.addEventToSelectionByKey('${eventKey}', this)">Add to Selection</button>`;
-                        // Update event item styling for unselected state
-                        const eventRegister = eventItem.querySelector('.event-register') || eventItem.querySelector('.event-register-centered');
+                    const eventKey = removeButton.dataset.eventKey || removeButton.getAttribute('data-event-key');
+                    if (eventKey && !this.selectedEvents.has(eventKey)) {
+                        const addBtn = this.createSelectionButton(eventKey, 'add');
+                        registerContainer.replaceChild(addBtn, removeButton);
                         if (eventRegister) {
                             eventRegister.classList.remove('event-selected');
                         }
@@ -1620,8 +1738,9 @@ class MotoCoachCalendar {
             }
 
             // Generate HTML for available events using global registration cache
-            const eventHTMLPromises = availableEvents.map(event => this.createEventHTMLWithCache(event, true, this.globalRegistrationCache));
-            const eventHTMLs = await Promise.all(eventHTMLPromises);
+            const eventElements = await Promise.all(
+                availableEvents.map(event => this.createEventElementWithCache(event, true, this.globalRegistrationCache))
+            );
 
             // Create final event list with safe DOM
             eventList.innerHTML = '';
@@ -1630,7 +1749,11 @@ class MotoCoachCalendar {
 
             const eventsScrollable = document.createElement('div');
             eventsScrollable.className = 'events-list-scrollable';
-            eventsScrollable.innerHTML = eventHTMLs.join(''); // Safe since this is controlled content
+            eventElements.forEach(element => {
+                if (element) {
+                    eventsScrollable.appendChild(element);
+                }
+            });
 
             eventList.appendChild(eventsHeader);
             eventList.appendChild(eventsScrollable);
@@ -1649,183 +1772,139 @@ class MotoCoachCalendar {
         }
     }
 
-    async createEventHTMLWithCache(event, showDate = false, registrationCountMap) {
-        const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
-        const locationStr = event.location ? `📍 ${event.location}` : '';
-        const descriptionStr = event.description || '';
-        
-        // Rate display logic
-        let rateStr = '';
-        if (event.hasRegistration) {
-            if (event.ratePerRider === 190) {
-                // Standard rate - show "Standard Rates Apply"
-                rateStr = `Standard Rates Apply`;
-            } else {
-                // Custom rate - show simplified format
-                rateStr = `$${event.ratePerRider} AUD/rider`;
-            }
+    async createEventElementWithCache(event, showDate = false, registrationCountMap = new Map()) {
+        const eventItem = document.createElement('div');
+        const elementId = this.generateEventId(event);
+        if (elementId) {
+            eventItem.id = elementId;
         }
-        
-        // Add register button and spots info if event has registration enabled
-        let registerButtonStr = '';
-        let spotsDisplayStr = '';
-        const isEventPast = this.isEventPast(event);
-        
-        if (event.hasRegistration && !isEventPast) {
-            const eventDateStr = formatAustralianDate(event.date);
-            const eventKey = `${event.title}_${eventDateStr}`;
-            
-            // Get registration count from cache
-            let showRegisterButton = true;
-            let remainingSpots = null;
-            
-            if (event.maxSpots !== null) {
-                const cachedResult = registrationCountMap.get(eventKey);
-                
-                if (cachedResult) {
-                    remainingSpots = cachedResult.remainingSpots;
-                    
-                    if (remainingSpots > 0) {
-                        const lowSpotsClass = remainingSpots < 5 ? ' low' : '';
-                        spotsDisplayStr = `<div class="spots-remaining${lowSpotsClass}">${remainingSpots} spots remaining</div>`;
-                        showRegisterButton = true;
-                    } else {
-                        spotsDisplayStr = `<div class="spots-remaining full">Event is full</div>`;
-                        showRegisterButton = false;
-                    }
-                } else {
-                    // Fallback if no cached data
-                    remainingSpots = event.maxSpots;
-                    spotsDisplayStr = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
-                    showRegisterButton = true;
-                }
-            } else {
-                spotsDisplayStr = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
-                showRegisterButton = true;
-                remainingSpots = null; // No limit
-            }
-            
-            // Check if this event is already selected
-            const isSelected = this.isEventSelected(event);
-            const selectionEventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
-            
-            if (showRegisterButton) {
-                if (isSelected) {
-                    registerButtonStr = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${selectionEventKey}')">Remove from Selection</button>`;
-                } else {
-                    // Store event data in a data attribute and use a simpler approach
-                    registerButtonStr = `<button class="btn-add-selection" data-event-key="${selectionEventKey}" onclick="calendar.addEventToSelectionByKey('${selectionEventKey}', this)">Add to Selection</button>`;
-                }
-            }
-        }
-        
-        return `
-            <div id="${this.generateEventId(event)}" class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
-                <div class="event-details-centered">
-                    <div class="event-time-centered">${dateStr}${event.time}</div>
-                    <div class="event-title-centered">${event.title}</div>
-                    ${locationStr ? `<div class="event-location-centered">${locationStr}</div>` : ''}
-                    ${descriptionStr ? `<div class="event-description-centered">${descriptionStr}</div>` : ''}
-                    ${rateStr ? `<div class="event-rate-centered">${rateStr}</div>` : ''}
-                    ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
-                </div>
-                ${registerButtonStr ? `<div class="event-register-centered">${registerButtonStr}</div>` : ''}
-                ${spotsDisplayStr ? `<div class="event-spots-centered">${spotsDisplayStr}</div>` : ''}
-            </div>
-        `;
-    }
 
-    async createEventHTML(event, showDate = false) {
-        const dateStr = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1} - ` : '';
-        const locationStr = event.location ? `📍 ${event.location}` : '';
-        const descriptionStr = event.description || '';
-        
-        // Rate display logic
-        let rateStr = '';
+        const isEventPast = this.isEventPast(event);
+        const eventClasses = ['event-item'];
+        if (event.hasRegistration && this.isEventSelected(event)) {
+            eventClasses.push('event-selected');
+        }
+        if (isEventPast) {
+            eventClasses.push('past-event');
+        }
+        eventItem.className = eventClasses.join(' ');
+
+        const detailsContainer = document.createElement('div');
+        detailsContainer.className = 'event-details-centered';
+
+        const datePrefix = showDate ? `${event.date.getDate()}/${event.date.getMonth() + 1}` : '';
+        let timeContent = event.time || '';
+        if (showDate && event.time) {
+            timeContent = `${datePrefix} - ${event.time}`;
+        } else if (showDate) {
+            timeContent = datePrefix;
+        }
+
+        detailsContainer.appendChild(this.createElementWithText('div', 'event-time-centered', timeContent));
+        detailsContainer.appendChild(this.createElementWithText('div', 'event-title-centered', event.title || ''));
+
+        if (event.location) {
+            detailsContainer.appendChild(this.createElementWithText('div', 'event-location-centered', `📍 ${event.location}`));
+        }
+
+        if (event.description) {
+            detailsContainer.appendChild(this.createElementWithText('div', 'event-description-centered', event.description));
+        }
+
         if (event.hasRegistration) {
             if (event.ratePerRider === 190) {
-                // Standard rate - show "Standard Rates Apply"
-                rateStr = `Standard Rates Apply`;
-            } else {
-                // Custom rate - show simplified format
-                rateStr = `$${event.ratePerRider} AUD/rider`;
+                detailsContainer.appendChild(this.createElementWithText('div', 'event-rate-centered', 'Standard Rates Apply'));
+            } else if (typeof event.ratePerRider === 'number') {
+                detailsContainer.appendChild(this.createElementWithText('div', 'event-rate-centered', `$${event.ratePerRider} AUD/rider`));
             }
         }
-        
-        // Add register button and spots info if event has registration enabled
-        let registerButtonStr = '';
-        let spotsDisplayStr = '';
-        const isEventPast = this.isEventPast(event);
-        
+
+        if (isEventPast) {
+            detailsContainer.appendChild(this.createElementWithText('div', 'event-past-notice', 'Event has ended'));
+        }
+
+        eventItem.appendChild(detailsContainer);
+
+        const eventDateStr = formatAustralianDate(event.date);
+        const eventKey = `${event.title}_${eventDateStr}`;
+        const isSelected = this.isEventSelected(event);
+
+        let registerButton = null;
+        let registerContainerSelected = isSelected;
+        let spotsInfo = null;
+        let showRegisterButton = false;
+
         if (event.hasRegistration && !isEventPast) {
-            const eventDateStr = formatAustralianDate(event.date);
-            
-            // Get registration count for this event
-            let showRegisterButton = true;
-            let remainingSpots = null; // Initialize remainingSpots variable
-            
-            if (event.maxSpots !== null) {
+            showRegisterButton = true;
+
+            if (event.maxSpots !== null && event.maxSpots !== undefined) {
+                let remainingSpots = null;
+
                 try {
-                    // Use global registration cache instead of individual API call
-                    const cacheKey = `${event.title}_${eventDateStr}`;
-                    const cached = this.globalRegistrationCache.get(cacheKey);
-                    
-                    if (cached) {
-                        remainingSpots = cached.remainingSpots;
+                    const cachedResult = registrationCountMap.get(eventKey);
+
+                    if (cachedResult) {
+                        remainingSpots = cachedResult.remainingSpots;
                     } else {
-                        // Fallback to individual API call if not in cache
                         const registrationCount = await this.getRegistrationCount(event.title, eventDateStr);
                         remainingSpots = event.maxSpots - registrationCount;
                     }
-                    
+
                     if (remainingSpots > 0) {
-                        const lowSpotsClass = remainingSpots < 5 ? ' low' : '';
-                        spotsDisplayStr = `<div class="spots-remaining${lowSpotsClass}">${remainingSpots} spots remaining</div>`;
-                        showRegisterButton = true;
+                        spotsInfo = {
+                            text: `${remainingSpots} spots remaining`,
+                            classes: ['spots-remaining', ...(remainingSpots < 5 ? ['low'] : [])]
+                        };
                     } else {
-                        spotsDisplayStr = `<div class="spots-remaining full">Event is full</div>`;
+                        spotsInfo = {
+                            text: 'Event is full',
+                            classes: ['spots-remaining', 'full']
+                        };
                         showRegisterButton = false;
                     }
                 } catch (error) {
                     console.error('Error getting registration count:', error);
-                    remainingSpots = event.maxSpots; // Fallback to max spots if error
-                    spotsDisplayStr = `<div class="spots-remaining">${event.maxSpots} spots available</div>`;
-                    showRegisterButton = true;
+                    remainingSpots = event.maxSpots;
+                    spotsInfo = {
+                        text: `${event.maxSpots} spots available`,
+                        classes: ['spots-remaining']
+                    };
                 }
             } else {
-                spotsDisplayStr = `<div class="spots-remaining unlimited">Unlimited spots</div>`;
-                showRegisterButton = true;
-                remainingSpots = null; // No limit
+                spotsInfo = {
+                    text: 'Unlimited spots',
+                    classes: ['spots-remaining', 'unlimited']
+                };
             }
-            
-            // Check if this event is already selected
-            const isSelected = this.isEventSelected(event);
-            const eventKey = `${event.title}_${formatAustralianDate(event.date)}`;
-            
+
             if (showRegisterButton) {
-                if (isSelected) {
-                    registerButtonStr = `<button class="btn-remove-selection" onclick="calendar.removeEventFromSelection('${eventKey}')">Remove from Selection</button>`;
-                } else {
-                    // Store event data in a data attribute and use a simpler approach
-                    registerButtonStr = `<button class="btn-add-selection" data-event-key="${eventKey}" onclick="calendar.addEventToSelectionByKey('${eventKey}', this)">Add to Selection</button>`;
-                }
+                registerButton = this.createSelectionButton(eventKey, isSelected ? 'remove' : 'add');
             }
         }
-        
-        return `
-            <div id="${this.generateEventId(event)}" class="event-item ${event.hasRegistration && this.isEventSelected(event) ? 'event-selected' : ''} ${isEventPast ? 'past-event' : ''}">
-                <div class="event-details-centered">
-                    <div class="event-time-centered">${dateStr}${event.time}</div>
-                    <div class="event-title-centered">${event.title}</div>
-                    ${locationStr ? `<div class="event-location-centered">${locationStr}</div>` : ''}
-                    ${descriptionStr ? `<div class="event-description-centered">${descriptionStr}</div>` : ''}
-                    ${rateStr ? `<div class="event-rate-centered">${rateStr}</div>` : ''}
-                    ${isEventPast ? `<div class="event-past-notice">Event has ended</div>` : ''}
-                </div>
-                ${registerButtonStr ? `<div class="event-register-centered">${registerButtonStr}</div>` : ''}
-                ${spotsDisplayStr ? `<div class="event-spots-centered">${spotsDisplayStr}</div>` : ''}
-            </div>
-        `;
+
+        if (registerButton) {
+            const registerContainer = document.createElement('div');
+            registerContainer.className = 'event-register-centered';
+            if (registerContainerSelected) {
+                registerContainer.classList.add('event-selected');
+            }
+            registerContainer.appendChild(registerButton);
+            eventItem.appendChild(registerContainer);
+        }
+
+        if (spotsInfo) {
+            const spotsContainer = document.createElement('div');
+            spotsContainer.className = 'event-spots-centered';
+
+            const spotsElement = document.createElement('div');
+            spotsElement.className = spotsInfo.classes.join(' ');
+            spotsElement.textContent = spotsInfo.text;
+
+            spotsContainer.appendChild(spotsElement);
+            eventItem.appendChild(spotsContainer);
+        }
+
+        return eventItem;
     }
 
     async getRegistrationCount(eventName, eventDate) {
