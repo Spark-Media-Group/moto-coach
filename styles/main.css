@@ -841,6 +841,10 @@ footer {
     gap: 1.5rem;
 }
 
+.form-row.single-column {
+    grid-template-columns: 1fr;
+}
+
 .form-group {
     display: flex;
     flex-direction: column;

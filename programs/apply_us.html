@@ -126,15 +126,27 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="dateOfBirth">Date of Birth *</label>
-                            <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+                            <label for="dateOfBirth">Date of Birth (DD/MM/YYYY) *</label>
+                            <input
+                                type="text"
+                                id="dateOfBirth"
+                                name="dateOfBirth"
+                                inputmode="numeric"
+                                pattern="\d{2}/\d{2}/\d{4}"
+                                placeholder="DD/MM/YYYY"
+                                data-date-format="dd/mm/yyyy"
+                                required>
                         </div>
+                        <div class="form-group">
+                            <label for="phone">Phone Number *</label>
+                            <input type="tel" id="phone" name="phone" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="email">Email Address *</label>
                             <input type="email" id="email" name="email" required>
                         </div>
-                    </div>
-                    <div class="form-row">
                         <div class="form-group">
                             <label for="bikeChoice">Choose your bike *</label>
                             <select id="bikeChoice" name="bikeChoice" required>
