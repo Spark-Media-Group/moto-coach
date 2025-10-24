@@ -19,6 +19,7 @@ let shippingRequired = true;
 let shippingFieldsInitialised = false;
 let stripePublishableKey = null;
 let exchangeRatesCache = null;
+let checkoutLocked = false;
 
 const SAFE_URL_PROTOCOLS = new Set(['https:']);
 const DATA_URL_PATTERN = /^data:image\//i;
@@ -985,6 +986,20 @@ function renderEmptyState() {
     }
 }
 
+function lockOrderSummary() {
+    checkoutLocked = true;
+
+    const summaryEl = document.getElementById('checkout-summary');
+    if (!summaryEl) {
+        return;
+    }
+
+    summaryEl.classList.add('summary-locked');
+    summaryEl.querySelectorAll('.checkout-remove-button').forEach(button => {
+        button.remove();
+    });
+}
+
 function buildShopItemsMarkup(summary, lineCurrency) {
     if (!hasShopLineItems(summary)) {
         return '';
@@ -1013,6 +1028,15 @@ function buildShopItemsMarkup(summary, lineCurrency) {
             : '<span>No image</span>';
         const removeLineValue = escapeHTML(line.id ?? line.variantId ?? '');
         const lineIndexValue = escapeHTML(String(index));
+        const removeButtonMarkup = checkoutLocked
+            ? ''
+            : `
+                        <button type="button" class="checkout-remove-button" data-remove-line="${removeLineValue}" data-line-index="${lineIndexValue}" aria-label="${removeLabel}">
+                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
+                            </svg>
+                        </button>
+                    `;
 
         return `
             <div class="checkout-item">
@@ -1022,11 +1046,7 @@ function buildShopItemsMarkup(summary, lineCurrency) {
                 <div class="checkout-item-details">
                     <div class="checkout-item-header">
                         <h3>${itemTitle}</h3>
-                        <button type="button" class="checkout-remove-button" data-remove-line="${removeLineValue}" data-line-index="${lineIndexValue}" aria-label="${removeLabel}">
-                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
-                            </svg>
-                        </button>
+                        ${removeButtonMarkup}
                     </div>
                     ${variantTitle}
                     <p>Qty: ${quantityDisplay} · ${priceDisplay}</p>
@@ -1108,6 +1128,16 @@ function buildEventRegistrationMarkup(registration) {
         : formatMoney(riderCount > 0 ? registration.totalAmount / riderCount : registration.totalAmount, currency);
     const total = formatMoney(registration.totalAmount, currency);
 
+    const removeButtonMarkup = checkoutLocked
+        ? ''
+        : `
+                    <button type="button" class="checkout-remove-button" data-remove-event="true" aria-label="Remove event registration">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                            <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
+                        </svg>
+                    </button>
+                `;
+
     return `
         <div class="checkout-item event-registration">
             <div class="checkout-item-thumb">
@@ -1116,11 +1146,7 @@ function buildEventRegistrationMarkup(registration) {
             <div class="checkout-item-details">
                 <div class="checkout-item-header">
                     <h3>Event Registration</h3>
-                    <button type="button" class="checkout-remove-button" data-remove-event="true" aria-label="Remove event registration">
-                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                            <path d="M9 3a1 1 0 0 0-1 1v1H5.5a1 1 0 0 0 0 2h.59l.85 12.09A2 2 0 0 0 8.93 21h6.14a2 2 0 0 0 1.99-1.91L17.91 7H18.5a1 1 0 1 0 0-2H16V4a1 1 0 0 0-1-1H9Zm1 2h4V4h-4v1Zm-1.41 2 0.78 11.09a1 1 0 0 0 1 .91h4.26a1 1 0 0 0 1-.91L15.41 7H8.59Z" />
-                        </svg>
-                    </button>
+                    ${removeButtonMarkup}
                 </div>
                 <p>${escapeHTML(String(riderCount))} ${escapeHTML(riderLabel)} · ${escapeHTML(perRider)} each</p>
                 <div class="event-summary">
@@ -1138,6 +1164,8 @@ function renderSummary(summary) {
     if (!summaryEl) {
         return;
     }
+
+    summaryEl.classList.toggle('summary-locked', checkoutLocked);
 
     if (!summary) {
         renderEmptyState();
@@ -2624,6 +2652,7 @@ function showSuccess({ orderData = null, registrationResult = null } = {}) {
         successMessage.textContent = parts.join(' ');
     }
 
+    lockOrderSummary();
     sessionStorage.removeItem(CHECKOUT_STORAGE_KEY);
 }
 
@@ -2740,6 +2769,10 @@ function removeEventRegistration() {
 }
 
 function handleSummaryInteraction(event) {
+    if (checkoutLocked) {
+        return;
+    }
+
     const button = event.target.closest('.checkout-remove-button');
     if (!button) {
         return;
