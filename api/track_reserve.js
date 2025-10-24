@@ -273,23 +273,22 @@ async function validateEventDetails(eventData) {
             // Validate pricing if provided
             if (eventData.ratePerRider) {
                 const description = foundEvent.description || '';
-                const defaultRate = 190;
-                
-                let actualRate = defaultRate;
                 const rateMatch = description.match(/rate\s*[=:]\s*\$?(\d+)/i) || description.match(/\$(\d+)/);
-                if (rateMatch) {
-                    actualRate = parseInt(rateMatch[1]);
-                }
 
-                // For multi-event, check if the submitted rate makes sense
-                const submittedRate = parseFloat(eventData.ratePerRider);
+                const submittedRate = Number.parseFloat(eventData.ratePerRider);
+                const actualRate = rateMatch ? Number.parseFloat(rateMatch[1]) : Number.NaN;
                 const tolerance = 50; // Allow some variance for bundling/discounts
-                
-                if (Math.abs(submittedRate - actualRate) > tolerance && !eventData.multiEventRegistration) {
+
+                if (
+                    Number.isFinite(submittedRate) &&
+                    Number.isFinite(actualRate) &&
+                    !eventData.multiEventRegistration &&
+                    Math.abs(submittedRate - actualRate) > tolerance
+                ) {
                     invalidEvents.push({
                         eventName: submittedEvent.title,
                         date: submittedEvent.dateString,
-                        reason: `Rate mismatch: submitted $${submittedRate}, actual $${actualRate}`
+                        reason: `Rate mismatch: submitted $${submittedRate}, calendar $${actualRate}`
                     });
                 }
             }
