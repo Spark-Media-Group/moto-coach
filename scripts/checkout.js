@@ -979,7 +979,7 @@ function renderEmptyState() {
             <h2>Your Cart is empty</h2>
             <p>Visit the store or register for an event to add items to your cart.</p>
             <div class="empty-actions">
-                <a href="/shop" class="btn-primary empty-link">Store</a>
+                <!-- <a href="/shop" class="btn-primary empty-link">Store</a> -->
                 <a href="/calendar" class="btn-secondary empty-link">Register for Events</a>
             </div>
         `;
