@@ -28,6 +28,57 @@ function normalizeAustralianDate(value) {
     return `${day}/${month}/${year}`;
 }
 
+function getEventDateDetails(event) {
+    const start = event?.start;
+    if (!start) {
+        return null;
+    }
+
+    if (start.dateTime) {
+        const date = new Date(start.dateTime);
+        if (Number.isNaN(date.getTime())) {
+            return null;
+        }
+
+        const normalized = normalizeAustralianDate(`${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`);
+        if (!normalized) {
+            return null;
+        }
+
+        return {
+            date,
+            normalizedDate: normalized,
+            rawValue: start.dateTime
+        };
+    }
+
+    if (start.date) {
+        const isoParts = start.date.split('-');
+        if (isoParts.length !== 3) {
+            return null;
+        }
+
+        const [yearPart, monthPart, dayPart] = isoParts.map(Number);
+        if ([yearPart, monthPart, dayPart].some(number => Number.isNaN(number))) {
+            return null;
+        }
+
+        const date = new Date(yearPart, monthPart - 1, dayPart);
+        const normalized = normalizeAustralianDate(`${dayPart}/${monthPart}/${yearPart}`);
+        if (!normalized) {
+            return null;
+        }
+
+        return {
+            date,
+            normalizedDate: normalized,
+            rawValue: start.date
+        };
+    }
+
+    return null;
+}
+
 const ALLOWED_DOMAIN_SET = new Set(ALLOWED_ORIGINS);
 
 export default async function handler(req, res) {
@@ -233,11 +284,33 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
         const events = items || [];
 
-        // Find the specific event with strict title match
-        const foundEvent = events.find(event => {
-            if (!event.summary || !event.start?.dateTime) return false;
-            return event.summary.trim() === eventName.trim();
-        });
+        const normalizedSearchName = eventName.trim().toLowerCase();
+        let foundEvent = null;
+        let foundEventDateDetails = null;
+
+        for (const event of events) {
+            if (!event?.summary) {
+                continue;
+            }
+
+            const normalizedEventName = event.summary.trim().toLowerCase();
+            if (normalizedEventName !== normalizedSearchName) {
+                continue;
+            }
+
+            const dateDetails = getEventDateDetails(event);
+            if (!dateDetails) {
+                continue;
+            }
+
+            if (dateDetails.normalizedDate !== normalizedEventDate) {
+                continue;
+            }
+
+            foundEvent = event;
+            foundEventDateDetails = dateDetails;
+            break;
+        }
 
         if (process.env.NODE_ENV !== 'production') {
             console.log(`Found ${events.length} calendar events on requested date (user input redacted)`, {
@@ -245,10 +318,13 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
                 requestedNameLength: eventName ? eventName.length : 0
             });
             if (!foundEvent) {
-                console.log('Available events on this date:', events.map(e => ({
-                    title: e.summary,
-                    time: e.start?.dateTime
-                })));
+                console.log('Available events on this date:', events.map(e => {
+                    const details = getEventDateDetails(e);
+                    return {
+                        title: e.summary,
+                        time: details?.rawValue || e.start?.dateTime || e.start?.date || null
+                    };
+                }));
             }
         }
 
@@ -256,6 +332,14 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
             return res.status(404).json({
                 success: false,
                 error: 'Event not found'
+            });
+        }
+
+        if (!foundEventDateDetails) {
+            console.error('Found event but missing date details');
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to parse event date'
             });
         }
 
@@ -278,9 +362,8 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
         }
 
         // Calculate remaining spots using registration data
-        const eventStartDate = new Date(foundEvent.start.dateTime);
-        // Use calendar date exactly as it appears, no timezone conversion
-        const eventDateString = normalizeAustralianDate(`${eventStartDate.getDate()}/${eventStartDate.getMonth() + 1}/${eventStartDate.getFullYear()}`);
+        const eventStartDate = foundEventDateDetails.date;
+        const eventDateString = foundEventDateDetails.normalizedDate;
 
         let remainingSpots = maxSpots;
 
