@@ -112,8 +112,8 @@ html {
 .calendar-main-container {
     display: flex;
     width: 100%;
-    max-width: var(--calendar-max-width);
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     background: var(--calendar-black);
     align-items: stretch;
 }
