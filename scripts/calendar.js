@@ -92,6 +92,27 @@ class MotoCoachCalendar {
         return div.innerHTML;
     }
 
+    formatDescriptionForDisplay(description) {
+        if (typeof description !== 'string') {
+            return '';
+        }
+
+        const normalized = description
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+
+        if (!normalized) {
+            return '';
+        }
+
+        return normalized
+            .split('\n')
+            .map(line => this.escapeHtml(line.trim()))
+            .filter(line => line.length > 0)
+            .join('<br>');
+    }
+
     // Create DOM element safely with text content
     createElementWithText(tag, className, textContent) {
         const element = document.createElement(tag);
@@ -1808,7 +1829,13 @@ class MotoCoachCalendar {
         }
 
         if (event.description) {
-            detailsContainer.appendChild(this.createElementWithText('div', 'event-description-centered', event.description));
+            const formattedDescription = this.formatDescriptionForDisplay(event.description);
+            if (formattedDescription) {
+                const descriptionElement = document.createElement('div');
+                descriptionElement.className = 'event-description-centered';
+                descriptionElement.innerHTML = formattedDescription;
+                detailsContainer.appendChild(descriptionElement);
+            }
         }
 
         if (event.hasRegistration) {
