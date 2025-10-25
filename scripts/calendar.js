@@ -1235,11 +1235,17 @@ class MotoCoachCalendar {
                     // Desktop: Show event previews or "EVENT FULL" for full events
                     const eventsContainer = document.createElement('div');
                     eventsContainer.className = 'day-events';
-                    
-                    // Show up to 3 events in the day box
-                    for (const event of dayEvents.slice(0, 3)) {
+
+                    const maxVisibleEvents = 3;
+                    let renderedCount = 0;
+
+                    for (const event of dayEvents) {
                         const eventPreview = document.createElement('div');
                         eventPreview.className = `event-preview event-${event.type}`;
+
+                        if (renderedCount >= maxVisibleEvents) {
+                            eventPreview.classList.add('extra-event');
+                        }
                         
                         // Check if event is full
                         let isEventFull = false;
@@ -1306,16 +1312,19 @@ class MotoCoachCalendar {
                         }
                         
                         eventsContainer.appendChild(eventPreview);
+                        renderedCount++;
                     }
-                    
+
                     // If more events, show "and X more"
-                    if (dayEvents.length > 3) {
+                    if (dayEvents.length > maxVisibleEvents) {
                         const moreEvents = document.createElement('div');
                         moreEvents.className = 'more-events';
-                        moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                        moreEvents.dataset.moreCount = dayEvents.length - maxVisibleEvents;
+                        moreEvents.textContent = `+${dayEvents.length - maxVisibleEvents} more`;
+                        moreEvents.setAttribute('aria-label', `${dayEvents.length - maxVisibleEvents} additional events`);
                         eventsContainer.appendChild(moreEvents);
                     }
-                    
+
                     dayElement.appendChild(eventsContainer);
                 }
             } else if (isPastDay) {
