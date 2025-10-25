@@ -614,8 +614,24 @@ class MotoCoachCalendar {
     async populateEventsForDayWithCache(dayElement, currentDay, dayEvents, registrationCountMap) {
         const isPastDay = this.isDateBeforeToday(currentDay);
 
+        // Reset view-specific elements before repopulating
+        if (!this.isMobileView) {
+            const existingMobileCount = dayElement.querySelector('.event-count');
+            if (existingMobileCount) {
+                existingMobileCount.remove();
+            }
+        }
+
+        const existingDesktopCount = dayElement.querySelector('.event-count-label');
+        if (existingDesktopCount) {
+            existingDesktopCount.remove();
+        }
+
+        const dayHeader = dayElement.querySelector('.calendar-day-header');
+
         if (dayEvents.length > 0) {
             dayElement.classList.add('has-events');
+            dayElement.classList.remove('past-event');
 
             // Check if ALL events on this day are past
             const allEventsPast = dayEvents.every(event => this.isEventPast(event));
@@ -624,6 +640,11 @@ class MotoCoachCalendar {
             }
 
             if (this.isMobileView) {
+                const existingDesktopContainer = dayElement.querySelector('.day-events');
+                if (existingDesktopContainer) {
+                    existingDesktopContainer.remove();
+                }
+
                 // Mobile: Show just the number of events
                 const existingEventCount = dayElement.querySelector('.event-count');
                 const eventCount = existingEventCount || document.createElement('div');
@@ -643,106 +664,117 @@ class MotoCoachCalendar {
                     this.enableMobileDayInteraction(dayElement, currentDay, dayEvents);
                 }
             } else {
-                // Desktop: Show event previews
-                const existingEventsContainer = dayElement.querySelector('.day-events');
-                if (!existingEventsContainer) {
-                    const eventsContainer = document.createElement('div');
+                // Desktop: Show event previews and count label
+                let eventsContainer = dayElement.querySelector('.day-events');
+                if (!eventsContainer) {
+                    eventsContainer = document.createElement('div');
                     eventsContainer.className = 'day-events';
-
-                    // Show up to 3 events in the day box
-                    for (const event of dayEvents.slice(0, 3)) {
-                        const eventPreview = document.createElement('div');
-                        eventPreview.className = `event-preview event-${event.type}`;
-
-                        // Check if event is full using cached data
-                        let isEventFull = false;
-                        if (event.maxSpots && event.maxSpots > 0) {
-                            const eventDateStr = formatAustralianDate(event.date);
-                            const eventKey = `${event.title}_${eventDateStr}`;
-                            const cachedResult = registrationCountMap.get(eventKey);
-
-                            if (cachedResult) {
-                                if (typeof cachedResult.remainingSpots === 'number') {
-                                    event.remainingSpots = cachedResult.remainingSpots;
-                                    isEventFull = cachedResult.remainingSpots <= 0;
-                                } else {
-                                    isEventFull = cachedResult.remainingSpots <= 0;
-                                }
-                            }
-                        }
-
-                        if (isEventFull) {
-                            // Show "EVENT FULL" for full events - no click handler
-                            const eventTitle = event.title.length > 15
-                                ? event.title.substring(0, 15) + '...'
-                                : event.title;
-                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-
-                            // Create elements safely to prevent XSS
-                            const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
-                            const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
-                            const fullDiv = this.createElementWithText('div', 'event-full-indicator', 'EVENT FULL');
-
-                            eventPreview.appendChild(titleDiv);
-                            eventPreview.appendChild(timeDiv);
-                            eventPreview.appendChild(fullDiv);
-                            eventPreview.classList.add('event-full');
-                        } else {
-                            // Show normal event details with click handler for available events
-                            const maxTitleLength = 15;
-                            const eventTitle = event.title.length > maxTitleLength
-                                ? event.title.substring(0, maxTitleLength) + '...'
-                                : event.title;
-
-                            const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
-
-                            // Create elements safely to prevent XSS
-                            const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
-                            const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
-
-                            eventPreview.appendChild(titleDiv);
-                            eventPreview.appendChild(timeDiv);
-
-                            // Show location on desktop
-                            if (event.location) {
-                                const eventLocation = event.location.length > 20
-                                    ? event.location.substring(0, 20) + '...'
-                                    : event.location;
-                                const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
-                                eventPreview.appendChild(locationDiv);
-                            }
-
-                            // Add click handler only for available events
-                            if (!this.isEventPast(event)) {
-                                eventPreview.style.cursor = 'pointer';
-                                eventPreview.classList.add('clickable-event');
-
-                                // Create unique event ID for scrolling
-                                const eventId = this.generateEventId(event);
-                                eventPreview.addEventListener('click', () => {
-                                    this.scrollToEventInUpcomingList(eventId);
-                                });
-                            }
-                        }
-
-                        eventsContainer.appendChild(eventPreview);
-                    }
-
-                    // If more events, show "and X more"
-                    if (dayEvents.length > 3) {
-                        const moreEvents = document.createElement('div');
-                        moreEvents.className = 'more-events';
-                        moreEvents.textContent = `+${dayEvents.length - 3} more`;
-                        eventsContainer.appendChild(moreEvents);
-                    }
-
                     dayElement.appendChild(eventsContainer);
                 }
+
+                eventsContainer.innerHTML = '';
+
+                // Show up to 3 events in the day box
+                for (const event of dayEvents.slice(0, 3)) {
+                    const eventPreview = document.createElement('div');
+                    eventPreview.className = `event-preview event-${event.type}`;
+
+                    // Check if event is full using cached data
+                    let isEventFull = false;
+                    if (event.maxSpots && event.maxSpots > 0) {
+                        const eventDateStr = formatAustralianDate(event.date);
+                        const eventKey = `${event.title}_${eventDateStr}`;
+                        const cachedResult = registrationCountMap.get(eventKey);
+
+                        if (cachedResult) {
+                            if (typeof cachedResult.remainingSpots === 'number') {
+                                event.remainingSpots = cachedResult.remainingSpots;
+                                isEventFull = cachedResult.remainingSpots <= 0;
+                            } else {
+                                isEventFull = cachedResult.remainingSpots <= 0;
+                            }
+                        }
+                    }
+
+                    if (isEventFull) {
+                        // Show "EVENT FULL" for full events - no click handler
+                        const eventTitle = event.title.length > 15
+                            ? event.title.substring(0, 15) + '...'
+                            : event.title;
+                        const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+
+                        // Create elements safely to prevent XSS
+                        const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
+                        const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
+                        const fullDiv = this.createElementWithText('div', 'event-full-indicator', 'EVENT FULL');
+
+                        eventPreview.appendChild(titleDiv);
+                        eventPreview.appendChild(timeDiv);
+                        eventPreview.appendChild(fullDiv);
+                        eventPreview.classList.add('event-full');
+                    } else {
+                        // Show normal event details with click handler for available events
+                        const maxTitleLength = 15;
+                        const eventTitle = event.title.length > maxTitleLength
+                            ? event.title.substring(0, maxTitleLength) + '...'
+                            : event.title;
+
+                        const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
+
+                        // Create elements safely to prevent XSS
+                        const titleDiv = this.createElementWithText('div', 'event-title-small', eventTitle);
+                        const timeDiv = this.createElementWithText('div', 'event-time-small', eventTime);
+
+                        eventPreview.appendChild(titleDiv);
+                        eventPreview.appendChild(timeDiv);
+
+                        // Show location on desktop
+                        if (event.location) {
+                            const eventLocation = event.location.length > 20
+                                ? event.location.substring(0, 20) + '...'
+                                : event.location;
+                            const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
+                            eventPreview.appendChild(locationDiv);
+                        }
+
+                        // Add click handler only for available events
+                        if (!this.isEventPast(event)) {
+                            eventPreview.style.cursor = 'pointer';
+                            eventPreview.classList.add('clickable-event');
+
+                            // Create unique event ID for scrolling
+                            const eventId = this.generateEventId(event);
+                            eventPreview.addEventListener('click', () => {
+                                this.scrollToEventInUpcomingList(eventId);
+                            });
+                        }
+                    }
+
+                    eventsContainer.appendChild(eventPreview);
+                }
+
+                // If more events, show "and X more"
+                if (dayEvents.length > 3) {
+                    const moreEvents = document.createElement('div');
+                    moreEvents.className = 'more-events';
+                    moreEvents.textContent = `+${dayEvents.length - 3} more`;
+                    eventsContainer.appendChild(moreEvents);
+                }
+
+                const eventsCountLabel = document.createElement('div');
+                eventsCountLabel.className = 'event-count-label';
+                eventsCountLabel.textContent = dayEvents.length === 1 ? '1 EVENT' : `${dayEvents.length} EVENTS`;
+                eventsCountLabel.setAttribute('aria-hidden', 'true');
+                (dayHeader || dayElement).appendChild(eventsCountLabel);
             }
         } else {
+            dayElement.classList.remove('has-events');
+
             if (isPastDay) {
                 // Add past-event class even if no events, for visual consistency
                 dayElement.classList.add('past-event');
+            } else {
+                dayElement.classList.remove('past-event');
             }
 
             if (this.isMobileView) {
@@ -750,6 +782,11 @@ class MotoCoachCalendar {
                 const existingEventCount = dayElement.querySelector('.event-count');
                 if (existingEventCount) {
                     existingEventCount.remove();
+                }
+            } else {
+                const existingEventsContainer = dayElement.querySelector('.day-events');
+                if (existingEventsContainer) {
+                    existingEventsContainer.remove();
                 }
             }
         }
@@ -1156,11 +1193,16 @@ class MotoCoachCalendar {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
 
+        // Create day header container
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'calendar-day-header';
+
         // Create day number
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
         dayNumber.textContent = day;
-        dayElement.appendChild(dayNumber);
+        dayHeader.appendChild(dayNumber);
+        dayElement.appendChild(dayHeader);
 
         if (isOtherMonth) {
             dayElement.classList.add('other-month');
@@ -1190,12 +1232,17 @@ class MotoCoachCalendar {
     async createDayElement(day, isOtherMonth, fullDate = null) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
-        
+
+        // Create day header container
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'calendar-day-header';
+
         // Create day number
         const dayNumber = document.createElement('div');
         dayNumber.className = 'day-number';
         dayNumber.textContent = day;
-        dayElement.appendChild(dayNumber);
+        dayHeader.appendChild(dayNumber);
+        dayElement.appendChild(dayHeader);
 
         if (isOtherMonth) {
             dayElement.classList.add('other-month');

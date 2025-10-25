@@ -562,6 +562,14 @@ html {
     z-index: 0;
 }
 
+.calendar-day-header {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+}
+
 .calendar-day.other-month {
     color: rgba(248, 248, 248, 0.3);
     background: rgba(16, 16, 16, 0.6);
@@ -666,8 +674,11 @@ html {
 .day-number {
     font-family: 'Oswald', sans-serif;
     font-weight: 600;
-    margin-bottom: 0.5rem;
     font-size: 0.95rem;
+}
+
+.calendar-day-header .day-number {
+    margin-bottom: 0;
 }
 
 .day-events {
@@ -754,6 +765,34 @@ html {
     font-weight: 600;
     font-style: italic;
     margin-top: 3px;
+}
+
+.event-count-label {
+    margin-top: 0;
+    margin-left: auto;
+    padding: 0.1rem 0;
+    border-top: none;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(248, 248, 248, 0.75);
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+}
+
+.event-count-label::before {
+    content: '';
+    flex: 0 0 24px;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(255, 107, 53, 0.1), rgba(255, 107, 53, 0.4));
+    align-self: center;
+}
+
+.calendar-day.past-event .event-count-label {
+    color: rgba(248, 248, 248, 0.5);
 }
 
 .event-count {
@@ -1197,6 +1236,10 @@ body.modal-open {
         cursor: pointer;
         border-color: rgba(255, 107, 53, 0.4);
         background: rgba(31, 31, 31, 0.9);
+    }
+
+    .event-count-label {
+        display: none;
     }
 
     .calendar-day.past-event.has-events {
