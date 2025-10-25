@@ -664,6 +664,9 @@ button.btn-register:hover {
     font-size: 1rem;
     line-height: 1.4;
     max-width: 80%;
+    align-self: flex-start;
+    text-align: left;
+    width: 100%;
 }
 
 .event-rate-centered {
