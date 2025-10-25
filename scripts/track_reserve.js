@@ -28,6 +28,22 @@ function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, (char) => HTML_ESCAPE_LOOKUP[char] || char);
 }
 
+function formatDescriptionForDisplay(description) {
+    if (typeof description !== 'string') {
+        return '';
+    }
+
+    const normalized = description.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+    if (!normalized) {
+        return '';
+    }
+
+    return normalized
+        .split('\n')
+        .map(line => escapeHtml(line.toLowerCase()))
+        .join('<br>');
+}
+
 function parseDateInput(value) {
     if (!value) {
         return null;
@@ -819,8 +835,8 @@ function populateMultiEventDetails(events, pricingInfo) {
         const safeDate = escapeHtml(event.date);
         const safeTime = escapeHtml(event.time);
         const safeLocation = escapeHtml(event.location);
-        const descriptionValue = typeof event.description === 'string' ? event.description.toLowerCase() : '';
-        const safeDescription = escapeHtml(descriptionValue);
+        const descriptionValue = typeof event.description === 'string' ? event.description : '';
+        const safeDescription = formatDescriptionForDisplay(descriptionValue);
 
         return `
         <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; margin: 0.5rem 0; border-radius: 6px;">
@@ -911,7 +927,14 @@ function populateSingleEventDetails(preloadedEvent) {
 
     const descriptionDisplay = document.getElementById('descriptionDisplay');
     if (descriptionDisplay) {
-        descriptionDisplay.textContent = eventDescriptionRaw ? eventDescriptionRaw.toLowerCase() : '';
+        const formattedDescription = formatDescriptionForDisplay(eventDescriptionRaw || '');
+        if (formattedDescription) {
+            descriptionDisplay.innerHTML = formattedDescription;
+            descriptionDisplay.style.display = '';
+        } else {
+            descriptionDisplay.innerHTML = '';
+            descriptionDisplay.style.display = 'none';
+        }
     }
 
     persistEventDetails({ type: 'single', events: [normalizedEvent] });
