@@ -520,6 +520,7 @@ html {
     background: rgba(42, 42, 42, 0.3);
     padding: 2.5rem;
     flex: 1;
+    overflow: visible;
 }
 
 .day-header {
@@ -556,7 +557,9 @@ html {
     font-size: 1rem;
     font-weight: 500;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    transform-origin: center;
+    z-index: 0;
 }
 
 .calendar-day.other-month {
@@ -584,6 +587,55 @@ html {
 .calendar-day.has-events {
     background: rgba(42, 42, 42, 0.7);
     border-color: rgba(255, 107, 53, 0.2);
+}
+
+.calendar-day.has-events .day-events {
+    overflow: hidden;
+}
+
+.calendar-day.has-events .event-preview.extra-event {
+    display: none;
+}
+
+.calendar-day.has-events:hover,
+.calendar-day.has-events:focus-within {
+    transform: scale(1.35);
+    z-index: 5;
+    box-shadow: 0 16px 40px rgba(255, 107, 53, 0.35);
+    border-color: rgba(255, 107, 53, 0.6);
+    overflow: visible;
+}
+
+.calendar-day.has-events:hover .day-events,
+.calendar-day.has-events:focus-within .day-events {
+    overflow: visible;
+    flex: 0 0 auto;
+}
+
+.calendar-day.has-events:hover .event-preview,
+.calendar-day.has-events:focus-within .event-preview {
+    white-space: normal;
+}
+
+.calendar-day.has-events:hover .event-preview.extra-event,
+.calendar-day.has-events:focus-within .event-preview.extra-event {
+    display: block;
+}
+
+.calendar-day.has-events:hover .event-title-small,
+.calendar-day.has-events:hover .event-time-small,
+.calendar-day.has-events:hover .event-location-small,
+.calendar-day.has-events:focus-within .event-title-small,
+.calendar-day.has-events:focus-within .event-time-small,
+.calendar-day.has-events:focus-within .event-location-small {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+}
+
+.calendar-day.has-events:hover .more-events,
+.calendar-day.has-events:focus-within .more-events {
+    display: none;
 }
 
 .calendar-day.has-events:hover {
