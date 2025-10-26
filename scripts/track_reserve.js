@@ -2,7 +2,7 @@ import { ensureBotIdClient } from './botid-client.js';
 
 const CHECKOUT_STORAGE_KEY = 'motocoach_checkout';
 let riderCount = 1;
-let ratePerRider = 190; // Default rate in AUD
+let ratePerRider = 195; // Default rate in AUD
 let maxSpots = null; // Maximum spots available for the event
 let remainingSpots = null; // Remaining spots available
 
@@ -513,7 +513,7 @@ async function initializePricing() {
     };
 
     const updateDefaults = () => {
-        ratePerRider = 190;
+        ratePerRider = 195;
         remainingSpots = null;
         maxSpots = null;
         updatePricing();
@@ -620,7 +620,7 @@ async function initializePricing() {
                 const serverData = await response.json();
                 if (serverData.success && serverData.event) {
                     const serverEvent = serverData.event;
-                    ratePerRider = serverEvent.rate || event.rate || 190;
+                    ratePerRider = serverEvent.rate || event.rate || 195;
                     maxSpots = serverEvent.maxSpots ?? event.maxSpots ?? null;
                     remainingSpots = serverEvent.remainingSpots ?? event.remainingSpots ?? null;
 
@@ -649,7 +649,7 @@ async function initializePricing() {
             console.error('Failed to validate event data from server:', error);
         }
 
-        ratePerRider = event.effectiveRate || event.rate || 190;
+        ratePerRider = event.effectiveRate || event.rate || 195;
         maxSpots = event.maxSpots;
         remainingSpots = event.remainingSpots;
         setValidationMessage('⚠️ Using stored event details (validation unavailable)', '#ffc107');
@@ -953,9 +953,12 @@ function updateMultiEventPricing(pricingInfo) {
         let pricingHTML = '';
         
         if (pricingInfo.hasBundleDiscount) {
+            const bundlePriceDisplay = typeof pricingInfo.bundlePrice === 'number'
+                ? pricingInfo.bundlePrice.toFixed(2)
+                : pricingInfo.bundlePrice;
             pricingHTML = `
                 <div style="font-size: 0.9rem; color: #ccc; margin-bottom: 0.5rem;">
-                    ${pricingInfo.defaultEventsCount} event${pricingInfo.defaultEventsCount !== 1 ? 's' : ''} @ $${pricingInfo.bundlePrice} each
+                    ${pricingInfo.defaultEventsCount} event${pricingInfo.defaultEventsCount !== 1 ? 's' : ''} @ $${bundlePriceDisplay} each
                     ${pricingInfo.customEventsCount > 0 ? `<br>${pricingInfo.customEventsCount} custom event${pricingInfo.customEventsCount !== 1 ? 's' : ''} (individual pricing)` : ''}
                 </div>
                 <div style="color: #ff6b35; font-weight: 600;">$${pricingInfo.totalCost.toFixed(2)} AUD</div>

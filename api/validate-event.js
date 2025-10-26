@@ -123,7 +123,7 @@ export default async function handler(req, res) {
 
         // Parse event details
         const description = foundEvent.description || '';
-        const defaultRate = 190;
+        const defaultRate = 195;
 
         // Extract pricing from description
         let rate = defaultRate;
