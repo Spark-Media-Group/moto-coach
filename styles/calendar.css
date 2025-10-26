@@ -572,6 +572,7 @@ html {
     box-sizing: border-box;
     overflow: hidden;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, max-height 0.25s ease, height 0.25s ease;
+    transform: scale(1);
     transform-origin: top center;
     z-index: 0;
 }
@@ -632,6 +633,7 @@ html {
     height: auto;
     max-height: none;
     overflow: visible;
+    transform: scale(1.25);
     z-index: 10;
 }
 
