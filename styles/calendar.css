@@ -612,6 +612,8 @@ html {
     box-shadow: 0 16px 40px rgba(255, 107, 53, 0.35);
     border-color: rgba(255, 107, 53, 0.6);
     overflow: visible;
+    height: auto;
+    max-height: none;
 }
 
 .calendar-day.has-events:hover .day-events,
