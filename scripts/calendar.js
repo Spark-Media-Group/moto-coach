@@ -1,5 +1,26 @@
 const TRACK_RESERVE_TRANSFER_PREFIX = 'TRACK_RESERVE::';
 
+const STANDARD_SINGLE_EVENT_RATE = 195;
+const STANDARD_TWO_EVENT_TOTAL = 360;
+const STANDARD_MULTI_EVENT_BASE_TOTAL = 500;
+const STANDARD_MULTI_EVENT_ADDITIONAL_RATE = 166.67;
+
+function calculateStandardBundleTotal(eventCount) {
+    if (eventCount <= 0) {
+        return 0;
+    }
+
+    if (eventCount === 1) {
+        return STANDARD_SINGLE_EVENT_RATE;
+    }
+
+    if (eventCount === 2) {
+        return STANDARD_TWO_EVENT_TOTAL;
+    }
+
+    return STANDARD_MULTI_EVENT_BASE_TOTAL + ((eventCount - 3) * STANDARD_MULTI_EVENT_ADDITIONAL_RATE);
+}
+
 function formatAustralianDate(date) {
     if (!(date instanceof Date) || Number.isNaN(date?.valueOf?.())) {
         return '';
@@ -406,7 +427,7 @@ class MotoCoachCalendar {
             let description = event.description || '';
             let hasRegistration = false;
             let maxSpots = null;
-            let ratePerRider = 190; // Default rate in AUD
+            let ratePerRider = STANDARD_SINGLE_EVENT_RATE; // Default rate in AUD
             
             // Case and spacing insensitive regex for "registration = on"
             const registrationRegex = /registration\s*=\s*on/i;
@@ -1453,23 +1474,17 @@ class MotoCoachCalendar {
 
             // Calculate pricing with bundle discounts
             const events = Array.from(this.selectedEvents.values());
-            const defaultRateEvents = events.filter(event => event.ratePerRider === 190);
-            const customRateEvents = events.filter(event => event.ratePerRider !== 190);
-            
+            const defaultRateEvents = events.filter(event => event.ratePerRider === STANDARD_SINGLE_EVENT_RATE);
+            const customRateEvents = events.filter(event => event.ratePerRider !== STANDARD_SINGLE_EVENT_RATE);
+
             // Bundle pricing for default rate events
             let defaultEventsTotal = 0;
+            let pricePerDefault = null;
             if (defaultRateEvents.length > 0) {
-                let pricePerDefault;
-                if (defaultRateEvents.length === 1) {
-                    pricePerDefault = 190;
-                } else if (defaultRateEvents.length === 2) {
-                    pricePerDefault = 175; // $350 total / 2 events
-                } else {
-                    pricePerDefault = 150; // $450+ total / 3+ events
-                }
-                defaultEventsTotal = defaultRateEvents.length * pricePerDefault;
+                defaultEventsTotal = calculateStandardBundleTotal(defaultRateEvents.length);
+                pricePerDefault = defaultEventsTotal / defaultRateEvents.length;
             }
-            
+
             // Individual pricing for custom rate events
             const customEventsTotal = customRateEvents.reduce((sum, event) => sum + event.ratePerRider, 0);
             
@@ -1479,18 +1494,16 @@ class MotoCoachCalendar {
             let pricingBreakdown = '';
             if (defaultRateEvents.length > 0 && customRateEvents.length > 0) {
                 // Mixed pricing - show inline breakdown
-                const defaultPrice = defaultRateEvents.length === 1 ? 190 : 
-                                   defaultRateEvents.length === 2 ? 175 : 150;
+                const defaultPrice = pricePerDefault || STANDARD_SINGLE_EVENT_RATE;
                 pricingBreakdown = `<div class="pricing-breakdown">
-                    <small>${defaultRateEvents.length} standard @ $${defaultPrice}</small>
+                    <small>${defaultRateEvents.length} standard @ $${defaultPrice.toFixed(2)}</small>
                     <small>${customRateEvents.length} custom rate</small>
                 </div>`;
             } else if (defaultRateEvents.length > 1) {
                 // Show bundle discount for default events
-                const defaultPrice = defaultRateEvents.length === 2 ? 175 : 150;
-                const savings = (190 * defaultRateEvents.length) - defaultEventsTotal;
+                const savings = (STANDARD_SINGLE_EVENT_RATE * defaultRateEvents.length) - defaultEventsTotal;
                 pricingBreakdown = `<div class="pricing-breakdown">
-                    <small>Bundle discount: Save $${savings} total</small>
+                    <small>Bundle discount: Save $${savings.toFixed(2)} total</small>
                 </div>`;
             }
 
@@ -1582,21 +1595,15 @@ class MotoCoachCalendar {
 
         // Calculate pricing with bundle discounts
         const events = Array.from(this.selectedEvents.values());
-        const defaultRateEvents = events.filter(event => event.ratePerRider === 190);
-        const customRateEvents = events.filter(event => event.ratePerRider !== 190);
-        
+        const defaultRateEvents = events.filter(event => event.ratePerRider === STANDARD_SINGLE_EVENT_RATE);
+        const customRateEvents = events.filter(event => event.ratePerRider !== STANDARD_SINGLE_EVENT_RATE);
+
         // Bundle pricing for default rate events
         let defaultEventsTotal = 0;
-        let bundlePrice = 190;
+        let bundlePrice = STANDARD_SINGLE_EVENT_RATE;
         if (defaultRateEvents.length > 0) {
-            if (defaultRateEvents.length === 1) {
-                bundlePrice = 190;
-            } else if (defaultRateEvents.length === 2) {
-                bundlePrice = 175; // $350 total / 2 events
-            } else {
-                bundlePrice = 150; // $450+ total / 3+ events
-            }
-            defaultEventsTotal = defaultRateEvents.length * bundlePrice;
+            defaultEventsTotal = calculateStandardBundleTotal(defaultRateEvents.length);
+            bundlePrice = parseFloat((defaultEventsTotal / defaultRateEvents.length).toFixed(2));
         }
         
         // Individual pricing for custom rate events
@@ -1612,7 +1619,7 @@ class MotoCoachCalendar {
             location: event.location || '',
             description: event.description || '',
             rate: event.ratePerRider,
-            effectiveRate: event.ratePerRider === 190 ? bundlePrice : event.ratePerRider, // Rate after bundle discount
+            effectiveRate: event.ratePerRider === STANDARD_SINGLE_EVENT_RATE ? bundlePrice : event.ratePerRider, // Rate after bundle discount
             maxSpots: typeof event.maxSpots === 'number' ? event.maxSpots : null,
             remainingSpots: typeof event.remainingSpots === 'number' ? event.remainingSpots : null
         }));
@@ -1710,7 +1717,7 @@ class MotoCoachCalendar {
         const eventsHeader = document.createElement('div');
         eventsHeader.className = 'events-header';
 
-        const ratesP = this.createElementWithText('p', null, 'Standard rates: $190/rider (single event), $175/rider (2 events), $150/rider (3+ events)');
+        const ratesP = this.createElementWithText('p', null, 'Standard rates: $195/rider (single event), $180/rider (2 events), $166.67/rider (3+ events)');
         ratesP.style.color = '#ccc';
         ratesP.style.fontSize = '0.9rem';
         ratesP.style.marginBottom = '0.5rem';
@@ -1879,7 +1886,7 @@ class MotoCoachCalendar {
         }
 
         if (event.hasRegistration) {
-            if (event.ratePerRider === 190) {
+            if (event.ratePerRider === STANDARD_SINGLE_EVENT_RATE) {
                 detailsContainer.appendChild(this.createElementWithText('div', 'event-rate-centered', 'Standard Rates Apply'));
             } else if (typeof event.ratePerRider === 'number') {
                 detailsContainer.appendChild(this.createElementWithText('div', 'event-rate-centered', `$${event.ratePerRider} AUD/rider`));
@@ -2021,7 +2028,7 @@ class MotoCoachCalendar {
                 const eventId = this.generateEventId(event);
                 const eventUrl = `https://motocoach.com.au/calendar.html#${eventId}`;
                 const description = event.description || 'Moto Coach motocross coaching session in Sydney.';
-                const price = typeof event.ratePerRider === 'number' ? event.ratePerRider.toFixed(2) : '190.00';
+                const price = typeof event.ratePerRider === 'number' ? event.ratePerRider.toFixed(2) : '195.00';
                 const locationName = event.location && event.location.trim().length > 0 ? event.location.trim() : 'Moto Coach Training Venue';
 
                 const eventData = {
