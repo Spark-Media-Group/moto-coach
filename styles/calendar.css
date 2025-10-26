@@ -541,24 +541,38 @@ html {
 }
 
 .calendar-day {
-    background: rgba(26, 26, 26, 0.6);
-    backdrop-filter: blur(10px);
-    padding: 0.75rem;
+    position: relative;
     height: 12vh;
     min-height: 90px;
     max-height: 150px;
-    border: 1px solid rgba(248, 248, 248, 0.05);
-    color: var(--calendar-white);
     cursor: default;
-    position: relative;
+    display: block;
+    color: var(--calendar-white);
+    font-size: 1rem;
+    font-weight: 500;
+    overflow: visible;
+    z-index: 0;
+}
+
+.calendar-day-inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100%;
+    max-height: 100%;
+    min-height: 100%;
+    background: rgba(26, 26, 26, 0.6);
+    backdrop-filter: blur(10px);
+    padding: 0.75rem;
+    border: 1px solid rgba(248, 248, 248, 0.05);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    font-size: 1rem;
-    font-weight: 500;
+    box-sizing: border-box;
     overflow: hidden;
-    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-    transform-origin: center;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, max-height 0.25s ease, height 0.25s ease;
+    transform-origin: top center;
     z-index: 0;
 }
 
@@ -570,16 +584,16 @@ html {
     margin-bottom: 0.5rem;
 }
 
-.calendar-day.other-month {
+.calendar-day.other-month .calendar-day-inner {
     color: rgba(248, 248, 248, 0.3);
     background: rgba(16, 16, 16, 0.6);
 }
 
-.calendar-day.other-month:hover {
+.calendar-day.other-month:hover .calendar-day-inner {
     background: rgba(22, 22, 22, 0.7);
 }
 
-.calendar-day.today {
+.calendar-day.today .calendar-day-inner {
     background: rgba(42, 42, 42, 0.8);
     color: var(--calendar-white);
     font-weight: 700;
@@ -587,12 +601,12 @@ html {
     box-shadow: 0 0 20px rgba(255, 107, 53, 0.3);
 }
 
-.calendar-day.today:hover {
+.calendar-day.today:hover .calendar-day-inner {
     background: rgba(42, 42, 42, 0.9);
     box-shadow: 0 0 25px rgba(255, 107, 53, 0.4);
 }
 
-.calendar-day.has-events {
+.calendar-day.has-events .calendar-day-inner {
     background: rgba(42, 42, 42, 0.7);
     border-color: rgba(255, 107, 53, 0.2);
 }
@@ -607,13 +621,18 @@ html {
 
 .calendar-day.has-events:hover,
 .calendar-day.has-events:focus-within {
-    transform: scale(1.35);
     z-index: 5;
+}
+
+.calendar-day.has-events:hover .calendar-day-inner,
+.calendar-day.has-events:focus-within .calendar-day-inner {
+    background: rgba(42, 42, 42, 0.9);
     box-shadow: 0 16px 40px rgba(255, 107, 53, 0.35);
     border-color: rgba(255, 107, 53, 0.6);
-    overflow: visible;
     height: auto;
     max-height: none;
+    overflow: visible;
+    z-index: 10;
 }
 
 .calendar-day.has-events:hover .day-events,
@@ -648,12 +667,9 @@ html {
     display: none;
 }
 
-.calendar-day.has-events:hover {
-    background: rgba(42, 42, 42, 0.9);
-    border-color: rgba(255, 107, 53, 0.4);
-}
 
-.calendar-day.past-event {
+
+.calendar-day.past-event .calendar-day-inner {
     opacity: 0.5;
     color: rgba(248, 248, 248, 0.4);
 }
@@ -668,7 +684,7 @@ html {
     opacity: 0.6;
 }
 
-.calendar-day.past-event:hover {
+.calendar-day.past-event:hover .calendar-day-inner {
     background: rgba(26, 26, 26, 0.7);
     opacity: 0.7;
 }
@@ -1235,17 +1251,23 @@ body.modal-open {
 
     .calendar-day {
         min-height: 80px;
+    }
+
+    .calendar-day .calendar-day-inner {
         padding: 0.6rem;
         border: 1px solid rgba(42, 42, 42, 0.5);
         background: rgba(22, 22, 22, 0.8);
     }
 
-    .calendar-day.other-month {
+    .calendar-day.other-month .calendar-day-inner {
         opacity: 0.4;
     }
 
     .calendar-day.has-events {
         cursor: pointer;
+    }
+
+    .calendar-day.has-events .calendar-day-inner {
         border-color: rgba(255, 107, 53, 0.4);
         background: rgba(31, 31, 31, 0.9);
     }
@@ -1257,11 +1279,14 @@ body.modal-open {
     .calendar-day.past-event.has-events {
         cursor: default;
         pointer-events: none;
+    }
+
+    .calendar-day.past-event.has-events .calendar-day-inner {
         border-color: rgba(42, 42, 42, 0.5);
         background: rgba(22, 22, 22, 0.8);
     }
 
-    .calendar-day.today {
+    .calendar-day.today .calendar-day-inner {
         border-color: var(--calendar-orange);
         background: rgba(42, 42, 42, 0.9);
     }
@@ -1310,6 +1335,9 @@ body.modal-open {
 
     .calendar-day {
         min-height: 72px;
+    }
+
+    .calendar-day .calendar-day-inner {
         padding: 0.5rem;
     }
 
@@ -1354,8 +1382,11 @@ body.modal-open {
 
     .calendar-day {
         min-height: 56px;
-        padding: 0.35rem;
         font-size: 0.8rem;
+    }
+
+    .calendar-day .calendar-day-inner {
+        padding: 0.35rem;
     }
 
     .day-number {

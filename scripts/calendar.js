@@ -643,6 +643,8 @@ class MotoCoachCalendar {
             }
         }
 
+        const dayInner = dayElement.querySelector('.calendar-day-inner') || dayElement;
+
         const existingDesktopCount = dayElement.querySelector('.event-count-label');
         if (existingDesktopCount) {
             existingDesktopCount.remove();
@@ -674,7 +676,7 @@ class MotoCoachCalendar {
                 eventCount.textContent = countLabel;
                 eventCount.classList.toggle('event-count--past', isPastDay);
                 if (!existingEventCount) {
-                    dayElement.appendChild(eventCount);
+                    dayInner.appendChild(eventCount);
                 }
 
                 dayElement.dataset.fullDate = currentDay.toISOString();
@@ -690,7 +692,7 @@ class MotoCoachCalendar {
                 if (!eventsContainer) {
                     eventsContainer = document.createElement('div');
                     eventsContainer.className = 'day-events';
-                    dayElement.appendChild(eventsContainer);
+                    dayInner.appendChild(eventsContainer);
                 }
 
                 eventsContainer.innerHTML = '';
@@ -763,7 +765,7 @@ class MotoCoachCalendar {
                         }
                     }
 
-                    eventsContainer.appendChild(eventPreview);
+                        eventsContainer.appendChild(eventPreview);
                 }
 
                 // If more events, show "and X more"
@@ -778,7 +780,7 @@ class MotoCoachCalendar {
                 eventsCountLabel.className = 'event-count-label';
                 eventsCountLabel.textContent = dayEvents.length === 1 ? '1 EVENT' : `${dayEvents.length} EVENTS`;
                 eventsCountLabel.setAttribute('aria-hidden', 'true');
-                (dayHeader || dayElement).appendChild(eventsCountLabel);
+                (dayHeader || dayInner).appendChild(eventsCountLabel);
             }
         } else {
             dayElement.classList.remove('has-events');
@@ -1206,6 +1208,10 @@ class MotoCoachCalendar {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
 
+        const dayInner = document.createElement('div');
+        dayInner.className = 'calendar-day-inner';
+        dayElement.appendChild(dayInner);
+
         // Create day header container
         const dayHeader = document.createElement('div');
         dayHeader.className = 'calendar-day-header';
@@ -1215,7 +1221,7 @@ class MotoCoachCalendar {
         dayNumber.className = 'day-number';
         dayNumber.textContent = day;
         dayHeader.appendChild(dayNumber);
-        dayElement.appendChild(dayHeader);
+        dayInner.appendChild(dayHeader);
 
         if (isOtherMonth) {
             dayElement.classList.add('other-month');
@@ -1246,6 +1252,10 @@ class MotoCoachCalendar {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
 
+        const dayInner = document.createElement('div');
+        dayInner.className = 'calendar-day-inner';
+        dayElement.appendChild(dayInner);
+
         // Create day header container
         const dayHeader = document.createElement('div');
         dayHeader.className = 'calendar-day-header';
@@ -1255,7 +1265,7 @@ class MotoCoachCalendar {
         dayNumber.className = 'day-number';
         dayNumber.textContent = day;
         dayHeader.appendChild(dayNumber);
-        dayElement.appendChild(dayHeader);
+        dayInner.appendChild(dayHeader);
 
         if (isOtherMonth) {
             dayElement.classList.add('other-month');
@@ -1290,7 +1300,7 @@ class MotoCoachCalendar {
                     const eventCount = document.createElement('div');
                     eventCount.className = 'event-count';
                     eventCount.textContent = dayEvents.length;
-                    dayElement.appendChild(eventCount);
+                    dayInner.appendChild(eventCount);
                 } else {
                     // Desktop: Show event previews or "EVENT FULL" for full events
                     const eventsContainer = document.createElement('div');
@@ -1377,7 +1387,7 @@ class MotoCoachCalendar {
                         eventsContainer.appendChild(moreEvents);
                     }
 
-                    dayElement.appendChild(eventsContainer);
+                    dayInner.appendChild(eventsContainer);
                 }
             } else if (isPastDay) {
                 // Add past-event class even if no events, for visual consistency
