@@ -244,7 +244,7 @@ async function validateEventDetails(eventData) {
             // Validate pricing if provided
             if (eventData.ratePerRider) {
                 const description = foundEvent.description || '';
-                const defaultRate = 190;
+                const defaultRate = 195;
                 
                 let actualRate = defaultRate;
                 const rateMatch = description.match(/rate\s*[=:]\s*\$?(\d+)/i) || description.match(/\$(\d+)/);

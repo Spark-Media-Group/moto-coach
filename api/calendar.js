@@ -261,7 +261,7 @@ async function handleSingleEventValidation(req, res, eventName, eventDate) {
 
         // Parse event details
         const description = foundEvent.description || '';
-        const defaultRate = 190;
+        const defaultRate = 195;
 
         // Extract pricing from description (look for "rate = $X" or "$X")
         let rate = defaultRate;

@@ -31,7 +31,7 @@ Only present when `payment_source` is `event_registration` or `mixed`:
 | `registration_type` | enum | Single or bundle | `multi_event_bundle`, `single_event` |
 | `event_names` | string | Comma-separated event titles | `Track Day Premium, Weekend Bootcamp` |
 | `event_dates` | string | Comma-separated dates | `15/01/2025, 22/01/2025` |
-| `per_rider_rate` | decimal | Rate per rider | `190.00` |
+| `per_rider_rate` | decimal | Rate per rider | `195.00` |
 | `bundle_discount` | boolean | Bundle discount applied | `true`, `false` |
 | `event_revenue` | decimal | Revenue from events only | `1140.00` |
 

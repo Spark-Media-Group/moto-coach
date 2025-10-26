@@ -701,6 +701,9 @@ html {
     line-height: 1.3;
     margin-bottom: 2px;
     transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
 
 .event-preview.clickable-event:hover {
@@ -716,12 +719,15 @@ html {
     gap: 4px;
 }
 
-.event-name {
-    flex: 1;
+.event-title-small {
+    font-weight: 700;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 700;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    line-height: 1.25;
 }
 
 .event-time-small {
@@ -738,7 +744,11 @@ html {
     margin-top: 2px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    line-height: 1.25;
 }
 
 .event-preview.event-full {
