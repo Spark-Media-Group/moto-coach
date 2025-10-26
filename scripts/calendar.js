@@ -698,9 +698,7 @@ class MotoCoachCalendar {
 
                     if (isEventFull) {
                         // Show "EVENT FULL" for full events - no click handler
-                        const eventTitle = event.title.length > 15
-                            ? event.title.substring(0, 15) + '...'
-                            : event.title;
+                        const eventTitle = event.title;
                         const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
 
                         // Create elements safely to prevent XSS
@@ -714,10 +712,7 @@ class MotoCoachCalendar {
                         eventPreview.classList.add('event-full');
                     } else {
                         // Show normal event details with click handler for available events
-                        const maxTitleLength = 15;
-                        const eventTitle = event.title.length > maxTitleLength
-                            ? event.title.substring(0, maxTitleLength) + '...'
-                            : event.title;
+                        const eventTitle = event.title;
 
                         const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
 
@@ -730,10 +725,7 @@ class MotoCoachCalendar {
 
                         // Show location on desktop
                         if (event.location) {
-                            const eventLocation = event.location.length > 20
-                                ? event.location.substring(0, 20) + '...'
-                                : event.location;
-                            const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
+                            const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${event.location}`);
                             eventPreview.appendChild(locationDiv);
                         }
 
@@ -1305,9 +1297,7 @@ class MotoCoachCalendar {
                         
                         if (isEventFull) {
                             // Show "EVENT FULL" for full events - no click handler
-                            const eventTitle = event.title.length > 15 
-                                ? event.title.substring(0, 15) + '...' 
-                                : event.title;
+                            const eventTitle = event.title;
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
                             // Create safe DOM elements
@@ -1322,10 +1312,7 @@ class MotoCoachCalendar {
                             eventPreview.classList.add('event-full');
                         } else {
                             // Show normal event details with click handler for available events
-                            const maxTitleLength = 15;
-                            const eventTitle = event.title.length > maxTitleLength 
-                                ? event.title.substring(0, maxTitleLength) + '...' 
-                                : event.title;
+                            const eventTitle = event.title;
                             
                             const eventTime = event.time === 'All Day' ? 'All Day' : event.time;
                             
@@ -1338,10 +1325,7 @@ class MotoCoachCalendar {
                             
                             // Show location on desktop
                             if (event.location) {
-                                const eventLocation = event.location.length > 20 
-                                    ? event.location.substring(0, 20) + '...' 
-                                    : event.location;
-                                const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${eventLocation}`);
+                                const locationDiv = this.createElementWithText('div', 'event-location-small', `📍 ${event.location}`);
                                 eventPreview.appendChild(locationDiv);
                             }
                             
