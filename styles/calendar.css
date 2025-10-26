@@ -664,6 +664,17 @@ html {
     text-overflow: unset;
 }
 
+.calendar-day.has-events:hover .event-title-small,
+.calendar-day.has-events:focus-within .event-title-small,
+.calendar-day.has-events:hover .event-location-small,
+.calendar-day.has-events:focus-within .event-location-small {
+    display: block;
+    -webkit-line-clamp: unset;
+    -webkit-line-clamp: initial;
+    -webkit-box-orient: unset;
+    -webkit-box-orient: initial;
+}
+
 .calendar-day.has-events:hover .more-events,
 .calendar-day.has-events:focus-within .more-events {
     display: none;
