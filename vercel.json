@@ -39,6 +39,10 @@
       "destination": "/team.html"
     },
     {
+      "source": "/checkout",
+      "destination": "/checkout.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/$1"
     }
@@ -87,6 +91,11 @@
     {
       "source": "/team.html",
       "destination": "/team",
+      "permanent": true
+    },
+    {
+      "source": "/checkout.html",
+      "destination": "/checkout",
       "permanent": true
     }
   ],
