@@ -546,7 +546,7 @@ async function sendShopOrderConfirmationEmail({
                             <td style="padding:0 32px 32px;">
                                 <div style="padding:16px; background-color:#f9fafb; border-radius:8px;">
                                     <p style="margin:0 0 8px; font-size:14px; color:#111827; font-weight:600;">What's next?</p>
-                                    <p style="margin:0; font-size:14px; color:#374151;">We'll notify you as soon as your order ships. If you have any questions, reply to this email or contact <a href="mailto:leigh@motocoach.com.au" style="color:#2563eb; text-decoration:none;">leigh@motocoach.com.au</a>.</p>
+                                    <p style="margin:0; font-size:14px; color:#374151;">If you have any questions, reply to this email or contact <a href="mailto:leigh@motocoach.com.au" style="color:#2563eb; text-decoration:none;">leigh@motocoach.com.au</a>.</p>
                                 </div>
                             </td>
                         </tr>
