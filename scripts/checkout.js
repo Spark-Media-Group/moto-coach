@@ -2458,6 +2458,68 @@ function extractPrintfulItemFromLine(line, currency) {
 }
 
 
+function buildShopOrderEmailContext(paymentIntentId, customerDetails, {
+    orderCurrency,
+    subtotalAmount,
+    shippingAmount,
+    taxAmount,
+    totalAmount
+} = {}) {
+    const lines = Array.isArray(checkoutData?.lines) ? checkoutData.lines : [];
+    const items = lines
+        .map(line => {
+            const quantity = Number(line.quantity) || 0;
+            if (quantity <= 0) {
+                return null;
+            }
+
+            const unitPrice = parsePositiveNumber(line.price?.amount);
+            const currency = (line.price?.currencyCode || orderCurrency || currencyCode || 'AUD').toUpperCase();
+            const fallbackAltText = `${line.title || 'Product'}${line.variantTitle ? ` - ${line.variantTitle}` : ''}`.trim();
+
+            return {
+                id: line.id || null,
+                productName: line.title || line.productName || '',
+                variantName: line.variantTitle || line.printful?.variantName || '',
+                quantity,
+                unitPrice: unitPrice != null ? unitPrice : null,
+                currency,
+                imageUrl: sanitiseUrl(line.image?.url),
+                imageAlt: line.image?.altText || fallbackAltText,
+                retailPrice: unitPrice != null ? unitPrice * quantity : null
+            };
+        })
+        .filter(Boolean);
+
+    return {
+        generatedAt: new Date().toISOString(),
+        paymentIntentId: paymentIntentId || null,
+        currency: (orderCurrency || currencyCode || 'AUD').toUpperCase(),
+        totals: {
+            subtotal: subtotalAmount,
+            shipping: shippingAmount,
+            tax: taxAmount,
+            total: totalAmount
+        },
+        shippingMethod: checkoutData?.printfulQuote?.shippingMethod || 'STANDARD',
+        customer: {
+            firstName: customerDetails.firstName || '',
+            lastName: customerDetails.lastName || '',
+            email: customerDetails.email || '',
+            phone: customerDetails.phone || ''
+        },
+        shippingAddress: {
+            address1: customerDetails.address1 || '',
+            address2: customerDetails.address2 || '',
+            city: customerDetails.city || '',
+            state: customerDetails.state || '',
+            postalCode: customerDetails.postalCode || '',
+            country: customerDetails.country || ''
+        },
+        items
+    };
+}
+
 function buildPrintfulOrderPayload(paymentIntentId, customerDetails, { externalIdPrefix = 'motocoach-checkout' } = {}) {
     const shopTotals = calculateOrderTotal(checkoutData);
     const orderCurrency = shopTotals.currency || currencyCode;
@@ -2502,6 +2564,14 @@ function buildPrintfulOrderPayload(paymentIntentId, customerDetails, { externalI
         metadata.payment_intent_id = paymentIntentId;
     }
 
+    const emailContext = buildShopOrderEmailContext(paymentIntentId, customerDetails, {
+        orderCurrency,
+        subtotalAmount,
+        shippingAmount,
+        taxAmount,
+        totalAmount
+    });
+
     return {
         source: 'catalog',
         external_id: externalId,
@@ -2519,7 +2589,8 @@ function buildPrintfulOrderPayload(paymentIntentId, customerDetails, { externalI
             email: customerDetails.email,
             message: 'Thank you for supporting Moto Coach!'
         },
-        metadata
+        metadata,
+        emailContext
     };
 }
 
