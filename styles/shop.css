@@ -52,7 +52,7 @@
 }
 
 /* Shop Controls */
- .shop-controls {
+.shop-controls {
     --chip-radius: 18px;
     --chip-pad-y: 0.42rem;
     --chip-pad-x: 0.85rem;
@@ -70,7 +70,13 @@
     border: 1px solid rgba(255,107,53,0.06);
     max-width: 1200px;
     transition: background 0.3s ease;
- }
+}
+
+.filters {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
 
 .controls-top {
     display: flex;
