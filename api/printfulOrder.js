@@ -497,8 +497,8 @@ async function sendShopOrderConfirmationEmail({
                         <tr>
                             <td style="padding:32px 32px 24px; text-align:center; background:linear-gradient(135deg, #111827, #1f2937);">
                                 <img src="${LOGO_URL}" alt="Moto Coach" width="72" height="72" style="display:block; margin:0 auto 16px;">
-                                <h1 style="margin:0; font-size:26px; font-weight:700; color:#f9fafb;">Thank you for your purchase${recipientName ? `, ${escapeHtml(recipientName)}` : ''}!</h1>
-                                <p style="margin:12px 0 0; color:rgba(249,250,251,0.8); font-size:15px;">
+                                <h1 style="margin:0; font-size:26px; font-weight:700; color:#000000;">Thank you for your purchase${recipientName ? `, ${escapeHtml(recipientName)}` : ''}!</h1>
+                                <p style="margin:12px 0 0; color:#111827; font-size:15px;">
                                     ${orderIdentifier ? `Order #${escapeHtml(orderIdentifier)} confirmed${orderDateDisplay ? ` on ${escapeHtml(orderDateDisplay)}` : ''}.` : 'Your Moto Coach shop order has been confirmed.'}
                                 </p>
                             </td>
