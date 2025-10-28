@@ -122,30 +122,32 @@
             <!-- Filter and Sort Controls - Now integrated into hero -->
             <div id="shop-controls" class="shop-controls" style="display: none;">
                 <div class="filters">
-                    <div class="filters-header">
-                        <h3>Categories</h3>
-                        <div class="filters-meta">
-                            <span id="results-inline" class="results-inline" aria-live="polite"></span>
-                            <div class="currency-selector">
-                                <label for="currency-select" class="visually-hidden">Select currency</label>
-                                <select id="currency-select" aria-label="Select currency">
-                                    <option value="AUD" selected>AUD</option>
-                                    <option value="USD">USD</option>
-                                </select>
-                            </div>
-                            <div class="sort-controls inline">
-                                <label for="sort-select" class="visually-hidden">Sort products</label>
-                                <select id="sort-select" aria-label="Sort products">
-                                    <option value="title-asc">Name (A-Z)</option>
-                                    <option value="title-desc">Name (Z-A)</option>
-                                    <option value="price-asc">Price (Low to High)</option>
-                                    <option value="price-desc">Price (High to Low)</option>
-                                </select>
-                            </div>
+                    <div class="controls-top">
+                        <div class="control-block currency-selector">
+                            <label for="currency-select">Currency</label>
+                            <select id="currency-select" aria-label="Select currency">
+                                <option value="AUD" selected>AUD</option>
+                                <option value="USD">USD</option>
+                            </select>
+                        </div>
+                        <div class="control-block sort-controls">
+                            <label for="sort-select">Sort by</label>
+                            <select id="sort-select" aria-label="Sort products">
+                                <option value="title-asc">Name (A-Z)</option>
+                                <option value="title-desc">Name (Z-A)</option>
+                                <option value="price-asc">Price (Low to High)</option>
+                                <option value="price-desc">Price (High to Low)</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="filter-buttons" id="parent-filters"></div>
-                    <div class="filter-buttons" id="leaf-filters"></div>
+                    <div class="categories-row">
+                        <h3>Categories</h3>
+                        <div class="categories-filters">
+                            <div class="filter-buttons" id="parent-filters"></div>
+                            <div class="filter-buttons" id="leaf-filters"></div>
+                        </div>
+                        <span id="results-inline" class="results-inline" aria-live="polite"></span>
+                    </div>
                 </div>
             </div>
             <div id="active-filter-breadcrumbs" class="active-filter-breadcrumbs" style="display:none;"></div>

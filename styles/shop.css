@@ -58,9 +58,9 @@
     --chip-pad-x: 0.85rem;
     --chip-font-size: 0.78rem;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1.25rem;
     margin: 0 auto 0.85rem auto;
     padding: 1rem 1.25rem;
     background: rgba(255, 255, 255, 0.55);
@@ -72,20 +72,47 @@
     transition: background 0.3s ease;
  }
 
-.filters-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    margin-bottom: 0.85rem;
-}
-
-/* Meta block holds inline results + sort */
-.filters-header .filters-meta {
+.controls-top {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
     flex-wrap: wrap;
+}
+
+.control-block {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.control-block label {
+    color: #333;
+    font-family: 'Oswald', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+}
+
+.categories-row {
+    display: flex;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.categories-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    flex: 1 1 0;
+    min-width: 200px;
+}
+
+.categories-row .results-inline {
+    margin-left: auto;
+    align-self: center;
 }
 
 .results-inline {
@@ -101,10 +128,6 @@
 }
 .results-inline.active { opacity: 0.9; color: #333; }
 
-/* Adjust inline sort variant (hide label visually) */
-.sort-controls.inline { margin: 0; }
-.sort-controls.inline label { display: none; }
-
 /* Visually hidden utility */
 .visually-hidden {
     position: absolute !important;
@@ -119,15 +142,29 @@
 }
 
 @media (max-width: 768px) {
-    .filters-header { align-items: flex-start; }
-    .filters-header .filters-meta { width: 100%; justify-content: space-between; }
-    .results-inline { order: 2; flex: 1; min-width: 120px; }
-    .sort-controls.inline { order: 3; }
+    .controls-top {
+        align-items: flex-start;
+    }
+
+    .categories-row {
+        flex-direction: column;
+    }
+
+    .categories-row .results-inline {
+        margin-left: 0;
+        align-self: flex-start;
+    }
 }
 
 @media (max-width: 480px) {
-    .filters-header .filters-meta { gap: 0.6rem; }
-    .results-inline { font-size: 0.6rem; letter-spacing: 0.7px; }
+    .controls-top {
+        gap: 1rem;
+    }
+
+    .results-inline {
+        font-size: 0.6rem;
+        letter-spacing: 0.7px;
+    }
 }
 
 .filters h3 {
@@ -348,20 +385,11 @@
 @keyframes leafFade { from { opacity:0; transform: translateY(-4px);} to { opacity:1; transform: translateY(0);} }
 
 .sort-controls {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.5rem;
+    gap: 0.75rem;
 }
 
 .sort-controls label {
-    color: #333;
-    font-family: 'Oswald', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 0.25rem;
+    margin: 0;
 }
 
 .sort-controls select {
@@ -401,22 +429,9 @@
 }
 
 /* Currency Selector */
-.currency-selector {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.5rem;
-    margin-right: 1rem;
-}
 
-.currency-selector label {
-    color: #333;
-    font-family: 'Oswald', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    margin-bottom: 0.25rem;
+.currency-selector {
+    gap: 0.75rem;
 }
 
 .currency-selector select {
