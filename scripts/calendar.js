@@ -1412,13 +1412,27 @@ class MotoCoachCalendar {
     scrollToEventInUpcomingList(eventId) {
         const eventElement = document.getElementById(eventId);
         if (eventElement) {
-            // Scroll the element into view with smooth animation
-            eventElement.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center',
-                inline: 'nearest'
-            });
-            
+            const scrollContainer = eventElement.closest('.events-list-scrollable');
+
+            if (scrollContainer) {
+                const containerRect = scrollContainer.getBoundingClientRect();
+                const elementRect = eventElement.getBoundingClientRect();
+                const offsetWithinContainer = elementRect.top - containerRect.top;
+                const targetScrollTop = scrollContainer.scrollTop + offsetWithinContainer - ((scrollContainer.clientHeight - eventElement.offsetHeight) / 2);
+
+                scrollContainer.scrollTo({
+                    top: Math.max(0, targetScrollTop),
+                    behavior: 'smooth'
+                });
+            } else {
+                // Fallback if container isn't found
+                eventElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                    inline: 'nearest'
+                });
+            }
+
             // Add a highlight effect
             eventElement.classList.add('event-highlighted');
             setTimeout(() => {
