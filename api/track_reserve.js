@@ -197,23 +197,48 @@ async function validateEventDetails(eventData) {
             }
         }
 
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
-            `key=${apiKey}&` +
-            `timeMin=${timeMinDate.toISOString()}&` +
-            `timeMax=${timeMaxDate.toISOString()}&` +
-            `maxResults=250&` +
-            `singleEvents=true&` +
-            `orderBy=startTime`;
+        const calendarEvents = [];
+        let pageToken = undefined;
+        let pageCount = 0;
+        const maxPages = 20; // Safety limit to prevent infinite pagination loops
 
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-            console.warn(`Google Calendar API error: ${response.status}, skipping validation`);
-            return { success: true }; // Allow through if API fails
-        }
+        do {
+            const params = new URLSearchParams({
+                key: apiKey,
+                timeMin: timeMinDate.toISOString(),
+                timeMax: timeMaxDate.toISOString(),
+                maxResults: '250',
+                singleEvents: 'true',
+                orderBy: 'startTime'
+            });
 
-        const data = await response.json();
-        const calendarEvents = data.items || [];
+            if (pageToken) {
+                params.set('pageToken', pageToken);
+            }
+
+            const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`;
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                console.warn(`Google Calendar API error: ${response.status}, skipping validation`);
+                return { success: true }; // Allow through if API fails
+            }
+
+            const data = await response.json();
+            if (Array.isArray(data.items)) {
+                calendarEvents.push(...data.items);
+            }
+
+            pageToken = data.nextPageToken;
+            pageCount += 1;
+
+            if (pageCount >= maxPages && pageToken) {
+                console.warn('Google Calendar pagination limit reached during validation, stopping early');
+                break;
+            }
+        } while (pageToken);
+
+        console.log(`Fetched ${calendarEvents.length} calendar events for validation`);
 
         const invalidEvents = [];
 
