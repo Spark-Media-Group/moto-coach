@@ -1443,13 +1443,24 @@ class MotoCoachCalendar {
 
     // Date selection methods removed - calendar is now view-only
 
+    // Helper to format date consistently with API (Australian timezone)
+    formatEventDate(date) {
+        return date.toLocaleDateString('en-AU', {
+            timeZone: 'Australia/Sydney',
+            day: 'numeric',
+            month: 'numeric',
+            year: 'numeric'
+        });
+    }
+
     // Event selection methods for multi-registration
     addEventToSelection(event) {
-        const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+        const dateString = this.formatEventDate(event.date);
+        const eventKey = `${event.title}_${dateString}`;
         this.selectedEvents.set(eventKey, {
             ...event,
             eventKey: eventKey,
-            dateString: `${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`
+            dateString: dateString
         });
         this.updateSelectionUI();
         this.updateButtonStatesOnly(); // Only update button states, don't refresh all event details
@@ -1458,10 +1469,11 @@ class MotoCoachCalendar {
     addEventToSelectionByKey(eventKey) {
         // Find the event by key from our current events
         const targetEvent = this.events.find(event => {
-            const key = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+            const dateString = this.formatEventDate(event.date);
+            const key = `${event.title}_${dateString}`;
             return key === eventKey;
         });
-        
+
         if (targetEvent) {
             this.addEventToSelection(targetEvent);
         }
@@ -1474,7 +1486,8 @@ class MotoCoachCalendar {
     }
 
     isEventSelected(event) {
-        const eventKey = `${event.title}_${event.date.getDate()}/${event.date.getMonth() + 1}/${event.date.getFullYear()}`;
+        const dateString = this.formatEventDate(event.date);
+        const eventKey = `${event.title}_${dateString}`;
         return this.selectedEvents.has(eventKey);
     }
 

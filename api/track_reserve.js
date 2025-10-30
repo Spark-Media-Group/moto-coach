@@ -153,22 +153,37 @@ async function validateEventDetails(eventData) {
         const calendarId = process.env.GOOGLE_CALENDAR_ID;
 
         if (!apiKey || !calendarId) {
-            console.warn('Google Calendar API not configured, skipping event validation');
+            console.warn('Google Calendar API not configured, skipping event validation', {
+                hasApiKey: !!apiKey,
+                hasCalendarId: !!calendarId
+            });
             return { success: true }; // Allow through if calendar not configured
         }
 
+        console.log('Google Calendar API configured:', {
+            calendarIdLength: calendarId.length,
+            apiKeyLength: apiKey.length
+        });
+
         // Get calendar events for validation
+        // Use a date in the past to ensure we don't miss any events due to timezone issues
         const now = new Date();
-        const sixMonthsFromNow = new Date();
-        sixMonthsFromNow.setMonth(now.getMonth() + 6);
+        now.setDate(now.getDate() - 7); // Go back one week to account for timezone differences and ensure we catch everything
+        const oneYearFromNow = new Date();
+        oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
 
         const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
             `key=${apiKey}&` +
             `timeMin=${now.toISOString()}&` +
-            `timeMax=${sixMonthsFromNow.toISOString()}&` +
-            `maxResults=250&` +
+            `timeMax=${oneYearFromNow.toISOString()}&` +
+            `maxResults=500&` +
             `singleEvents=true&` +
             `orderBy=startTime`;
+
+        console.log('Fetching calendar events with date range:', {
+            timeMin: now.toISOString(),
+            timeMax: oneYearFromNow.toISOString()
+        });
 
         const response = await fetch(url);
         
@@ -182,11 +197,19 @@ async function validateEventDetails(eventData) {
 
         console.log(`Found ${calendarEvents.length} calendar events`);
         if (calendarEvents.length > 0) {
-            console.log('First 3 calendar events:', calendarEvents.slice(0, 3).map(e => ({
+            console.log('First 5 calendar events:', calendarEvents.slice(0, 5).map(e => ({
                 summary: e.summary,
                 start: e.start?.dateTime || e.start?.date
             })));
         }
+
+        // Log all events that match the date we're looking for
+        const targetDate = '31/10/2025';
+        const oct31Events = calendarEvents.filter(e => {
+            const eventDate = formatAustralianDate(e.start?.dateTime || e.start?.date);
+            return eventDate === targetDate;
+        });
+        console.log(`Events on ${targetDate}:`, oct31Events.map(e => e.summary));
 
         // Validate each event in the submission
         const eventsToValidate = eventData.events || [{
@@ -214,7 +237,22 @@ async function validateEventDetails(eventData) {
                 const submittedDate = formatAustralianDate(submittedDateRaw);
 
                 const titleMatch = calendarTitle.toLowerCase() === (submittedTitle ? submittedTitle.toLowerCase() : '');
-                const dateMatch = calendarDate === submittedDate;
+
+                // Parse both dates to compare them with ±1 day tolerance for timezone issues
+                const calendarDateObj = parseDateInput(calendarDate);
+                const submittedDateObj = parseDateInput(submittedDate);
+
+                // Check if dates match exactly OR within 1 day (for timezone edge cases)
+                let dateMatch = calendarDate === submittedDate;
+                if (!dateMatch && calendarDateObj && submittedDateObj) {
+                    const daysDiff = Math.abs((calendarDateObj.getTime() - submittedDateObj.getTime()) / (1000 * 60 * 60 * 24));
+                    dateMatch = daysDiff <= 1;
+                }
+
+                const exactDateMatch = calendarDate === submittedDate;
+                const daysDiff = calendarDateObj && submittedDateObj
+                    ? Math.abs((calendarDateObj.getTime() - submittedDateObj.getTime()) / (1000 * 60 * 60 * 24))
+                    : 999;
 
                 console.log('Track reserve validation: comparing calendar event to submitted values', {
                     calendarTitle: JSON.stringify(calendarTitle),
@@ -222,7 +260,9 @@ async function validateEventDetails(eventData) {
                     calendarDate: JSON.stringify(calendarDate),
                     submittedDate: JSON.stringify(submittedDate),
                     titleMatch,
+                    exactDateMatch,
                     dateMatch,
+                    daysDiff: daysDiff.toFixed(2),
                     submittedTitleLength: submittedTitle ? submittedTitle.length : 0,
                     submittedDateLength: submittedDate ? submittedDate.length : 0,
                     calendarDateLength: calendarDate.length
