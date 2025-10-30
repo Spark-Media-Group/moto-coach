@@ -180,6 +180,14 @@ async function validateEventDetails(eventData) {
         const data = await response.json();
         const calendarEvents = data.items || [];
 
+        console.log(`Found ${calendarEvents.length} calendar events`);
+        if (calendarEvents.length > 0) {
+            console.log('First 3 calendar events:', calendarEvents.slice(0, 3).map(e => ({
+                summary: e.summary,
+                start: e.start?.dateTime || e.start?.date
+            })));
+        }
+
         // Validate each event in the submission
         const eventsToValidate = eventData.events || [{
             title: eventData.eventName,
@@ -208,7 +216,11 @@ async function validateEventDetails(eventData) {
                 const titleMatch = calendarTitle.toLowerCase() === (submittedTitle ? submittedTitle.toLowerCase() : '');
                 const dateMatch = calendarDate === submittedDate;
 
-                console.log('Track reserve validation: comparing calendar event to submitted values (details redacted)', {
+                console.log('Track reserve validation: comparing calendar event to submitted values', {
+                    calendarTitle: JSON.stringify(calendarTitle),
+                    submittedTitle: JSON.stringify(submittedTitle),
+                    calendarDate: JSON.stringify(calendarDate),
+                    submittedDate: JSON.stringify(submittedDate),
                     titleMatch,
                     dateMatch,
                     submittedTitleLength: submittedTitle ? submittedTitle.length : 0,
@@ -217,13 +229,17 @@ async function validateEventDetails(eventData) {
                 });
 
                 if (!titleMatch) {
-                    console.warn('⚠️  SECURITY: Event title mismatch detected (values redacted)', {
+                    console.warn('⚠️  SECURITY: Event title mismatch detected', {
+                        calendarTitle: JSON.stringify(calendarTitle),
+                        submittedTitle: JSON.stringify(submittedTitle),
                         calendarTitleLength: calendarTitle.length,
                         submittedTitleLength: submittedTitle ? submittedTitle.length : 0
                     });
                 }
                 if (!dateMatch) {
-                    console.warn('⚠️  SECURITY: Event date mismatch detected (values redacted)', {
+                    console.warn('⚠️  SECURITY: Event date mismatch detected', {
+                        calendarDate: JSON.stringify(calendarDate),
+                        submittedDate: JSON.stringify(submittedDate),
                         calendarDateLength: calendarDate.length,
                         submittedDateLength: submittedDate ? submittedDate.length : 0
                     });
@@ -427,7 +443,9 @@ export default async function handler(req, res) {
             }
 
             // Validate event details before checking availability
+            console.log('Validating events:', JSON.stringify(events, null, 2));
             const eventValidation = await validateEventDetails({ events });
+            console.log('Validation result:', JSON.stringify(eventValidation, null, 2));
             if (!eventValidation.success) {
                 return res.status(400).json({ 
                     success: false, 

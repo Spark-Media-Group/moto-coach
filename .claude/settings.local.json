@@ -5,7 +5,8 @@
       "Bash(touch:*)",
       "Bash(python:*)",
       "Bash(powershell:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []
