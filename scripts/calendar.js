@@ -1445,12 +1445,25 @@ class MotoCoachCalendar {
 
     // Helper to format date consistently with API (Australian timezone)
     formatEventDate(date) {
-        return date.toLocaleDateString('en-AU', {
-            timeZone: 'Australia/Sydney',
-            day: 'numeric',
-            month: 'numeric',
-            year: 'numeric'
-        });
+        // Use the same formatting helper that powers dataset keys elsewhere
+        // to avoid mismatched values like "03/05/2024" vs "3/5/2024"
+        const formatted = formatAustralianDate(date);
+        if (formatted) {
+            return formatted;
+        }
+
+        // Fallback to locale formatting if the helper can't produce a value
+        try {
+            return date.toLocaleDateString('en-AU', {
+                timeZone: 'Australia/Sydney',
+                day: 'numeric',
+                month: 'numeric',
+                year: 'numeric'
+            });
+        } catch (error) {
+            console.warn('Unable to format event date', error);
+            return '';
+        }
     }
 
     // Event selection methods for multi-registration
