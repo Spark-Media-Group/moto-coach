@@ -157,15 +157,50 @@ async function validateEventDetails(eventData) {
             return { success: true }; // Allow through if calendar not configured
         }
 
+        // Determine the events we need to validate
+        const eventsToValidate = eventData.events || [{
+            title: eventData.eventName,
+            dateString: eventData.eventDate,
+            location: eventData.eventLocation,
+            time: eventData.eventTime
+        }];
+
         // Get calendar events for validation
         const now = new Date();
         const sixMonthsFromNow = new Date();
         sixMonthsFromNow.setMonth(now.getMonth() + 6);
 
+        // Expand the calendar query window to include the submitted events.
+        // Some bookings (like travel camps) can be scheduled many months in advance,
+        // which previously meant they fell outside of the 6-month lookup window and
+        // were flagged as missing even though they exist in the calendar.
+        let timeMinDate = now;
+        let timeMaxDate = sixMonthsFromNow;
+
+        const parsedEventDates = eventsToValidate
+            .map(event => parseDateInput(event?.dateString || event?.date))
+            .filter(date => date instanceof Date && !Number.isNaN(date.getTime()));
+
+        if (parsedEventDates.length > 0) {
+            const earliestEvent = new Date(Math.min(...parsedEventDates.map(date => date.getTime())));
+            const latestEvent = new Date(Math.max(...parsedEventDates.map(date => date.getTime())));
+
+            if (earliestEvent < timeMinDate) {
+                // Give a small buffer before the earliest event to account for timezone differences
+                timeMinDate = new Date(earliestEvent.getTime() - (7 * 24 * 60 * 60 * 1000));
+            }
+
+            const latestEventBuffer = new Date(latestEvent);
+            latestEventBuffer.setMonth(latestEventBuffer.getMonth() + 1);
+            if (latestEventBuffer > timeMaxDate) {
+                timeMaxDate = latestEventBuffer;
+            }
+        }
+
         const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?` +
             `key=${apiKey}&` +
-            `timeMin=${now.toISOString()}&` +
-            `timeMax=${sixMonthsFromNow.toISOString()}&` +
+            `timeMin=${timeMinDate.toISOString()}&` +
+            `timeMax=${timeMaxDate.toISOString()}&` +
             `maxResults=250&` +
             `singleEvents=true&` +
             `orderBy=startTime`;
@@ -179,14 +214,6 @@ async function validateEventDetails(eventData) {
 
         const data = await response.json();
         const calendarEvents = data.items || [];
-
-        // Validate each event in the submission
-        const eventsToValidate = eventData.events || [{
-            title: eventData.eventName,
-            dateString: eventData.eventDate,
-            location: eventData.eventLocation,
-            time: eventData.eventTime
-        }];
 
         const invalidEvents = [];
 
