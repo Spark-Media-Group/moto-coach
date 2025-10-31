@@ -7,7 +7,8 @@
       "Bash(powershell:*)",
       "Bash(git checkout:*)",
       "Bash(node:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Read(//c/Users/Troy/Downloads/stripe-sample-code/**)"
     ],
     "deny": [],
     "ask": []
