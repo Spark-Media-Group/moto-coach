@@ -488,32 +488,34 @@
             id: v.id,
             name: v.optionLabel || v.name,
             imageUrl: v.imageUrl,
-            hasImageUrl: !!v.imageUrl
+            imageUrls: v.imageUrls,
+            hasImageUrl: !!v.imageUrl,
+            hasMultipleImages: (v.imageUrls || []).length > 1
         })));
-        
-        // Collect ALL UNIQUE COLOR VARIANT IMAGES (deduplicated by image URL)
+
+        // Collect ALL UNIQUE IMAGES from all variants (including all mockups)
         const variants = product.variants || [];
-        let colorVariants = [];
-        
+        let images = [];
+        let seenUrls = new Set();
+
+        // For each variant, add all its mockup images
         variants.forEach(v => {
-            if (v.imageUrl) {
-                // Check if we already have this image (same color, different size)
-                const exists = colorVariants.some(cv => cv.imageUrl === v.imageUrl);
-                if (!exists) {
-                    colorVariants.push(v);
+            const mockups = v.imageUrls && v.imageUrls.length > 0 ? v.imageUrls : (v.imageUrl ? [v.imageUrl] : []);
+
+            mockups.forEach(mockupUrl => {
+                if (mockupUrl && !seenUrls.has(mockupUrl)) {
+                    seenUrls.add(mockupUrl);
+                    images.push({
+                        url: mockupUrl,
+                        altText: `${product.name} - ${getVariantColorName(v) || 'Variant'}`,
+                        variantId: v.id,
+                        baseVariant: v // Store reference to select this color
+                    });
                 }
-            }
+            });
         });
-        
-        console.log('[DEBUG buildImageGallery] Found', colorVariants.length, 'unique color variants');
-        
-        // Build images array with variant metadata for color selection
-        let images = colorVariants.map(v => ({
-            url: v.imageUrl,
-            altText: `${product.name} - ${getVariantColorName(v) || 'Variant'}`,
-            variantId: v.id,
-            baseVariant: v // Store reference to select this color
-        }));
+
+        console.log('[DEBUG buildImageGallery] Found', images.length, 'unique mockup images');
         
         // Fallback to product images if no variant images
         if (images.length === 0 && product.images && product.images.length > 0) {
@@ -554,8 +556,8 @@
                 <div class="main-image-container">
                     <img id="modal-main-image" src="${mainImage.url}" alt="${mainImage.altText || product.name}">
                     ${showNav ? `
-                        <button class="gallery-nav gallery-prev" aria-label="Previous color">‹</button>
-                        <button class="gallery-nav gallery-next" aria-label="Next color">›</button>
+                        <button class="gallery-nav gallery-prev" data-direction="-1" aria-label="Previous color">‹</button>
+                        <button class="gallery-nav gallery-next" data-direction="1" aria-label="Next color">›</button>
                     ` : ''}
                 </div>
                 
@@ -965,25 +967,26 @@
             return;
         }
 
-        // Get all unique color variant images (same as buildImageGallery logic)
+        // Get ALL unique images from all variants (same logic as buildImageGallery)
         const variants = currentModalProduct.variants || [];
-        let colorVariants = [];
-        
+        let images = [];
+        let seenUrls = new Set();
+
         variants.forEach(v => {
-            if (v.imageUrl) {
-                const exists = colorVariants.some(cv => cv.imageUrl === v.imageUrl);
-                if (!exists) {
-                    colorVariants.push(v);
+            const mockups = v.imageUrls && v.imageUrls.length > 0 ? v.imageUrls : (v.imageUrl ? [v.imageUrl] : []);
+
+            mockups.forEach(mockupUrl => {
+                if (mockupUrl && !seenUrls.has(mockupUrl)) {
+                    seenUrls.add(mockupUrl);
+                    images.push({
+                        url: mockupUrl,
+                        altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
+                        variantId: v.id,
+                        baseVariant: v
+                    });
                 }
-            }
+            });
         });
-        
-        let images = colorVariants.map(v => ({
-            url: v.imageUrl,
-            altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
-            variantId: v.id,
-            baseVariant: v
-        }));
         
         if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
             images = currentModalProduct.images.map(img => ({...img, variantId: null, baseVariant: null}));
@@ -1036,25 +1039,26 @@
             return;
         }
 
-        // Get all unique color variant images (same as buildImageGallery logic)
+        // Get ALL unique images from all variants (same logic as buildImageGallery)
         const variants = currentModalProduct.variants || [];
-        let colorVariants = [];
-        
+        let images = [];
+        let seenUrls = new Set();
+
         variants.forEach(v => {
-            if (v.imageUrl) {
-                const exists = colorVariants.some(cv => cv.imageUrl === v.imageUrl);
-                if (!exists) {
-                    colorVariants.push(v);
+            const mockups = v.imageUrls && v.imageUrls.length > 0 ? v.imageUrls : (v.imageUrl ? [v.imageUrl] : []);
+
+            mockups.forEach(mockupUrl => {
+                if (mockupUrl && !seenUrls.has(mockupUrl)) {
+                    seenUrls.add(mockupUrl);
+                    images.push({
+                        url: mockupUrl,
+                        altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
+                        variantId: v.id,
+                        baseVariant: v
+                    });
                 }
-            }
+            });
         });
-        
-        let images = colorVariants.map(v => ({
-            url: v.imageUrl,
-            altText: `${currentModalProduct.name} - ${getVariantColorName(v) || 'Variant'}`,
-            variantId: v.id,
-            baseVariant: v
-        }));
         
         if (images.length === 0 && currentModalProduct.images && currentModalProduct.images.length > 0) {
             images = currentModalProduct.images.map(img => ({...img, variantId: null, baseVariant: null}));
