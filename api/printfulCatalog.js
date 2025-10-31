@@ -821,17 +821,26 @@ function normaliseVariantPlacementKey(value) {
 async function enrichVariantWithCatalogMockups(variant, apiKey) {
     // Only fetch mockups if variant has a catalog variant ID
     if (!variant.catalogVariantId) {
+        console.log(`[Mockup Fetch] Skipping variant ${variant.id} - no catalogVariantId`);
         return variant;
     }
 
     try {
+        console.log(`[Mockup Fetch] Fetching mockups for catalog variant ${variant.catalogVariantId}...`);
         const response = await fetchFromPrintful(
             apiKey,
             CATALOG_VARIANT_IMAGES_ENDPOINT(variant.catalogVariantId)
         );
 
         const imagesData = response?.data;
+        console.log(`[Mockup Fetch] Response data:`, {
+            hasData: !!imagesData,
+            hasImages: !!imagesData?.images,
+            imagesCount: imagesData?.images?.length
+        });
+
         if (!imagesData || !imagesData.images || !Array.isArray(imagesData.images)) {
+            console.warn(`[Mockup Fetch] No images data for variant ${variant.catalogVariantId}`);
             return variant;
         }
 
@@ -849,6 +858,7 @@ async function enrichVariantWithCatalogMockups(variant, apiKey) {
 
             if (placementMockups.length > 0) {
                 mockupUrls = placementMockups;
+                console.log(`[Mockup Fetch] Found ${mockupUrls.length} mockups for placement: ${placement}`);
                 break;
             }
         }
@@ -858,6 +868,7 @@ async function enrichVariantWithCatalogMockups(variant, apiKey) {
             mockupUrls = imagesData.images
                 .filter(img => img.image_url)
                 .map(img => img.image_url);
+            console.log(`[Mockup Fetch] Using all available images: ${mockupUrls.length}`);
         }
 
         // Combine existing imageUrls with new mockups (deduplicate)
@@ -869,6 +880,8 @@ async function enrichVariantWithCatalogMockups(variant, apiKey) {
                 allUrls.push(url);
             }
         });
+
+        console.log(`[Mockup Fetch] Total URLs after enrichment: ${allUrls.length} (was ${existingUrls.size})`);
 
         return {
             ...variant,
