@@ -5,6 +5,7 @@ const SYNC_PRODUCTS_ENDPOINT = `${PRINTFUL_API_BASE}/sync/products`;
 const SYNC_PRODUCT_ENDPOINT = (productId) => `${SYNC_PRODUCTS_ENDPOINT}/${encodeURIComponent(productId)}`;
 const CATALOG_PRODUCT_ENDPOINT = (productId) => `${PRINTFUL_API_BASE}/v2/catalog-products/${encodeURIComponent(productId)}`;
 const CATALOG_VARIANT_ENDPOINT = (variantId) => `${PRINTFUL_API_BASE}/v2/catalog-variants/${encodeURIComponent(variantId)}`;
+const CATALOG_VARIANT_IMAGES_ENDPOINT = (variantId) => `${PRINTFUL_API_BASE}/v2/catalog-variants/${encodeURIComponent(variantId)}/images`;
 const CATEGORIES_ENDPOINT = `${PRINTFUL_API_BASE}/categories`;
 
 const DEFAULT_STORE_NAME = 'Personal orders';
@@ -817,6 +818,69 @@ function normaliseVariantPlacementKey(value) {
     return str || null;
 }
 
+async function enrichVariantWithCatalogMockups(variant, apiKey) {
+    // Only fetch mockups if variant has a catalog variant ID
+    if (!variant.catalogVariantId) {
+        return variant;
+    }
+
+    try {
+        const response = await fetchFromPrintful(
+            apiKey,
+            CATALOG_VARIANT_IMAGES_ENDPOINT(variant.catalogVariantId)
+        );
+
+        const imagesData = response?.data;
+        if (!imagesData || !imagesData.images || !Array.isArray(imagesData.images)) {
+            return variant;
+        }
+
+        // Find the placement that matches this variant's design
+        // Prioritize embroidery_front_large which is used for most custom designs
+        const relevantPlacements = ['embroidery_front_large', 'embroidery_front', 'default', 'preview'];
+
+        let mockupUrls = [];
+
+        // Try each placement in order of priority
+        for (const placement of relevantPlacements) {
+            const placementMockups = imagesData.images
+                .filter(img => img.placement === placement && img.image_url)
+                .map(img => img.image_url);
+
+            if (placementMockups.length > 0) {
+                mockupUrls = placementMockups;
+                break;
+            }
+        }
+
+        // If no relevant placement found, use all available images
+        if (mockupUrls.length === 0) {
+            mockupUrls = imagesData.images
+                .filter(img => img.image_url)
+                .map(img => img.image_url);
+        }
+
+        // Combine existing imageUrls with new mockups (deduplicate)
+        const existingUrls = new Set(variant.imageUrls || []);
+        const allUrls = [...existingUrls];
+
+        mockupUrls.forEach(url => {
+            if (!existingUrls.has(url)) {
+                allUrls.push(url);
+            }
+        });
+
+        return {
+            ...variant,
+            imageUrls: allUrls
+        };
+
+    } catch (error) {
+        console.warn(`Failed to fetch catalog mockups for variant ${variant.catalogVariantId}:`, error.message);
+        return variant;
+    }
+}
+
 async function resolveVariantPlacements(apiKey, storeId, detail) {
     const result = detail?.result ?? detail ?? {};
     const variants = Array.isArray(result.sync_variants)
@@ -1473,10 +1537,33 @@ export default async function handler(req, res) {
             }
         });
 
+        // Enrich variants with catalog mockup images
+        console.log(`Enriching ${products.length} products with catalog mockups...`);
+        const enrichedProducts = await Promise.all(
+            products.map(async (product) => {
+                if (!product.variants || product.variants.length === 0) {
+                    return product;
+                }
+
+                // Enrich all variants with mockup images
+                const enrichedVariants = await Promise.all(
+                    product.variants.map(variant => enrichVariantWithCatalogMockups(variant, apiKey))
+                );
+
+                return {
+                    ...product,
+                    variants: enrichedVariants
+                };
+            })
+        );
+
+        console.log(`Enrichment complete. Sample variant mockup count:`,
+            enrichedProducts[0]?.variants[0]?.imageUrls?.length || 0);
+
         res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=900');
         return res.status(errors.length > 0 ? 207 : 200).json({
             success: errors.length === 0,
-            products,
+            products: enrichedProducts,
             errors: errors.length ? errors : undefined,
             store: responseStoreContext
         });
