@@ -6,7 +6,8 @@
       "Bash(python:*)",
       "Bash(powershell:*)",
       "Bash(git checkout:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []
